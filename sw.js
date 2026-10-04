@@ -1,10 +1,10 @@
 // Service worker: rende l'app utilizzabile offline.
 // Quando pubblichi una nuova versione dei file, aumenta il numero di VERSION.
-const VERSION = 'contabilita-v3';
+const VERSION = 'contabilita-v4';
 const SHELL = [
   './', './index.html', './style.css', './manifest.webmanifest',
   './js/main.js', './js/store.js', './js/model.js', './js/sync.js', './js/expr.js', './js/charts.js', './js/ui.js',
-  './js/view-mese.js', './js/view-riepilogo.js', './js/view-patrimonio.js', './js/view-altro.js', './js/view-conti.js', './js/dialogs.js', './js/crypto.js',
+  './js/view-mese.js', './js/view-riepilogo.js', './js/view-patrimonio.js', './js/view-altro.js', './js/view-conti.js', './js/dialogs.js', './js/crypto.js', './js/view-debiti.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
 ];
 

@@ -6,25 +6,30 @@ export const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno
 export const MESI_BREVI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
 // Stessi identificativi usati per lo storico importato: così non nascono doppioni
+// Stessi identificativi usati per lo storico importato: così non nascono doppioni
 const DEFAULT_CATS = {
-  out: [['ristoranti', 'Ristoranti e bar', '#D9822B'], ['spesa', 'Spesa', '#4C9A2A'], ['trasporti', 'Trasporti', '#2F6FB3'],
-    ['viaggi', 'Viaggi', '#14A3A3'], ['svago', 'Svago e sport', '#8E44AD'], ['shopping', 'Shopping', '#C2185B'],
-    ['regali', 'Regali', '#D4A106'], ['abbonamenti', 'Abbonamenti digitali', '#5C6BC0'], ['telefonia', 'Telefonia', '#00897B'],
-    ['cura', 'Cura personale e salute', '#8D6E63'], ['universita', 'Università', '#6D8B1E'],
-    ['tasse', 'Tasse e burocrazia', '#78909C'], ['altro-out', 'Altro', '#9E9E9E']],
-  in: [['famiglia', 'Famiglia', '#2457A6'], ['interessi', 'Interessi', '#14A3A3'], ['regali-in', 'Regali ricevuti', '#D4A106'],
-    ['vendite', 'Vendite', '#C2185B'], ['vincite', 'Vincite', '#8E44AD'], ['rimborsi', 'Rimborsi', '#4C9A2A'],
-    ['altro-in', 'Altro', '#9E9E9E']],
+  out: [['ristoranti', 'Ristoranti e bar', '#D9822B', '🍽️'], ['spesa', 'Spesa', '#4C9A2A', '🛒'], ['trasporti', 'Trasporti', '#2F6FB3', '🚆'],
+    ['viaggi', 'Viaggi', '#14A3A3', '✈️'], ['svago', 'Svago e sport', '#8E44AD', '🎳'], ['shopping', 'Shopping', '#C2185B', '🛍️'],
+    ['regali', 'Regali', '#D4A106', '🎁'], ['abbonamenti', 'Abbonamenti digitali', '#5C6BC0', '📺'], ['telefonia', 'Telefonia', '#00897B', '📱'],
+    ['cura', 'Cura personale e salute', '#8D6E63', '💈'], ['universita', 'Università', '#6D8B1E', '🎓'],
+    ['tasse', 'Tasse e burocrazia', '#78909C', '🏛️'], ['altro-out', 'Altro', '#9E9E9E', '📦']],
+  in: [['famiglia', 'Famiglia', '#2457A6', '👨‍👩‍👦'], ['interessi', 'Interessi', '#14A3A3', '📈'], ['regali-in', 'Regali ricevuti', '#D4A106', '🎁'],
+    ['vendite', 'Vendite', '#C2185B', '🏷️'], ['vincite', 'Vincite', '#8E44AD', '🍀'], ['rimborsi', 'Rimborsi', '#4C9A2A', '↩️'],
+    ['altro-in', 'Altro', '#9E9E9E', '💶']],
 };
+const DEFAULT_EMOJI = Object.fromEntries([...DEFAULT_CATS.out, ...DEFAULT_CATS.in].map(([k, , , e]) => ['cat-' + k, e]));
 
 // Crea le categorie di base se l'archivio non ne ha (primo avvio senza storico)
 export function ensureCategories() {
   if (store.all('cat').length) return;
   for (const tipo of ['out', 'in']) {
-    DEFAULT_CATS[tipo].forEach(([key, nome, colore], i) =>
-      store.saveDefault('cat', 'cat-' + key, { nome, tipo, colore, ord: i }));
+    DEFAULT_CATS[tipo].forEach(([key, nome, colore, emoji], i) =>
+      store.saveDefault('cat', 'cat-' + key, { nome, tipo, colore, emoji, ord: i }));
   }
 }
+
+// Nome della categoria preceduto dall'emoji
+export const catLabel = (c) => (c ? (c.data.emoji ? c.data.emoji + ' ' : '') + c.data.nome : 'Senza categoria');
 
 export function cats(tipo) {
   return store.all('cat').filter((c) => c.data.tipo === tipo)
@@ -161,8 +166,25 @@ export function containers(includeArchived = true) {
     .sort((a, b) => a.data.ord - b.data.ord);
 }
 
-export const GRUPPI = [['contanti', 'Contanti e depositi'], ['conti', 'Conti e cripto'], ['altro', 'Altro']];
-export const gruppoNome = (g) => (GRUPPI.find((x) => x[0] === g) || GRUPPI[2])[1];
+export const GRUPPI = [
+  ['contanti', 'Contanti e monete'], ['corrente', 'Conto corrente'], ['deposito', 'Conto deposito'],
+  ['digitale', 'Portafoglio digitale'], ['crypto', 'Crypto'], ['altro', 'Altro'],
+];
+export const gruppoNome = (g) => (GRUPPI.find((x) => x[0] === g) || GRUPPI[GRUPPI.length - 1])[1];
+
+// Aggiornamenti una tantum dei dati salvati con versioni precedenti dell'app (idempotente)
+export function migrate() {
+  for (const c of store.all('cont')) {
+    if (c.data.gruppo === 'conti') {
+      const n = c.data.nome.toLowerCase();
+      const g = /bitcoin|btc|crypto|cripto|eth/.test(n) ? 'crypto' : /paypal|satispay/.test(n) ? 'digitale' : 'corrente';
+      store.patch(c.id, { gruppo: g });
+    }
+  }
+  for (const c of store.all('cat')) {
+    if (c.data.emoji === undefined && DEFAULT_EMOJI[c.id]) store.patch(c.id, { emoji: DEFAULT_EMOJI[c.id] });
+  }
+}
 
 export function snapshots() {
   return store.all('snap').sort((a, b) => a.data.date.localeCompare(b.data.date));
@@ -256,6 +278,19 @@ export function ledgerEntries() {
     if (date <= inizio || typeof r.data.val !== 'number') continue;
     if (r.data.da) out.push({ date, c: r.data.da, val: -r.data.val, kind: 'trasf', id: r.id, desc: 'Trasferimento verso ' + accName(r.data.a), ord: r.data.ord });
     if (r.data.a) out.push({ date, c: r.data.a, val: r.data.val, kind: 'trasf', id: r.id, desc: 'Trasferimento da ' + accName(r.data.da), ord: r.data.ord });
+  }
+  for (const r of debts()) {
+    const d = r.data;
+    const credito = d.tipo === 'credito';
+    if (d.fondo && typeof d.val === 'number' && d.data > inizio) {
+      out.push({ date: d.data, c: d.fondo, val: credito ? -d.val : d.val, kind: 'debt', id: r.id,
+        desc: (credito ? 'Prestito a ' : 'Prestito da ') + d.persona, ord: r.data.ord });
+    }
+    for (const p of d.rimborsi || []) {
+      if (!p.fondo || typeof p.val !== 'number' || p.data <= inizio) continue;
+      out.push({ date: p.data, c: p.fondo, val: credito ? p.val : -p.val, kind: 'debt', id: r.id,
+        desc: (credito ? 'Rimborso da ' : 'Rimborso a ') + d.persona, ord: r.data.ord });
+    }
   }
   for (const r of retts()) {
     if (r.data.date < inizio || typeof r.data.delta !== 'number') continue;
@@ -362,3 +397,24 @@ export function tagStats(list = movs()) {
     .sort((a, b) => (b.ultimo || '').localeCompare(a.ultimo || ''));
 }
 export const movsWithTag = (tag) => movs().filter((r) => (r.data.tags || []).some((t) => t.toLowerCase() === tag.toLowerCase()));
+
+// --- Debiti e crediti verso altre persone ---
+// debt: { tipo: 'credito' (mi devono) | 'debito' (devo), persona, desc, val, espr, data, fondo, rimborsi: [{ data, val, espr, fondo }], note, ord }
+export const debts = () => store.all('debt');
+export function residuo(r) {
+  const d = r.data;
+  if (typeof d.val !== 'number') return 0;
+  return round2(d.val - (d.rimborsi || []).reduce((s, p) => s + (p.val || 0), 0));
+}
+export function debtTotals() {
+  let crediti = 0, debiti = 0;
+  for (const r of debts()) {
+    const res = residuo(r);
+    if (res <= 0.005) continue;
+    if (r.data.tipo === 'credito') crediti += res; else debiti += res;
+  }
+  return { crediti: round2(crediti), debiti: round2(debiti), netto: round2(crediti - debiti) };
+}
+export function persone() {
+  return [...new Set(debts().map((r) => r.data.persona).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}

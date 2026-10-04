@@ -1,7 +1,7 @@
 import * as store from './store.js';
 import * as M from './model.js';
 import * as C from './charts.js';
-import { parseAmount, fmt, fmtEur, fmtSigned, plain, round2 } from './expr.js';
+import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, plain, round2 } from './expr.js';
 import { esc, $, toast } from './ui.js';
 
 let root, sel; // sel: anno (numero) oppure 'tutto'
@@ -72,9 +72,9 @@ function draw() {
     <dl class="stats">
       <div><dt>Entrate</dt><dd class="in">${fmtEur(s.tin)}</dd></div>
       <div><dt>Uscite</dt><dd class="out">${fmtEur(s.tout)}</dd></div>
-      <div><dt>Saldo</dt><dd class="${s.saldo >= 0 ? 'pos' : 'neg'}">${fmtSigned(s.saldo)}</dd></div>
+      <div><dt>Saldo</dt><dd class="saldo">${fmtSigned(s.saldo)}</dd></div>
       <div><dt>Uscite medie al mese</dt><dd>${fmtEur(mesiAttivi ? s.tout / mesiAttivi : 0)}</dd></div>
-      <div><dt>Soldi buttati</dt><dd class="out">${fmtEur(butt)}</dd></div>
+      <div><dt>Soldi buttati</dt><dd class="butt">${fmtEur(butt)}</dd></div>
     </dl>
 
     <section class="card">
@@ -89,16 +89,14 @@ function draw() {
       <div class="chart-box" id="ch-line"></div>
     </section>
 
-    <div class="two">
-      <section class="card">
-        <h2>Uscite per categoria</h2>
-        <div id="cat-out"></div>
-      </section>
-      <section class="card">
-        <h2>Entrate per categoria</h2>
-        <div id="cat-in"></div>
-      </section>
-    </div>
+    <section class="card">
+      <h2>Uscite per categoria</h2>
+      <div id="cat-out"></div>
+    </section>
+    <section class="card">
+      <h2>Entrate per categoria</h2>
+      <div id="cat-in"></div>
+    </section>
 
     <div class="two">
       <section class="card">
@@ -125,7 +123,7 @@ function draw() {
     width: width('#ch-bars'), labels,
     series: [{ name: 'Entrate', cls: 'in', values: vin }, { name: 'Uscite', cls: 'out', values: vout }],
   });
-  $('#ch-line', root).innerHTML = C.line({ width: width('#ch-line'), points: cum });
+  $('#ch-line', root).innerHTML = C.line({ width: width('#ch-line'), points: cum, cls: 'line-saldo' });
   $('#cat-out', root).innerHTML = catBars(list, 'out');
   $('#cat-in', root).innerHTML = catBars(list, 'in');
   bind();
@@ -135,17 +133,21 @@ function catBars(list, tipo) {
   const rows = M.byCategory(list, tipo);
   const tot = rows.reduce((a, r) => a + r.tot, 0);
   if (!rows.length) return '<p class="muted">Nessun dato.</p>';
-  return `<ul class="catbars">${rows.map((r) => {
+  const pie = C.donut({
+    size: 190, center: fmtEur0(tot),
+    slices: rows.map((r) => ({ label: M.catLabel(r.cat), value: r.tot, color: r.cat?.data.colore || '#999' })),
+  });
+  return `<div class="cat-split"><div class="pie">${pie}</div><ul class="catbars">${rows.map((r) => {
     const pct = tot ? (r.tot / tot) * 100 : 0;
     return `<li>
       <button class="catbar" data-cat="${r.id}" data-tipo="${tipo}" aria-expanded="false">
-        <span class="cb-name"><i style="background:${r.cat?.data.colore || '#999'}"></i>${esc(r.cat?.data.nome || 'Senza categoria')}</span>
+        <span class="cb-name"><span class="cb-emoji" style="--c:${r.cat?.data.colore || '#999'}">${esc(r.cat?.data.emoji || '')}</span>${esc(r.cat?.data.nome || 'Senza categoria')}</span>
         <span class="cb-val">${fmtEur(r.tot)} <small>${pct.toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></span>
         <span class="cb-track"><span style="width:${pct}%;background:${r.cat?.data.colore || '#999'}"></span></span>
       </button>
       <div class="cb-detail" hidden></div>
     </li>`;
-  }).join('')}</ul>`;
+  }).join('')}</ul></div>`;
 }
 
 function catDetail(catId, tipo) {
@@ -172,7 +174,7 @@ function monthTable(y) {
     ${mo.map((o, i) => o.n ? `<tr data-href="#mese/${y}-${String(i + 1).padStart(2, '0')}">
       <td><a href="#mese/${y}-${String(i + 1).padStart(2, '0')}">${M.MESI[i]}</a></td>
       <td class="num in">${fmt(o.tin)}</td><td class="num out">${fmt(o.tout)}</td>
-      <td class="num ${o.saldo >= 0 ? 'pos' : 'neg'}">${fmtSigned(o.saldo)}</td></tr>` : '').join('')}
+      <td class="num saldo">${fmtSigned(o.saldo)}</td></tr>` : '').join('')}
   </tbody></table>`;
 }
 
@@ -180,7 +182,7 @@ function yearTable(ys) {
   return `<table class="tbl"><thead><tr><th>Anno</th><th class="num">Entrate</th><th class="num">Uscite</th><th class="num">Saldo</th></tr></thead><tbody>
     ${ys.map((y) => { const s = M.sums(M.movs().filter((r) => r.data.y === y)); return `<tr>
       <td><a href="#riepilogo/${y}">${y}</a></td><td class="num in">${fmt(s.tin)}</td><td class="num out">${fmt(s.tout)}</td>
-      <td class="num ${s.saldo >= 0 ? 'pos' : 'neg'}">${fmtSigned(s.saldo)}</td></tr>`; }).join('')}
+      <td class="num saldo">${fmtSigned(s.saldo)}</td></tr>`; }).join('')}
   </tbody></table>`;
 }
 
@@ -191,7 +193,7 @@ function topTable(list) {
   return `<table class="tbl"><tbody>${top.map((r) => {
     const d = r.data; const cat = M.catById(d.cat);
     return `<tr><td><a href="#mese/${d.y}-${String(d.m).padStart(2, '0')}/${r.id}">${esc(d.desc || '(senza descrizione)')}</a>
-      <small class="muted">${M.MESI_BREVI[d.m - 1]} ${d.y}${cat ? ', ' + esc(cat.data.nome) : ''}</small></td>
+      <small class="muted">${M.MESI_BREVI[d.m - 1]} ${d.y}${cat ? ', ' + esc(M.catLabel(cat)) : ''}</small></td>
       <td class="num out">${fmt(d.val)}</td></tr>`;
   }).join('')}</tbody></table>`;
 }
@@ -209,7 +211,7 @@ function buttYears(ys) {
   const rows = ys.map((y) => ({ y, tot: M.buttTot(y), n: M.buttati(y).length })).filter((o) => o.n);
   if (!rows.length) return '<p class="muted">Nessuna voce registrata.</p>';
   return `<table class="tbl"><tbody>${rows.map((o) =>
-    `<tr><td><a href="#riepilogo/${o.y}">${o.y}</a></td><td class="num muted">${o.n} voci</td><td class="num out">${fmt(o.tot)}</td></tr>`).join('')}</tbody></table>`;
+    `<tr><td><a href="#riepilogo/${o.y}">${o.y}</a></td><td class="num muted">${o.n} voci</td><td class="num butt">${fmt(o.tot)}</td></tr>`).join('')}</tbody></table>`;
 }
 
 function buttEditor(y) {
@@ -223,7 +225,7 @@ function buttEditor(y) {
       </div>`).join('')}
     </div>
     <div class="butt-foot"><button class="add-row" data-bact="add">+ Aggiungi voce</button>
-    <span>Totale <b class="out">${fmtEur(M.buttTot(y))}</b></span></div>`;
+    <span>Totale <b class="butt">${fmtEur(M.buttTot(y))}</b></span></div>`;
 }
 
 function bind() {

@@ -38,10 +38,10 @@ export function splitEditor(rec, onDone) {
 
   const dlg = modal(`
     <div class="dlg">
-      <header class="dlg-head"><h2>Dividi tra più conti</h2><button class="icon-btn" data-x aria-label="Chiudi">×</button></header>
-      <p class="muted">${esc(rec.data.desc || 'Movimento')}: <b>${fmtEur(tot)}</b>. Indica quanto è passato da ciascun conto.</p>
+      <header class="dlg-head"><h2>Dividi tra più fondi</h2><button class="icon-btn" data-x aria-label="Chiudi">×</button></header>
+      <p class="muted">${esc(rec.data.desc || 'Movimento')}: <b>${fmtEur(tot)}</b>. Indica quanto è passato da ciascun fondo.</p>
       <div class="split-rows"></div>
-      <button class="link-btn" data-add>+ Aggiungi un conto</button>
+      <button class="link-btn" data-add>+ Aggiungi un fondo</button>
       <p class="split-check"></p>
       <div class="actions"><button class="btn ghost" data-x>Annulla</button><button class="btn primary" data-save>Salva</button></div>
     </div>`);
@@ -49,7 +49,7 @@ export function splitEditor(rec, onDone) {
   function paint() {
     $('.split-rows', dlg).innerHTML = parts.map((p, i) => `
       <div class="split-row" data-i="${i}">
-        <select data-k="c" aria-label="Conto">${accOptions(p.c, { empty: 'Scegli il conto' })}</select>
+        <select data-k="c" aria-label="Conto">${accOptions(p.c, { empty: 'Scegli il fondo' })}</select>
         <input class="amt" data-k="val" inputmode="decimal" value="${p.val == null ? '' : fmt(p.val)}" placeholder="0,00" aria-label="Importo">
         <button class="icon-btn small" data-rm aria-label="Togli">×</button>
       </div>`).join('');
@@ -86,8 +86,8 @@ export function splitEditor(rec, onDone) {
     if (e.target.closest('[data-save]')) {
       document.activeElement?.blur?.();
       const used = parts.filter((p) => p.c && p.val != null && Math.abs(p.val) > 0.0001);
-      if (parts.some((p) => !p.c && p.val)) { toast('Scegli il conto per ogni importo.'); return; }
-      if (Math.abs(rest()) >= 0.005) { toast('La somma dei conti deve essere uguale al totale del movimento.'); return; }
+      if (parts.some((p) => !p.c && p.val)) { toast('Scegli il fondo per ogni importo.'); return; }
+      if (Math.abs(rest()) >= 0.005) { toast('La somma dei fondi deve essere uguale al totale del movimento.'); return; }
       const conti = used.length === 1 ? [{ c: used[0].c }] : used.map((p) => ({ c: p.c, val: p.val, espr: p.espr }));
       store.patch(rec.id, { conti, contoAuto: false });
       dlg.close();
@@ -104,7 +104,7 @@ export function transferDialog({ rec = null, da = '', a = '', val = null, date =
   const dlg = modal(`
     <form class="dlg" method="dialog">
       <header class="dlg-head"><h2>${rec ? 'Trasferimento' : 'Nuovo trasferimento'}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
-      <p class="muted">Spostare soldi tra i tuoi conti non è né una spesa né un'entrata: cambia solo dove si trovano.</p>
+      <p class="muted">Spostare soldi tra i tuoi fondi non è né una spesa né un'entrata: cambia solo dove si trovano.</p>
       <div class="form-grid">
         <label class="field"><span>Da</span><select name="da" required>${accOptions(rec?.data.da || da, { empty: 'Scegli' })}</select></label>
         <label class="field"><span>A</span><select name="a" required>${accOptions(rec?.data.a || a, { empty: 'Scegli' })}</select></label>
@@ -127,7 +127,7 @@ export function transferDialog({ rec = null, da = '', a = '', val = null, date =
     if (e.submitter?.value !== 'save' && e.submitter) return;
     f.val.blur();
     if (!amount || !(amount.val > 0)) { e.preventDefault(); toast("Indica un importo maggiore di zero."); return; }
-    if (f.da.value === f.a.value) { e.preventDefault(); toast('Scegli due conti diversi.'); return; }
+    if (f.da.value === f.a.value) { e.preventDefault(); toast('Scegli due fondi diversi.'); return; }
     const [y, m, d] = f.date.value.split('-').map(Number);
     store.save('trasf', rec ? rec.id : store.newId(), {
       y, m, d, da: f.da.value, a: f.a.value, val: amount.val, espr: amount.espr,

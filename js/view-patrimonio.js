@@ -24,7 +24,7 @@ function draw() {
         <h1>Patrimonio</h1>
         <div class="btn-row">
           ${auto ? '<button class="btn ghost" data-act="trasf">Trasferimento</button>' : ''}
-          <a class="btn ${auto ? 'ghost' : 'primary'}" href="#conti">Conti</a>
+          <a class="btn ${auto ? 'ghost' : 'primary'}" href="#conti">Fondi</a>
         </div>
       </header>
       ${auto ? autoHTML() : setupHint()}
@@ -38,9 +38,9 @@ function draw() {
 function setupHint() {
   return `<div class="card intro">
     <h2>Calcolo automatico non ancora attivo</h2>
-    <p>Indica i saldi di partenza dei tuoi conti e una data: da quel giorno in poi ogni entrata, uscita e trasferimento
-    aggiorna i conti da solo, e l'app ti avvisa quando un conto scende sotto il suo target.</p>
-    <a class="btn primary" href="#conti">Configura i conti</a>
+    <p>Indica quanto c'è in ogni fondo (contanti, conti, crypto…) a una certa data: da quel giorno in poi ogni entrata, uscita e trasferimento
+    li aggiorna da sola, e l'app ti avvisa quando un fondo scende sotto il suo target.</p>
+    <a class="btn primary" href="#conti">Configura i fondi</a>
   </div>`;
 }
 
@@ -52,6 +52,7 @@ function autoHTML() {
   const accs = M.accounts(true).filter((c) => !c.data.archiviato || Math.abs(bal.get(c.id) || 0) > 0.005);
   const groups = groupsIn(new Set(accs.map((c) => c.id)));
   const senza = M.senzaConto();
+  const dt = M.debtTotals();
   return `
     <div class="hero">
       <p class="hero-label">Patrimonio oggi</p>
@@ -60,9 +61,11 @@ function autoHTML() {
       <dl class="hero-split">
         ${groups.map((g) => `<div><dt><i class="sw ${g}"></i>${M.gruppoNome(g)}</dt><dd>${fmtEur(tot.gruppi[g] || 0)}</dd></div>`).join('')}
       </dl>
+      ${dt.crediti || dt.debiti ? `<p class="hero-debt"><a href="#debiti">Contando anche ${[dt.crediti ? `i crediti (+${fmtEur(dt.crediti)})` : '', dt.debiti ? `i debiti (−${fmtEur(dt.debiti)})` : ''].filter(Boolean).join(' e ')}</a>:
+        <b>${fmtEur(round2(tot.tot + dt.netto))}</b></p>` : ''}
     </div>
-    ${senza.length ? `<details class="alert"><summary>${senza.length === 1 ? 'Un movimento non ha' : senza.length + ' movimenti non hanno'} un conto:
-      finché non lo indichi, non entrano nei saldi.</summary>
+    ${senza.length ? `<details class="alert"><summary>${senza.length === 1 ? 'Un movimento non ha' : senza.length + ' movimenti non hanno'} il fondo indicato:
+      finché non lo scegli, non entrano nei saldi.</summary>
       <div class="mini-list">${senza.slice(0, 30).map((r) => `<a href="#mese/${r.data.y}-${String(r.data.m).padStart(2, '0')}/${r.id}">
         <span>${r.data.d ?? '–'} ${M.MESI_BREVI[r.data.m - 1]}</span><span>${esc(r.data.desc || '(senza descrizione)')}</span>
         <span class="${r.data.tipo}">${r.data.tipo === 'in' ? '+' : '−'}${fmt(r.data.val)}</span></a>`).join('')}</div></details>` : ''}

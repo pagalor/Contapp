@@ -6,6 +6,7 @@ import * as vRie from './view-riepilogo.js';
 import * as vPat from './view-patrimonio.js';
 import * as vAltro from './view-altro.js';
 import * as vConti from './view-conti.js';
+import * as vDebiti from './view-debiti.js';
 import { $, $$, setupTooltips, debounce, toast } from './ui.js';
 import { fmtEur } from './expr.js';
 
@@ -15,8 +16,8 @@ const view = () => $('#view');
 let current = '';
 let pendingRemote = false;
 
-const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', altro: 'altro' };
-const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Conti', conto: 'Conto', altro: 'Altro' };
+const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', altro: 'altro' };
+const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', altro: 'Altro' };
 
 function route() {
   const h = location.hash.replace(/^#/, '');
@@ -33,6 +34,7 @@ function route() {
   else if (current === 'patrimonio') vPat.render(view());
   else if (current === 'conti') vConti.renderConfig(view());
   else if (current === 'conto') vConti.renderConto(view(), a);
+  else if (current === 'debiti') vDebiti.render(view());
   else if (current === 'altro') vAltro.render(view());
   document.title = TITLES[current] + ' · Contabilità';
   paintTargetDot();
@@ -68,6 +70,7 @@ function refreshAfterRemote() {
   else if (current === 'riepilogo') vRie.redraw();
   else if (current === 'patrimonio') vPat.redraw();
   else if (current === 'conto') route();
+  else if (current === 'debiti') vDebiti.redraw();
 }
 
 function paintSyncDot(st) {
@@ -89,9 +92,10 @@ async function boot() {
     return;
   }
   M.ensureCategories();
+  M.migrate();
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   setupTooltips();
-  store.subscribe((info) => { if (info.remote) refreshAfterRemote(); checkTargetsSoon(); });
+  store.subscribe((info) => { if (info.remote) { M.migrate(); refreshAfterRemote(); } checkTargetsSoon(); });
   document.addEventListener('focusout', () => {
     if (pendingRemote) setTimeout(() => { if (!view().contains(document.activeElement)) refreshAfterRemote(); }, 50);
   });

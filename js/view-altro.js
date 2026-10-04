@@ -222,6 +222,7 @@ async function importFile(file) {
     for (const c of store.all('cat')) if (!fileIds.has(c.id) && !usate.has(c.id)) store.remove(c.id);
   }
   const count = await store.importRecords(recs);
+  M.migrate();
   toast(`Importati ${count} elementi`);
   render(root);
 }
@@ -234,7 +235,7 @@ const num = (n) => (n == null ? '' : String(n).replace('.', ','));
 const stamp = () => new Date().toISOString().slice(0, 10);
 
 function exportCSV() {
-  const head = ['Anno', 'Mese', 'Giorno', 'Tipo', 'Importo', 'Formula', 'Descrizione', 'Categoria', 'Conti', 'Tag', 'Escluso dai totali', 'Nota'];
+  const head = ['Anno', 'Mese', 'Giorno', 'Tipo', 'Importo', 'Formula', 'Descrizione', 'Categoria', 'Fondi', 'Tag', 'Escluso dai totali', 'Nota'];
   const rows = M.movs().sort((a, b) => a.data.y - b.data.y || a.data.m - b.data.m || (a.data.d ?? 0) - (b.data.d ?? 0) || a.data.ord - b.data.ord)
     .map((r) => { const d = r.data; return [d.y, M.MESI[d.m - 1], d.d ?? '', d.tipo === 'in' ? 'Entrata' : 'Uscita', num(d.val),
       d.espr || '', d.desc, M.catById(d.cat)?.data.nome || '',
@@ -268,6 +269,7 @@ function renderCats() {
     $(`#cats-${tipo}`, root).innerHTML = M.cats(tipo).map((c) => `
       <div class="cat-row" data-id="${c.id}">
         <input type="color" value="${c.data.colore}" data-cf="colore" aria-label="Colore">
+        <input class="emoji-in" value="${esc(c.data.emoji || '')}" data-cf="emoji" maxlength="8" aria-label="Emoji" placeholder="🙂">
         <input value="${esc(c.data.nome)}" data-cf="nome" aria-label="Nome categoria">
         <span class="muted">${uso.get(c.id) || 0}</span>
         <button class="icon-btn small" data-delcat aria-label="Elimina categoria">×</button>
@@ -314,6 +316,11 @@ function bind() {
       const id = e.target.closest('.cat-row').dataset.id;
       const v = e.target.value.trim();
       if (cf === 'nome' && !v) { e.target.value = store.get(id).data.nome; return; }
+      if (cf === 'emoji') {
+        // tengo un solo simbolo (anche le emoji composte, come le famiglie)
+        const first = typeof Intl.Segmenter === 'function' ? [...new Intl.Segmenter('it', { granularity: 'grapheme' }).segment(v)][0]?.segment : [...v][0];
+        store.patch(id, { emoji: first || '' }); e.target.value = first || ''; return;
+      }
       store.patch(id, { [cf]: v });
     }
   });

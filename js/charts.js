@@ -129,3 +129,28 @@ export function stackedTime({ width, height = 230, points, markers = [] }) {
   });
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img">${g}</svg>`;
 }
+
+// Torta ad anello. slices: [{ label, value, color }]; al centro il totale.
+export function donut({ size = 200, slices, center = '' }) {
+  const tot = slices.reduce((s, x) => s + Math.max(0, x.value), 0);
+  if (!tot) return '';
+  const R = size / 2, r0 = R * 0.62, cx = R, cy = R;
+  let a = -Math.PI / 2, g = '';
+  const pt = (rad, ang) => `${(cx + rad * Math.cos(ang)).toFixed(2)},${(cy + rad * Math.sin(ang)).toFixed(2)}`;
+  for (const s of slices) {
+    if (s.value <= 0) continue;
+    const frac = s.value / tot;
+    const tip = `${s.label}: ${fmtEur(s.value)} (${(frac * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%)`;
+    if (frac > 0.9999) {
+      g += `<circle cx="${cx}" cy="${cy}" r="${(R + r0) / 2}" fill="none" stroke="${s.color}" stroke-width="${R - r0}" data-tip="${esc(tip)}"/>`;
+      break;
+    }
+    const b = a + frac * 2 * Math.PI;
+    const large = b - a > Math.PI ? 1 : 0;
+    g += `<path class="slice" d="M${pt(R, a)} A${R},${R} 0 ${large} 1 ${pt(R, b)} L${pt(r0, b)} A${r0},${r0} 0 ${large} 0 ${pt(r0, a)} Z"
+      fill="${s.color}" data-tip="${esc(tip)}"/>`;
+    a = b;
+  }
+  g += `<text class="donut-tot" x="${cx}" y="${cy + 6}" text-anchor="middle">${esc(center)}</text>`;
+  return `<svg class="donut" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img">${g}</svg>`;
+}

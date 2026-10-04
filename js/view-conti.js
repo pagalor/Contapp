@@ -16,13 +16,13 @@ export function renderConfig(el) {
   el.innerHTML = `
     <section class="conti">
       <header class="page-head">
-        <div><a class="back" href="#patrimonio">Patrimonio</a><h1>Conti</h1></div>
+        <div><a class="back" href="#patrimonio">Patrimonio</a><h1>Fondi</h1></div>
       </header>
 
       <section class="card">
         <h2>Situazione di partenza</h2>
         <p class="muted">I saldi iniziali sono quelli che avevi alla fine della data di partenza. Le entrate, le uscite e i trasferimenti
-        dei giorni successivi aggiornano i conti in automatico. I movimenti precedenti restano nello storico ma non toccano i saldi.</p>
+        dei giorni successivi aggiornano i fondi in automatico. I movimenti precedenti restano nello storico ma non toccano i saldi.</p>
         <div class="start-row">
           <label class="field inline"><span>Data di partenza</span><input type="date" id="inizio" value="${cfg.inizio || ''}"></label>
           ${cfg.inizio ? '<button class="btn ghost small" data-act="stop">Disattiva il calcolo automatico</button>' : ''}
@@ -31,19 +31,19 @@ export function renderConfig(el) {
       </section>
 
       <section class="card">
-        <h2>I tuoi conti</h2>
-        <p class="muted">Il target è la cifra che vuoi tenere sempre su quel conto: se scendi sotto, l'app ti avvisa e ti dice quanto manca.
-        Lascialo vuoto se non ti serve.</p>
+        <h2>I tuoi fondi</h2>
+        <p class="muted">Tutto ciò in cui tieni dei soldi: contanti, conti, carte prepagate, PayPal, crypto. Il target è la cifra che vuoi tenere sempre
+        su quel fondo: se scendi sotto, l'app ti avvisa e ti dice quanto manca. Lascialo vuoto se non ti serve.</p>
         <div class="acc-table">
           <div class="acc-head"><span>Nome</span><span>Gruppo</span><span>Saldo iniziale</span><span>Target</span><span></span></div>
           <div id="acc-rows"></div>
         </div>
-        <button class="add-row" data-act="add">+ Nuovo conto</button>
+        <button class="add-row" data-act="add">+ Nuovo fondo</button>
       </section>
 
       <section class="card">
-        <h2>Conti proposti per i nuovi movimenti</h2>
-        <p class="muted">Quando scrivi una descrizione già usata, l'app propone il conto che avevi scelto quella volta; altrimenti usa questi.</p>
+        <h2>Fondi proposti per i nuovi movimenti</h2>
+        <p class="muted">Quando scrivi una descrizione già usata, l'app propone il fondo che avevi scelto quella volta; altrimenti usa questi.</p>
         <div class="form-grid">
           <label class="field"><span>Per le uscite</span><select id="def-out">${defOptions(cfg.contoOut)}</select></label>
           <label class="field"><span>Per le entrate</span><select id="def-in">${defOptions(cfg.contoIn)}</select></label>
@@ -66,8 +66,8 @@ function paintRows() {
       <input class="amt" data-k="obiettivo" inputmode="decimal" value="${fmt(c.data.obiettivo)}" placeholder="Target" aria-label="Target">
       <button class="icon-btn small" data-act="menu" aria-label="Altre azioni">⋯</button>
       <div class="acc-menu" hidden>
-        <label class="check"><input type="checkbox" data-k="archiviato"${c.data.archiviato ? ' checked' : ''}> Archiviato (non compare più tra i conti selezionabili)</label>
-        <button class="btn ghost small danger" data-act="del">Elimina conto</button>
+        <label class="check"><input type="checkbox" data-k="archiviato"${c.data.archiviato ? ' checked' : ''}> Archiviato (non compare più tra i fondi selezionabili)</label>
+        <button class="btn ghost small danger" data-act="del">Elimina fondo</button>
       </div>
     </div>`).join('');
 }
@@ -96,12 +96,12 @@ function bindConfig(last) {
   sec.addEventListener('click', async (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'stop') {
-      if (!(await confirmBox('Disattivare il calcolo automatico? I conti, i saldi iniziali e i trasferimenti restano salvati e puoi riattivarlo quando vuoi.', { ok: 'Disattiva' }))) return;
+      if (!(await confirmBox('Disattivare il calcolo automatico? I fondi, i saldi iniziali e i trasferimenti restano salvati e puoi riattivarlo quando vuoi.', { ok: 'Disattiva' }))) return;
       M.setCfg({ inizio: null });
       renderConfig(root);
     }
     if (act === 'fromsnap' && last) {
-      if (!(await confirmBox(`Copiare nei saldi iniziali i valori del ${fmtDateShort(last.data.date)}? I conti che non compaiono in quella rilevazione partiranno da zero.`, { ok: 'Copia' }))) return;
+      if (!(await confirmBox(`Copiare nei saldi iniziali i valori del ${fmtDateShort(last.data.date)}? I fondi che non compaiono in quella rilevazione partiranno da zero.`, { ok: 'Copia' }))) return;
       for (const c of M.accounts(true)) {
         const v = last.data.vals[c.id];
         store.patch(c.id, { saldoIniziale: v ? v.val : 0, siEspr: v?.espr || null });
@@ -111,7 +111,7 @@ function bindConfig(last) {
       renderConfig(root);
     }
     if (act === 'add') {
-      store.save('cont', store.newId(), { nome: 'Nuovo conto', gruppo: 'conti', ord: M.accounts(true).length, archiviato: false, saldoIniziale: 0, siEspr: null, obiettivo: null, obEspr: null });
+      store.save('cont', store.newId(), { nome: 'Nuovo fondo', gruppo: 'corrente', ord: M.accounts(true).length, archiviato: false, saldoIniziale: 0, siEspr: null, obiettivo: null, obEspr: null });
       paintRows();
       $$('#acc-rows [data-k="nome"]', root).at(-1)?.select();
     }
@@ -121,7 +121,7 @@ function bindConfig(last) {
     }
     if (act === 'del') {
       const id = e.target.closest('.acc-row').dataset.id;
-      if (used(id)) { toast('Questo conto è usato da movimenti o rilevazioni: archivialo invece di eliminarlo.', { ms: 6000 }); return; }
+      if (used(id)) { toast('Questo fondo è usato da movimenti o rilevazioni: archivialo invece di eliminarlo.', { ms: 6000 }); return; }
       if (!(await confirmBox(`Eliminare "${M.accName(id)}"?`, { ok: 'Elimina', danger: true }))) return;
       store.remove(id);
       paintRows();
@@ -163,7 +163,7 @@ function bindConfig(last) {
 export function renderConto(el, id) {
   root = el;
   const c = store.get(id);
-  if (!c) { el.innerHTML = '<div class="empty-hint"><p>Questo conto non esiste più.</p><a class="btn ghost" href="#patrimonio">Torna al patrimonio</a></div>'; return; }
+  if (!c) { el.innerHTML = '<div class="empty-hint"><p>Questo fondo non esiste più.</p><a class="btn ghost" href="#patrimonio">Torna al patrimonio</a></div>'; return; }
   const draw = () => renderConto(el, id);
   const auto = M.autoAttivo();
   const inizio = M.cfg().inizio;
@@ -178,7 +178,7 @@ export function renderConto(el, id) {
     <section class="conto">
       <header class="page-head">
         <div><a class="back" href="#patrimonio">Patrimonio</a><h1>${esc(c.data.nome)}</h1></div>
-        <a class="btn ghost" href="#conti">Modifica conti</a>
+        <a class="btn ghost" href="#conti">Modifica fondi</a>
       </header>
       ${auto ? `
       <div class="hero">
@@ -194,16 +194,16 @@ export function renderConto(el, id) {
         </div>
       </div>
       <section class="card">
-        <h2>Movimenti del conto</h2>
+        <h2>Movimenti</h2>
         ${rows.length ? `<div class="acc-ledger">${rows.map((x) => `
-          <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
+          <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : x.kind === 'debt' ? '#debiti' : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
             <span class="al-date">${fmtDateShort(x.date)}</span>
-            <span class="al-desc">${esc(x.desc)}${x.kind === 'mov' ? '' : `<small>${x.kind === 'trasf' ? 'Trasferimento' : 'Correzione'}</small>`}</span>
+            <span class="al-desc">${esc(x.desc)}${x.kind === 'mov' ? '' : `<small>${x.kind === 'trasf' ? 'Trasferimento' : x.kind === 'debt' ? 'Debiti e crediti' : 'Correzione'}</small>`}</span>
             <span class="al-val ${x.val >= 0 ? 'in' : 'out'}">${fmtSigned(x.val)}</span>
             <span class="al-run">${fmt(x.run)}</span>
-          </a>`).join('')}</div>` : '<p class="muted">Ancora nessun movimento su questo conto dopo la data di partenza.</p>'}
+          </a>`).join('')}</div>` : '<p class="muted">Ancora nessun movimento su questo fondo dopo la data di partenza.</p>'}
         <p class="al-start">Saldo iniziale al ${fmtDateShort(inizio)}: <b>${fmtEur(c.data.saldoIniziale || 0)}</b></p>
-      </section>` : `<div class="card intro"><p>Il calcolo automatico dei saldi non è attivo.</p><a class="btn primary" href="#conti">Configura i conti</a></div>`}
+      </section>` : `<div class="card intro"><p>Il calcolo automatico dei saldi non è attivo.</p><a class="btn primary" href="#conti">Configura i fondi</a></div>`}
     </section>`;
 
   el.querySelector('[data-act="reint"]')?.addEventListener('click', () => transferDialog({ a: id, val: -diff, onDone: draw }));

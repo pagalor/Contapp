@@ -10,11 +10,17 @@ let root = null;
 const daysIn = (y, m) => new Date(y, m, 0).getDate();
 const today = () => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }; };
 const ymHash = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
+const MODE_KEY = 'contabilita.meseView';
+const mode = () => { try { return localStorage.getItem(MODE_KEY) === 'cal' ? 'cal' : 'lista'; } catch { return 'lista'; } };
+const setMode = (m) => { try { localStorage.setItem(MODE_KEY, m); } catch {} };
+let selDay = null;
 
 export function render(el, { y, m, q = '', highlight } = {}) {
   root = el;
   const t = today();
   state = { y: y || t.y, m: m || t.m, q };
+  selDay = state.y === t.y && state.m === t.m ? t.d : null;
+  if (highlight && mode() === 'cal') setMode('lista');
   const isNow = state.y === t.y && state.m === t.m;
   el.innerHTML = `
     <section class="mese">
@@ -28,9 +34,15 @@ export function render(el, { y, m, q = '', highlight } = {}) {
         </div>
         <dl class="sums" id="sums"></dl>
       </header>
-      <div class="search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
-        <input type="search" id="q" placeholder="Cerca in tutti i movimenti, oppure #tag" value="${esc(q)}" autocomplete="off">
+      <div class="toolbar">
+        <div class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+          <input type="search" id="q" placeholder="Cerca in tutti i movimenti, oppure #tag" value="${esc(q)}" autocomplete="off">
+        </div>
+        <div class="seg" role="group" aria-label="Visualizzazione">
+          <button data-mode="lista" aria-pressed="${mode() === 'lista'}">Elenco</button>
+          <button data-mode="cal" aria-pressed="${mode() === 'cal'}">Calendario</button>
+        </div>
       </div>
       <div id="alerts"></div>
       <div id="mese-body"></div>
@@ -66,6 +78,13 @@ function bindHead() {
     const [y, m] = e.target.value.split('-').map(Number);
     if (y && m) go(y, m);
   });
+  root.querySelector('.seg').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mode]');
+    if (!b) return;
+    setMode(b.dataset.mode);
+    $$('.seg [data-mode]', root).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    renderBody();
+  });
   const q = $('#q', root);
   q.addEventListener('input', debounce(() => { state.q = q.value.trim(); renderBody(); }, 180));
 }
@@ -76,6 +95,7 @@ export function renderBody(highlight) {
   if (!body) return;
   renderAlerts();
   if (state.q.length >= 2) { renderSearch(body); updateSums(); return; }
+  if (mode() === 'cal') { renderCalendar(body); updateSums(); return; }
   const list = M.movsOf(state.y, state.m);
   const ins = list.filter((r) => r.data.tipo === 'in');
   const outs = list.filter((r) => r.data.tipo === 'out');
@@ -101,12 +121,12 @@ function renderAlerts() {
   const senza = M.senzaConto().filter((r) => r.data.y === state.y && r.data.m === state.m);
   let html = '';
   if (sotto.length) {
-    html += `<div class="alert warn"><span>${sotto.length === 1 ? 'Sotto il target' : sotto.length + ' conti sotto il target'}:</span>
+    html += `<div class="alert warn"><span>${sotto.length === 1 ? 'Sotto il target' : sotto.length + ' fondi sotto il target'}:</span>
       <span class="alert-items">${sotto.map((s) => `<button class="pill" data-reint="${s.c.id}" data-val="${s.manca}"
         title="Reintegra ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>−${fmt(s.manca)}</b></button>`).join('')}</span></div>`;
   }
   if (senza.length && state.q.length < 2) {
-    html += `<div class="alert"><span>${senza.length === 1 ? 'Un movimento' : senza.length + ' movimenti'} di questo mese non ${senza.length === 1 ? 'ha' : 'hanno'} un conto:
+    html += `<div class="alert"><span>${senza.length === 1 ? 'Un movimento' : senza.length + ' movimenti'} di questo mese non ${senza.length === 1 ? 'indica' : 'indicano'} il fondo:
       scegli da dove sono passati i soldi per tenere aggiornato il patrimonio.</span></div>`;
   }
   box.innerHTML = html;
@@ -118,14 +138,14 @@ function ledger(tipo, title, list) {
   return `
     <section class="ledger ${tipo}" data-tipo="${tipo}">
       <h2><span>${title}</span><span class="ledger-tot" data-tot="${tipo}"></span></h2>
-      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>Conto</span><span></span></div>
+      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>${tipo === 'in' ? 'Ricevuto su' : 'Pagato con'}</span><span></span></div>
       <div class="rows">${list.map(rowHTML).join('')}</div>
       <button class="add-row" data-add="${tipo}">+ Aggiungi ${tipo === 'in' ? 'entrata' : 'uscita'}</button>
     </section>`;
 }
 
 function catOptions(tipo, sel) {
-  return M.cats(tipo).map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(c.data.nome)}</option>`).join('') +
+  return M.cats(tipo).map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('') +
     (sel && !M.catById(sel) ? '<option value="" selected>(categoria eliminata)</option>' : '');
 }
 
@@ -133,11 +153,13 @@ function accOptions(r) {
   const conti = r.data.conti || [];
   const single = conti.length === 1 ? conti[0].c : null;
   const list = M.accounts();
-  let html = `<option value=""${conti.length ? '' : ' selected'}>Conto</option>`;
+  const inizio = M.cfg().inizio;
+  const serve = inizio && M.recDate(r) > inizio;
+  let html = `<option value=""${conti.length ? '' : ' selected'}>${serve ? 'Scegli il fondo' : '—'}</option>`;
   html += list.map((c) => `<option value="${c.id}"${c.id === single ? ' selected' : ''}>${esc(c.data.nome)}</option>`).join('');
   if (single && !list.some((c) => c.id === single)) html += `<option value="${single}" selected>${esc(M.accName(single))}</option>`;
   if (conti.length > 1) html += `<option value="__split" selected>${esc(M.contiLabel(r))}</option>`;
-  html += `<option value="__new">${conti.length > 1 ? 'Modifica ripartizione…' : 'Dividi tra più conti…'}</option>`;
+  html += `<option value="__new">${conti.length > 1 ? 'Modifica ripartizione…' : 'Dividi tra più fondi…'}</option>`;
   return html;
 }
 
@@ -162,7 +184,7 @@ function rowHTML(r) {
       <input class="c-amt" data-f="amt" inputmode="decimal" autocomplete="off" value="${fmt(d.val)}" aria-label="Importo" title="${esc(d.espr || '')}">
       <input class="c-desc" data-f="desc" list="dl-${d.tipo}" autocomplete="off" value="${esc(d.desc)}" placeholder="Descrizione" aria-label="Descrizione">
       <span class="c-cat"><i></i><select data-f="cat" aria-label="Categoria">${catOptions(d.tipo, d.cat)}</select></span>
-      <span class="c-acc"><select data-f="acc" aria-label="Conto">${accOptions(r)}</select></span>
+      <span class="c-acc"><select data-f="acc" aria-label="${d.tipo === 'in' ? 'Ricevuto su' : 'Pagato con'}">${accOptions(r)}</select></span>
       <button class="c-more" data-act="more" aria-label="Dettagli" aria-expanded="false">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
       </button>
@@ -210,7 +232,7 @@ function toggleDetails(row, force) {
 function transfers(list) {
   return `
     <section class="ledger trasf">
-      <h2><span>Trasferimenti tra conti</span><span class="ledger-hint">non contano come entrate o uscite</span></h2>
+      <h2><span>Trasferimenti tra fondi</span><span class="ledger-hint">non contano come entrate o uscite</span></h2>
       <div class="rows">${list.map((r) => `
         <button class="trow" data-trasf="${r.id}">
           <span class="c-day">${r.data.d ?? '–'}</span>
@@ -462,12 +484,12 @@ function commitAmount(inp, row) {
   inp.value = fmt(val);
 }
 
-function addRow(tipo) {
+function addRow(tipo, day) {
   const t = today();
   const id = store.newId();
   const c = M.suggestConto(tipo, '');
   store.save('mov', id, {
-    y: state.y, m: state.m, d: state.y === t.y && state.m === t.m ? t.d : null,
+    y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
     tipo, espr: null, val: null, desc: '', cat: M.fallbackCat(tipo), catAuto: true,
     conti: c ? [{ c }] : [], contoAuto: true, tags: [], note: null, escl: false, ord: Date.now(),
   });
@@ -501,10 +523,10 @@ function renderSearch(body) {
     const key = `${d.y}-${d.m}`;
     if (key !== lastKey) { html += `<h3>${M.MESI[d.m - 1]} ${d.y}</h3>`; lastKey = key; }
     const cat = M.catById(d.cat);
-    html += `<a class="res-row ${d.tipo}${d.escl ? ' excluded' : ''}" href="#mese/${ymHash(d.y, d.m)}/${r.id}">
+    html += `<a class="res-row t-${d.tipo}${d.escl ? ' excluded' : ''}" href="#mese/${ymHash(d.y, d.m)}/${r.id}">
       <span class="res-day">${d.d ?? ''}</span>
       <span class="res-desc">${esc(d.desc || '(senza descrizione)')}${d.note ? `<small>${esc(d.note)}</small>` : ''}</span>
-      <span class="res-meta"><i style="background:${cat?.data.colore || '#999'}"></i>${esc(cat?.data.nome || '')}${d.conti?.length ? ', ' + esc(M.contiLabel(r)) : ''}
+      <span class="res-meta">${esc(M.catLabel(cat))}${d.conti?.length ? ', ' + esc(M.contiLabel(r)) : ''}
         ${(d.tags || []).map((t) => `<span class="tag">#${esc(t)}</span>`).join('')}</span>
       <span class="res-amt">${d.tipo === 'in' ? '+' : '−'}${fmt(d.val)}</span>
     </a>`;
@@ -522,4 +544,84 @@ function renderSearch(body) {
     toast(`Tag #${t} aggiunto`);
     renderBody();
   };
+}
+
+// ---------------------------------------------------------------- calendario
+const GIORNI = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
+function renderCalendar(body) {
+  const { y, m } = state;
+  const list = M.movsOf(y, m);
+  const n = daysIn(y, m);
+  const first = (new Date(y, m - 1, 1).getDay() + 6) % 7;
+  const per = Array.from({ length: n + 1 }, () => ({ tin: 0, tout: 0, items: [] }));
+  for (const r of list) {
+    if (r.data.d == null) continue;
+    const o = per[r.data.d];
+    o.items.push(r);
+    if (r.data.escl || typeof r.data.val !== 'number') continue;
+    if (r.data.tipo === 'in') o.tin += r.data.val; else o.tout += r.data.val;
+  }
+  const max = Math.max(1, ...per.map((o) => o.tout));
+  const t = today();
+  const isNow = y === t.y && m === t.m;
+  let cells = GIORNI.map((g) => `<div class="cal-h">${g}</div>`).join('');
+  for (let i = 0; i < first; i++) cells += '<div class="cal-pad"></div>';
+  for (let d = 1; d <= n; d++) {
+    const o = per[d];
+    const heat = o.tout ? (0.08 + 0.5 * (o.tout / max)).toFixed(3) : 0;
+    cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}" style="--heat:${heat}">
+      <span class="cal-n">${d}</span>
+      ${o.tout ? `<span class="cal-out"><span class="full">−${fmt(o.tout)}</span><span class="short">${Math.round(o.tout).toLocaleString('it-IT')}</span></span>` : ''}
+      ${o.tin ? `<span class="cal-in"><span class="full">+${fmt(o.tin)}</span><span class="short">+${Math.round(o.tin).toLocaleString('it-IT')}</span></span>` : ''}
+    </button>`;
+  }
+  const senza = list.filter((r) => r.data.d == null);
+  body.innerHTML = `
+    <section class="cal-card">
+      <div class="cal-grid">${cells}</div>
+    </section>
+    <section class="cal-panel" id="cal-panel"></section>
+    ${senza.length ? `<section class="cal-panel">
+      <h2>Senza giorno <span class="muted">${senza.length}</span></h2>
+      ${senza.map(calItem).join('')}
+    </section>` : ''}`;
+  paintDay(per);
+  body.querySelector('.cal-grid').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-day]');
+    if (!b) return;
+    selDay = Number(b.dataset.day);
+    $$('.cal-day', body).forEach((x) => x.classList.toggle('sel', x === b));
+    paintDay(per);
+  });
+}
+
+function calItem(r) {
+  const d = r.data;
+  const cat = M.catById(d.cat);
+  return `<a class="cal-item t-${d.tipo}${d.escl ? ' excluded' : ''}" href="#mese/${ymHash(d.y, d.m)}/${r.id}">
+    <span class="ci-emoji" style="--c:${cat?.data.colore || '#999'}">${esc(cat?.data.emoji || '')}</span>
+    <span class="ci-desc">${esc(d.desc || '(senza descrizione)')}<small>${esc(cat?.data.nome || '')}${d.conti?.length ? ', ' + esc(M.contiLabel(r)) : ''}</small></span>
+    <span class="ci-amt">${d.tipo === 'in' ? '+' : '−'}${fmt(d.val)}</span>
+  </a>`;
+}
+
+function paintDay(per) {
+  const panel = $('#cal-panel', root);
+  if (!panel) return;
+  if (!selDay) { panel.innerHTML = '<p class="muted">Tocca un giorno per vedere i movimenti.</p>'; return; }
+  const o = per[selDay];
+  const nome = new Date(state.y, state.m - 1, selDay).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  panel.innerHTML = `
+    <h2>${nome.charAt(0).toUpperCase() + nome.slice(1)}
+      <span>${o.tout ? `<b class="out">−${fmtEur(o.tout)}</b>` : ''}${o.tin ? ` <b class="in">+${fmtEur(o.tin)}</b>` : ''}</span></h2>
+    ${o.items.length ? o.items.map(calItem).join('') : '<p class="muted">Nessun movimento in questo giorno.</p>'}
+    <div class="btn-row"><button class="btn small" data-calnew="out">+ Uscita</button><button class="btn small ghost" data-calnew="in">+ Entrata</button></div>`;
+  $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {
+    setMode('lista');
+    $$('.seg [data-mode]', root).forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.mode === 'lista')));
+    renderBody();
+    addRow(b.dataset.calnew, selDay);
+  }));
+  $$('.cal-item', panel.parentElement).forEach((a) => a.addEventListener('click', () => setMode('lista')));
 }
