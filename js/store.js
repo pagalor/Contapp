@@ -1,7 +1,7 @@
 // Archivio locale: tutti i record vivono in IndexedDB e in memoria.
 // Ogni record: { id, kind, data, updated_at, deleted, dirty }
 // kind: 'mov' (movimento), 'cat' (categoria), 'cont' (contenitore patrimonio),
-//       'snap' (rilevazione patrimonio), 'butt' (soldi buttati)
+//       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente)
 
 const DB_NAME = 'contabilita';
 let db;
@@ -78,6 +78,20 @@ export function saveDefault(kind, id, data) {
   const r = { id, kind, data, updated_at: 1, deleted: false, dirty: 1 };
   recs.set(id, r);
   persist([r]);
+}
+
+// Come saveDefault, ma per più record insieme e con un solo avviso: crea solo quelli che mancano.
+// Un record eliminato (tombstone) conta come esistente, quindi non rinasce. Restituisce quanti ne ha creati.
+export function saveMissing(list) {
+  const out = [];
+  for (const x of list) {
+    if (recs.has(x.id)) continue;
+    const r = { id: x.id, kind: x.kind, data: x.data, updated_at: 1, deleted: false, dirty: 1 };
+    recs.set(r.id, r);
+    out.push(r);
+  }
+  if (out.length) { persist(out); emit({ local: true, ids: out.map((r) => r.id) }); }
+  return out.length;
 }
 
 // Modifica parziale dei dati di un record esistente

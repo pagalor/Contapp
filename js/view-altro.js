@@ -25,6 +25,11 @@ export function render(el) {
         </div>
       </section>
       <section class="card">
+        <h2>Movimenti ricorrenti</h2>
+        <p class="muted">Abbonamenti, affitto, stipendio: imposta la scadenza una volta sola e il movimento si aggiunge da solo.</p>
+        <a class="btn ghost" href="#ricorrenti">Gestisci i movimenti ricorrenti${M.rics().length ? ` (${M.rics().length})` : ''}</a>
+      </section>
+      <section class="card">
         <h2>Categorie</h2>
         <div class="two tight">
           <div><h3>Uscite</h3><div id="cats-out"></div><button class="add-row" data-addcat="out">+ Nuova categoria di uscita</button></div>
