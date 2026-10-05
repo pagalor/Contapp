@@ -88,13 +88,28 @@ export function parseAmount(input) {
   return { val, espr };
 }
 
+// Come parseAmount ma per quantità e prezzi unitari (fino a 8 decimali, per le crypto). Restituisce un numero oppure null se vuoto.
+export function parseNumber(input, decimals = 8) {
+  let s = String(input ?? '').replace(/€/g, '').trim();
+  if (s.startsWith('=')) s = s.slice(1).trim();
+  if (!s) return null;
+  const f = 10 ** decimals;
+  return Math.round((evaluate(tokenize(s)) + Number.EPSILON) * f) / f;
+}
+
 const nf = new Intl.NumberFormat('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nfQty = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 8 });
+const nfPrice = new Intl.NumberFormat('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 const nf0 = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 0 });
 
 export const fmt = (n) => (n == null || isNaN(n) ? '' : nf.format(n));
+export const fmtQty = (n) => (n == null || isNaN(n) ? '' : nfQty.format(n));
+export const fmtPrice = (n) => (n == null || isNaN(n) ? '' : nfPrice.format(n));
 export const fmtEur = (n) => (n == null || isNaN(n) ? '–' : nf.format(n) + ' €');
 export const fmtEur0 = (n) => (n == null || isNaN(n) ? '–' : nf0.format(n) + ' €');
 export const fmtSigned = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + nf.format(Math.abs(n)) + ' €';
 
 // Valore "grezzo" da mostrare in modifica quando non c'è un'espressione
 export const plain = (n) => (n == null ? '' : String(round2(n)).replace('.', ','));
+// Lo stesso per quantità e prezzi, senza arrotondare ai centesimi
+export const plainNum = (n) => (n == null ? '' : String(n).replace('.', ','));

@@ -24,10 +24,12 @@ function draw() {
         <h1>Patrimonio</h1>
         <div class="btn-row">
           ${auto ? '<button class="btn ghost" data-act="trasf">Trasferimento</button>' : ''}
+          <a class="btn ghost" href="#investimenti">Investimenti</a>
           <a class="btn ${auto ? 'ghost' : 'primary'}" href="#conti">Fondi</a>
         </div>
       </header>
       ${auto ? autoHTML() : setupHint()}
+      ${investHTML()}
       <div id="pat-chart"></div>
       ${historyHTML()}
     </section>`;
@@ -53,6 +55,12 @@ function autoHTML() {
   const groups = groupsIn(new Set(accs.map((c) => c.id)));
   const senza = M.senzaConto();
   const dt = M.debtTotals();
+  const it = M.invAll().tot;
+  const extra = [
+    it.n ? ['#investimenti', `gli investimenti (+${fmtEur(it.valore)})`] : null,
+    dt.crediti ? ['#debiti', `i crediti (+${fmtEur(dt.crediti)})`] : null,
+    dt.debiti ? ['#debiti', `i debiti (−${fmtEur(dt.debiti)})`] : null,
+  ].filter(Boolean).map(([h, t]) => `<a href="${h}">${t}</a>`);
   return `
     <div class="hero">
       <p class="hero-label">Patrimonio oggi</p>
@@ -61,8 +69,8 @@ function autoHTML() {
       <dl class="hero-split">
         ${groups.map((g) => `<div><dt><i class="sw ${g}"></i>${M.gruppoNome(g)}</dt><dd>${fmtEur(tot.gruppi[g] || 0)}</dd></div>`).join('')}
       </dl>
-      ${dt.crediti || dt.debiti ? `<p class="hero-debt"><a href="#debiti">Contando anche ${[dt.crediti ? `i crediti (+${fmtEur(dt.crediti)})` : '', dt.debiti ? `i debiti (−${fmtEur(dt.debiti)})` : ''].filter(Boolean).join(' e ')}</a>:
-        <b>${fmtEur(round2(tot.tot + dt.netto))}</b></p>` : ''}
+      ${extra.length ? `<p class="hero-debt">Contando anche ${extra.length > 1 ? extra.slice(0, -1).join(', ') + ' e ' + extra.at(-1) : extra[0]}:
+        <b>${fmtEur(round2(tot.tot + it.valore + dt.netto))}</b></p>` : ''}
     </div>
     ${senza.length ? `<details class="alert"><summary>${senza.length === 1 ? 'Un movimento non ha' : senza.length + ' movimenti non hanno'} il fondo indicato:
       finché non lo scegli, non entrano nei saldi.</summary>
@@ -74,6 +82,17 @@ function autoHTML() {
         <h2><i class="sw ${g}"></i>${M.gruppoNome(g)}<span>${fmtEur(tot.gruppi[g] || 0)}</span></h2>
         <div class="acc-list">${accs.filter((c) => c.data.gruppo === g).map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>
       </section>`).join('')}`;
+}
+
+// Riquadro con il valore degli investimenti (compare solo se ce n'è almeno uno)
+function investHTML() {
+  const { tot } = M.invAll();
+  if (!tot.n) return '';
+  return `<a class="card inv-sum" href="#investimenti">
+    <span class="inv-sum-title"><h2>Investimenti</h2><small class="muted">${tot.n === 1 ? '1 posizione' : tot.n + ' posizioni'}</small></span>
+    <span class="inv-sum-val">${fmtEur(tot.valore)}
+      <small class="${Math.abs(tot.utile) < 0.005 ? 'muted' : tot.utile > 0 ? 'pos' : 'neg'}">${fmtSigned(tot.utile)}</small></span>
+  </a>`;
 }
 
 function accCard(c, v) {

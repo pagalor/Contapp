@@ -8,6 +8,7 @@ import * as vAltro from './view-altro.js';
 import * as vConti from './view-conti.js';
 import * as vDebiti from './view-debiti.js';
 import * as vRic from './view-ricorrenti.js';
+import * as vInv from './view-investimenti.js';
 import { $, $$, setupTooltips, debounce, toast } from './ui.js';
 import { fmtEur } from './expr.js';
 
@@ -17,8 +18,8 @@ const view = () => $('#view');
 let current = '';
 let pendingRemote = false;
 
-const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', ricorrenti: 'altro', altro: 'altro' };
-const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', ricorrenti: 'Movimenti ricorrenti', altro: 'Altro' };
+const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', investimenti: 'patrimonio', investimento: 'patrimonio', ricorrenti: 'altro', altro: 'altro' };
+const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', investimenti: 'Investimenti', investimento: 'Investimento', ricorrenti: 'Movimenti ricorrenti', altro: 'Altro' };
 
 function route() {
   const h = location.hash.replace(/^#/, '');
@@ -36,6 +37,8 @@ function route() {
   else if (current === 'conti') vConti.renderConfig(view());
   else if (current === 'conto') vConti.renderConto(view(), a);
   else if (current === 'debiti') vDebiti.render(view());
+  else if (current === 'investimenti') vInv.render(view());
+  else if (current === 'investimento') vInv.renderDetail(view(), a);
   else if (current === 'ricorrenti') vRic.render(view());
   else if (current === 'altro') vAltro.render(view());
   document.title = TITLES[current] + ' · Contabilità';
@@ -73,6 +76,7 @@ function refreshAfterRemote() {
   else if (current === 'patrimonio') vPat.redraw();
   else if (current === 'conto') route();
   else if (current === 'debiti') vDebiti.redraw();
+  else if (current === 'investimenti' || current === 'investimento') vInv.redraw();
   else if (current === 'ricorrenti') vRic.redraw();
 }
 

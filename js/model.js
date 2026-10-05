@@ -366,6 +366,15 @@ export function ledgerEntries() {
         desc: (credito ? 'Rimborso da ' : 'Rimborso a ') + d.persona, ord: r.data.ord });
     }
   }
+  for (const o of store.all('invop')) {
+    const d = o.data;
+    if (!d.fondo || d.data <= inizio) continue;
+    const val = invOpVal(o);
+    if (val == null) continue;
+    const nome = store.get(d.inv)?.data.nome || 'investimento eliminato';
+    out.push({ date: d.data, c: d.fondo, val, kind: 'inv', id: d.inv, ord: d.ord,
+      desc: (d.tipo === 'acq' ? 'Acquisto di ' : d.tipo === 'vend' ? 'Vendita di ' : 'Incasso da ') + nome });
+  }
   for (const r of retts()) {
     if (r.data.date < inizio || typeof r.data.delta !== 'number') continue;
     out.push({ date: r.data.date, c: r.data.c, val: r.data.delta, kind: 'rett', id: r.id,
@@ -491,4 +500,84 @@ export function debtTotals() {
 }
 export function persone() {
   return [...new Set(debts().map((r) => r.data.persona).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+// --- Investimenti (ETF, azioni, obbligazioni, crypto...) ---
+// inv:   { nome, ticker, tipo, prezzo, prezzoData, note, ord }   (prezzo = ultimo prezzo unitario noto, inserito a mano)
+// invop: { inv, data, tipo: 'acq' | 'vend' | 'div', qta, prezzo, comm, val, fondo, note, ord }
+//        acq e vend usano qta, prezzo e comm (commissioni); div (dividendo o cedola) usa val.
+//        Se c'è un fondo e la data è dopo la partenza, l'operazione muove il saldo del fondo (senza essere entrata o uscita).
+// Costo e utile seguono il metodo del prezzo medio ponderato.
+export const INV_TIPI = [['etf', 'ETF', '#2F6FB3'], ['azione', 'Azioni', '#4C9A2A'], ['bond', 'Obbligazioni', '#D9822B'],
+  ['crypto', 'Crypto', '#E8663D'], ['altro', 'Altro', '#8C8F98']];
+const invTipo = (t) => INV_TIPI.find((x) => x[0] === t) || INV_TIPI[INV_TIPI.length - 1];
+export const invTipoNome = (t) => invTipo(t)[1];
+export const invTipoColore = (t) => invTipo(t)[2];
+
+export const invs = () => store.all('inv').sort((a, b) => (a.data.ord ?? 0) - (b.data.ord ?? 0) || a.data.nome.localeCompare(b.data.nome));
+
+export function invOps(id) {
+  return store.all('invop').filter((o) => o.data.inv === id)
+    .sort((a, b) => a.data.data.localeCompare(b.data.data) || (a.data.ord ?? 0) - (b.data.ord ?? 0));
+}
+
+// Effetto di un'operazione sul fondo: negativo se escono soldi (acquisto), positivo se entrano
+export function invOpVal(o) {
+  const d = o.data;
+  if (d.tipo === 'div') return typeof d.val === 'number' ? d.val : null;
+  if (typeof d.qta !== 'number' || typeof d.prezzo !== 'number') return null;
+  const lordo = d.qta * d.prezzo, comm = d.comm || 0;
+  return round2(d.tipo === 'acq' ? -(lordo + comm) : lordo - comm);
+}
+
+// Situazione di un investimento a partire dalle sue operazioni (già in ordine di data)
+export function invPos(r, ops) {
+  let qta = 0, costo = 0, realizzato = 0, dividendi = 0, ultimo = null, eccesso = false;
+  for (const o of ops) {
+    const d = o.data;
+    if (d.tipo === 'div') { if (typeof d.val === 'number') dividendi += d.val; continue; }
+    if (typeof d.qta !== 'number' || typeof d.prezzo !== 'number') continue;
+    ultimo = d.prezzo;
+    if (d.tipo === 'acq') { qta += d.qta; costo += d.qta * d.prezzo + (d.comm || 0); continue; }
+    const q = Math.min(d.qta, qta);
+    if (d.qta - qta > 1e-9) eccesso = true;
+    const quota = qta > 0 ? (costo * q) / qta : 0;
+    realizzato += q * d.prezzo - (d.comm || 0) - quota;
+    costo -= quota; qta -= q;
+  }
+  if (qta < 1e-9) { qta = 0; costo = 0; }
+  qta = Math.round(qta * 1e8) / 1e8;
+  const prezzo = typeof r.data.prezzo === 'number' ? r.data.prezzo : ultimo;
+  const valore = qta > 0 && prezzo != null ? round2(qta * prezzo) : qta > 0 ? null : 0;
+  costo = round2(costo);
+  const utile = valore == null ? null : round2(valore - costo);
+  return {
+    qta, costo, prezzo, valore, utile, eccesso,
+    pmc: qta > 0 ? costo / qta : null,
+    utilePct: utile != null && costo > 0.005 ? (utile / costo) * 100 : null,
+    realizzato: round2(realizzato), dividendi: round2(dividendi), aperta: qta > 0,
+  };
+}
+
+// Tutti gli investimenti con la loro situazione, e i totali (per tipo e complessivi)
+export function invAll() {
+  const byInv = new Map();
+  for (const o of store.all('invop')) {
+    if (!byInv.has(o.data.inv)) byInv.set(o.data.inv, []);
+    byInv.get(o.data.inv).push(o);
+  }
+  const items = invs().map((r) => ({ r, pos: invPos(r, (byInv.get(r.id) || []).sort((a, b) =>
+    a.data.data.localeCompare(b.data.data) || (a.data.ord ?? 0) - (b.data.ord ?? 0))) }));
+  const tot = { n: 0, valore: 0, costo: 0, utile: 0, realizzato: 0, dividendi: 0, perTipo: new Map() };
+  for (const { r, pos } of items) {
+    tot.realizzato += pos.realizzato; tot.dividendi += pos.dividendi;
+    if (!pos.aperta) continue;
+    tot.n++;
+    tot.costo += pos.costo;
+    if (pos.valore != null) { tot.valore += pos.valore; tot.utile += pos.utile; }
+    tot.perTipo.set(r.data.tipo, round2((tot.perTipo.get(r.data.tipo) || 0) + (pos.valore ?? 0)));
+  }
+  for (const k of ['valore', 'costo', 'utile', 'realizzato', 'dividendi']) tot[k] = round2(tot[k]);
+  tot.utilePct = tot.costo > 0.005 ? (tot.utile / tot.costo) * 100 : null;
+  return { items, tot };
 }

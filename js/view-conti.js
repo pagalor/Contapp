@@ -78,6 +78,7 @@ function used(id) {
   return M.movs().some((r) => (r.data.conti || []).some((x) => x.c === id)) ||
     M.trasfs().some((r) => r.data.da === id || r.data.a === id) ||
     M.retts().some((r) => r.data.c === id) ||
+    store.all('invop').some((o) => o.data.fondo === id) ||
     M.snapshots().some((s) => s.data.vals?.[id]);
 }
 
@@ -196,9 +197,9 @@ export function renderConto(el, id) {
       <section class="card">
         <h2>Movimenti</h2>
         ${rows.length ? `<div class="acc-ledger">${rows.map((x) => `
-          <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : x.kind === 'debt' ? '#debiti' : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
+          <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : x.kind === 'debt' ? '#debiti' : x.kind === 'inv' ? '#investimento/' + x.id : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
             <span class="al-date">${fmtDateShort(x.date)}</span>
-            <span class="al-desc">${esc(x.desc)}${x.kind === 'mov' ? '' : `<small>${x.kind === 'trasf' ? 'Trasferimento' : x.kind === 'debt' ? 'Debiti e crediti' : 'Correzione'}</small>`}</span>
+            <span class="al-desc">${esc(x.desc)}${x.kind === 'mov' ? '' : `<small>${x.kind === 'trasf' ? 'Trasferimento' : x.kind === 'debt' ? 'Debiti e crediti' : x.kind === 'inv' ? 'Investimenti' : 'Correzione'}</small>`}</span>
             <span class="al-val ${x.val >= 0 ? 'in' : 'out'}">${fmtSigned(x.val)}</span>
             <span class="al-run">${fmt(x.run)}</span>
           </a>`).join('')}</div>` : '<p class="muted">Ancora nessun movimento su questo fondo dopo la data di partenza.</p>'}

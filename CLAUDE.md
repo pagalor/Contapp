@@ -25,7 +25,7 @@ manifest.webmanifest    dati per l'installazione come app
 icons/                  icone 192, 512 e maskable 512
 js/main.js              avvio, router (hash), avvisi sui target, registrazione del service worker
 js/store.js             archivio locale (IndexedDB e memoria) e stato "dirty" per la sincronizzazione
-js/model.js             logica di dominio: totali, categorie, fondi, saldi, target, tag, debiti, migrazioni
+js/model.js             logica di dominio: totali, categorie, fondi, saldi, target, tag, debiti, investimenti, migrazioni
 js/expr.js              parser degli importi con espressioni e formattazione dei numeri (it-IT)
 js/sync.js              autenticazione Supabase, pull e push, gestione della frase segreta
 js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle chiavi
@@ -38,6 +38,7 @@ js/view-riepilogo.js    pagina Riepilogo: statistiche, grafici, torte per catego
 js/view-patrimonio.js   pagina Patrimonio: saldi per fondo, andamento, rilevazioni storiche
 js/view-conti.js        pagina Fondi (configurazione) e dettaglio di un fondo (route #conti, #conto/<id>)
 js/view-debiti.js       pagina Debiti e crediti
+js/view-investimenti.js pagina Investimenti (elenco, dettaglio di una posizione, finestre per operazioni e prezzi)
 js/view-ricorrenti.js   pagina Movimenti ricorrenti (elenco; la finestra di modifica è in dialogs.js)
 js/view-altro.js        pagina Altro: sincronizzazione e cifratura, import/export, categorie, tema
 supabase.sql            tabella, permessi, RLS e trigger da eseguire una volta su Supabase
@@ -55,6 +56,8 @@ supabase.sql            tabella, permessi, RLS e trigger da eseguire una volta s
 | `#conti` | Fondi (configurazione) |
 | `#conto/<id>` | Dettaglio di un fondo |
 | `#debiti` | Debiti e crediti |
+| `#investimenti` | Investimenti (si apre da Patrimonio) |
+| `#investimento/<id>` | Dettaglio di un investimento |
 | `#ricorrenti` | Movimenti ricorrenti (si apre da Altro) |
 | `#altro` | Altro |
 
@@ -79,6 +82,8 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 | `debt` | Debito o credito. `tipo` (`credito` = mi devono, `debito` = devo), `persona, desc, val, espr, data, fondo, rimborsi: [{ data, val, espr, fondo }], note, ord` |
 | `butt` | Voce di "soldi buttati". `y, espr, val, desc, ord` |
 | `ric` | Movimento ricorrente. `tipo, desc, val, espr, cat, conti` (vuoto o un solo fondo), `tags, note, escl, inizio` (prima scadenza, `AAAA-MM-GG`), `freq` (`sett`, `mese`, `anno`), `ogni` (ogni quante unità), `fine` (ultima scadenza o `null`), `da` (se presente, si generano solo scadenze successive), `ord` |
+| `inv` | Investimento (ETF, azione, obbligazione, crypto…). `nome, ticker, tipo` (`etf`, `azione`, `bond`, `crypto`, `altro`), `prezzo` (ultimo prezzo unitario, inserito a mano), `prezzoData`, `note, ord` |
+| `invop` | Operazione su un investimento. `inv` (id), `data` (`AAAA-MM-GG`), `tipo` (`acq`, `vend`, `div`), `qta, prezzo, comm` (acquisti e vendite), `val` (dividendi e cedole), `fondo` (fondo coinvolto, o vuoto), `note, ord` |
 | `cfg` | Record unico `cfg-patrimonio`. `inizio` (data di partenza del calcolo automatico, `AAAA-MM-GG`), `contoOut`, `contoIn` (fondi proposti) |
 
 **Gruppi dei fondi** (`M.GRUPPI`): `contanti`, `corrente`, `deposito`, `digitale` (PayPal e simili), `crypto`, `altro`.
@@ -106,7 +111,8 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 - **Movimenti senza fondo** con data successiva alla partenza: vengono segnalati e non entrano nei saldi.
 - **Suggerimenti automatici**: categoria e fondo sono proposti dalla scelta più frequente fatta per la stessa descrizione. Per la categoria, se non c'è uno storico, si usano delle regole testuali. Il suggerimento si ferma quando l'utente sceglie a mano (`catAuto` o `contoAuto` diventano `false`).
 - **Movimenti ricorrenti**: a ogni scadenza `M.generaRicorrenti()` crea un normale movimento (`mov`) con id fisso `mov-r-<idRicorrenza>-<AAAA-MM-GG>` e il campo `ricId`. Parte all'avvio, dopo ogni pull, quando la pagina torna visibile e ogni 10 minuti; recupera anche le scadenze perse ad app chiusa (un'app web non può scrivere in background). Il giorno 29–31 diventa l'ultimo giorno dei mesi più corti. I movimenti si creano con `store.saveMissing` (`updated_at = 1`, come `saveDefault`): se esistono già, anche eliminati, non vengono ricreati, e qualsiasi modifica fatta su un altro dispositivo vince. Modificare o eliminare una ricorrenza non tocca i movimenti già generati; cambiando `inizio`, `freq` o `ogni` si imposta `da` (ieri) per non rigenerare il passato a date diverse.
-- **Patrimonio con debiti**: il patrimonio "netto" è il totale dei fondi + i crediti residui − i debiti residui.
+- **Investimenti**: quantità, costo e utile si calcolano da `invop` con il prezzo medio ponderato (`M.invPos`, `M.invAll`). Il valore è quantità × `prezzo`; il prezzo si aggiorna a mano (nessuna quotazione online: l'unica destinazione di rete è Supabase) e, se manca, vale quello dell'ultima operazione. Un'operazione con un `fondo` e data successiva a `cfg.inizio` muove il saldo di quel fondo (acquisto −, vendita e dividendo +, commissioni comprese), come i prestiti dei debiti; senza fondo non tocca i saldi. Acquisti, vendite e dividendi non sono mai entrate o uscite. Non si può vendere più di quanto si possiede. Quantità e prezzi unitari hanno fino a 8 decimali (`expr.parseNumber`), gli importi in euro 2.
+- **Patrimonio complessivo**: il patrimonio "netto" è il totale dei fondi + il valore degli investimenti + i crediti residui − i debiti residui. Il grande numero della pagina Patrimonio resta il solo totale dei fondi; il netto compare nella riga sotto.
 
 ## Sincronizzazione (`sync.js`)
 
@@ -202,12 +208,13 @@ Per provare la sincronizzazione senza toccare i dati veri, serve un secondo prog
 - Lo storico 2021–2026 è stato importato dall'Excel una sola volta. I movimenti storici non hanno il giorno né il fondo, e non toccano i saldi perché sono precedenti alla data di partenza.
 - Il blocco "Obiettivo" dell'Excel non è stato importato come target: i target si impostano nell'app.
 - Le rilevazioni storiche restano per il grafico del periodo precedente al calcolo automatico.
+- Gli investimenti non hanno uno storico dei prezzi: il valore è sempre quello di oggi e non compare nel grafico dell'andamento del patrimonio.
 - I prestiti pagati da un fondo non sono spese. Una cena pagata per altri si registra così: la propria quota come uscita, il resto come credito dallo stesso fondo.
 
 ## Idee per il futuro
 
 - PIN o sblocco con impronta all'apertura.
 - Cambio della frase segreta senza dover reimpostare il cloud.
-- Movimenti ricorrenti, come gli abbonamenti mensili.
+- Storico dei prezzi degli investimenti e loro presenza nel grafico dell'andamento.
 - Export in `.xlsx` vero, al posto del CSV.
 - Budget mensili per categoria.
