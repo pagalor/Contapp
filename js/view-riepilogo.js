@@ -73,7 +73,10 @@ function draw() {
       <div><dt>Entrate</dt><dd class="in">${fmtEur(s.tin)}</dd></div>
       <div><dt>Uscite</dt><dd class="out">${fmtEur(s.tout)}</dd></div>
       <div><dt>Saldo</dt><dd class="saldo">${fmtSigned(s.saldo)}</dd></div>
+      <div><dt>Entrate medie al mese</dt><dd class="in">${fmtEur(mesiAttivi ? s.tin / mesiAttivi : 0)}</dd></div>
       <div><dt>Uscite medie al mese</dt><dd>${fmtEur(mesiAttivi ? s.tout / mesiAttivi : 0)}</dd></div>
+      <div><dt>Saldo medio al mese</dt><dd class="saldo">${fmtSigned(mesiAttivi ? s.saldo / mesiAttivi : 0)}</dd></div>
+      <div><dt>Risparmio</dt><dd class="saldo">${s.tin > 0 ? (s.saldo / s.tin * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%' : '–'}</dd></div>
       <div><dt>Soldi buttati</dt><dd class="butt">${fmtEur(butt)}</dd></div>
     </dl>
 
