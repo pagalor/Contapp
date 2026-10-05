@@ -331,6 +331,21 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .stats div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: .9rem 1rem; }
 .stats dt { font-size: .78rem; color: var(--muted); font-weight: 550; }
 .stats dd { margin: .2rem 0 0; font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; }
+/* Riepilogo: entrate, uscite e saldo in primo piano; il resto più piccolo */
+.stats.stats-main { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: .6rem; }
+.stats-main div { padding: 1.1rem 1.2rem; }
+.stats-main dt { font-size: .85rem; }
+.stats-main dd { font-size: 1.9rem; margin-top: .3rem; }
+.stats.stats-sub { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .5rem; }
+.stats-sub div { background: transparent; padding: .55rem .8rem; }
+.stats-sub dt { font-size: .72rem; }
+.stats-sub dd { font-size: 1rem; font-weight: 600; margin-top: .1rem; }
+@media (max-width: 560px) {
+  .stats.stats-main { grid-template-columns: 1fr; }
+  .stats-main div { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; padding: .8rem 1rem; }
+  .stats-main dd { font-size: 1.5rem; margin: 0; }
+  .stats.stats-sub { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 .chart-box { width: 100%; overflow: hidden; }
 .chart { display: block; max-width: 100%; height: auto; }

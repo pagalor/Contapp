@@ -69,10 +69,12 @@ function draw() {
   const butt = tutto ? round2(ys.reduce((a, y) => a + M.buttTot(y), 0)) : M.buttTot(sel);
 
   body.innerHTML = `
-    <dl class="stats">
+    <dl class="stats stats-main">
       <div><dt>Entrate</dt><dd class="in">${fmtEur(s.tin)}</dd></div>
       <div><dt>Uscite</dt><dd class="out">${fmtEur(s.tout)}</dd></div>
       <div><dt>Saldo</dt><dd class="saldo">${fmtSigned(s.saldo)}</dd></div>
+    </dl>
+    <dl class="stats stats-sub">
       <div><dt>Entrate medie al mese</dt><dd class="in">${fmtEur(mesiAttivi ? s.tin / mesiAttivi : 0)}</dd></div>
       <div><dt>Uscite medie al mese</dt><dd>${fmtEur(mesiAttivi ? s.tout / mesiAttivi : 0)}</dd></div>
       <div><dt>Saldo medio al mese</dt><dd class="saldo">${fmtSigned(mesiAttivi ? s.saldo / mesiAttivi : 0)}</dd></div>
