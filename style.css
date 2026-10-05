@@ -620,3 +620,25 @@ details.history[open] > summary { margin-bottom: .8rem; }
   .rimb-row { grid-template-columns: 1fr 1fr 30px; }
   .rimb-row select { grid-column: 1 / 3; }
 }
+
+/* ---------- Movimenti ricorrenti ---------- */
+.intro-note { max-width: 62ch; margin: -.6rem 0 1rem; }
+.ric-list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 1rem; }
+.ric {
+  display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: .8rem; align-items: center; width: 100%;
+  font: inherit; color: var(--ink); background: none; border: 0; border-top: 1px solid var(--line); padding: .75rem 1rem; text-align: left; cursor: pointer;
+}
+.ric:first-child { border-top: 0; }
+.ric:hover { background: var(--hover); }
+.ric-emoji { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 18%, transparent); font-size: 1rem; }
+.ric-desc { font-weight: 550; min-width: 0; }
+.ric-desc small, .ric-amt small { display: block; color: var(--muted); font-weight: 400; font-size: .78rem; }
+.ric-amt { font-weight: 700; text-align: right; }
+.ric.in .ric-amt { color: var(--in); }
+.ric.out .ric-amt { color: var(--out); }
+.ric.done { opacity: .6; }
+.ric-h { margin: 1.4rem 0 .5rem; color: var(--muted); }
+.ric-every { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: .5rem; }
+.ric-every input, .ric-every select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-md); padding: .55rem .65rem; min-width: 0; }
+.ric-sum { margin: .2rem 0 .4rem; }
+.tag.ric { color: var(--muted); }

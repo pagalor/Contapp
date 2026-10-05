@@ -31,12 +31,13 @@ js/sync.js              autenticazione Supabase, pull e push, gestione della fra
 js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle chiavi
 js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo, anello
 js/ui.js                toast, finestre (dialog), conferme, tooltip, download, debounce
-js/dialogs.js           finestre condivise: ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag
+js/dialogs.js           finestre condivise: ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente
 js/view-mese.js         pagina Mese: elenco modificabile, calendario, ricerca, trasferimenti, avvisi
 js/view-riepilogo.js    pagina Riepilogo: statistiche, grafici, torte per categoria, tag, soldi buttati
 js/view-patrimonio.js   pagina Patrimonio: saldi per fondo, andamento, rilevazioni storiche
 js/view-conti.js        pagina Fondi (configurazione) e dettaglio di un fondo (route #conti, #conto/<id>)
 js/view-debiti.js       pagina Debiti e crediti
+js/view-ricorrenti.js   pagina Movimenti ricorrenti (elenco; la finestra di modifica è in dialogs.js)
 js/view-altro.js        pagina Altro: sincronizzazione e cifratura, import/export, categorie, tema
 supabase.sql            tabella, permessi, RLS e trigger da eseguire una volta su Supabase
 ```
@@ -53,6 +54,7 @@ supabase.sql            tabella, permessi, RLS e trigger da eseguire una volta s
 | `#conti` | Fondi (configurazione) |
 | `#conto/<id>` | Dettaglio di un fondo |
 | `#debiti` | Debiti e crediti |
+| `#ricorrenti` | Movimenti ricorrenti (si apre da Altro) |
 | `#altro` | Altro |
 
 ## Modello dei dati
@@ -75,6 +77,7 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 | `rett` | Correzione del saldo di un fondo. `date, c, delta, note` |
 | `debt` | Debito o credito. `tipo` (`credito` = mi devono, `debito` = devo), `persona, desc, val, espr, data, fondo, rimborsi: [{ data, val, espr, fondo }], note, ord` |
 | `butt` | Voce di "soldi buttati". `y, espr, val, desc, ord` |
+| `ric` | Movimento ricorrente. `tipo, desc, val, espr, cat, conti` (vuoto o un solo fondo), `tags, note, escl, inizio` (prima scadenza, `AAAA-MM-GG`), `freq` (`sett`, `mese`, `anno`), `ogni` (ogni quante unità), `fine` (ultima scadenza o `null`), `da` (se presente, si generano solo scadenze successive), `ord` |
 | `cfg` | Record unico `cfg-patrimonio`. `inizio` (data di partenza del calcolo automatico, `AAAA-MM-GG`), `contoOut`, `contoIn` (fondi proposti) |
 
 **Gruppi dei fondi** (`M.GRUPPI`): `contanti`, `corrente`, `deposito`, `digitale` (PayPal e simili), `crypto`, `altro`.
@@ -101,6 +104,7 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 - **Target**: un fondo è "sotto il target" se `obiettivo − saldo > 0`. L'avviso compare in tre punti: un riquadro nella pagina Mese, un pallino sulla voce Patrimonio, un toast quando il fondo scende sotto la soglia.
 - **Movimenti senza fondo** con data successiva alla partenza: vengono segnalati e non entrano nei saldi.
 - **Suggerimenti automatici**: categoria e fondo sono proposti dalla scelta più frequente fatta per la stessa descrizione. Per la categoria, se non c'è uno storico, si usano delle regole testuali. Il suggerimento si ferma quando l'utente sceglie a mano (`catAuto` o `contoAuto` diventano `false`).
+- **Movimenti ricorrenti**: a ogni scadenza `M.generaRicorrenti()` crea un normale movimento (`mov`) con id fisso `mov-r-<idRicorrenza>-<AAAA-MM-GG>` e il campo `ricId`. Parte all'avvio, dopo ogni pull, quando la pagina torna visibile e ogni 10 minuti; recupera anche le scadenze perse ad app chiusa (un'app web non può scrivere in background). Il giorno 29–31 diventa l'ultimo giorno dei mesi più corti. I movimenti si creano con `store.saveMissing` (`updated_at = 1`, come `saveDefault`): se esistono già, anche eliminati, non vengono ricreati, e qualsiasi modifica fatta su un altro dispositivo vince. Modificare o eliminare una ricorrenza non tocca i movimenti già generati; cambiando `inizio`, `freq` o `ogni` si imposta `da` (ieri) per non rigenerare il passato a date diverse.
 - **Patrimonio con debiti**: il patrimonio "netto" è il totale dei fondi + i crediti residui − i debiti residui.
 
 ## Sincronizzazione (`sync.js`)

@@ -172,6 +172,80 @@ export const GRUPPI = [
 ];
 export const gruppoNome = (g) => (GRUPPI.find((x) => x[0] === g) || GRUPPI[GRUPPI.length - 1])[1];
 
+// --- Movimenti ricorrenti (abbonamenti, affitto, stipendio...) ---
+// ric: { tipo, desc, val, espr, cat, conti, note, inizio: 'AAAA-MM-GG', freq: 'sett' | 'mese' | 'anno', ogni, fine: 'AAAA-MM-GG' | null, da, ord }
+// (da: se presente, si generano solo le scadenze successive a questa data)
+// Ogni scadenza diventa un normale movimento con id fisso `mov-r-<idRicorrenza>-<data>`: se due dispositivi
+// lo generano insieme non nascono doppioni, e se lo elimini non viene ricreato.
+export const FREQ = [['sett', 'settimane', 'settimana'], ['mese', 'mesi', 'mese'], ['anno', 'anni', 'anno']];
+export const rics = () => store.all('ric');
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+const ricOgni = (r) => Math.max(1, Math.floor(r.data.ogni) || 1);
+
+// Data della k-esima scadenza (k = 0 è la prima). Se il giorno non esiste nel mese (es. 31) si usa l'ultimo.
+export function ricDate(r, k) {
+  const [y, m, d] = r.data.inizio.split('-').map(Number);
+  const n = ricOgni(r) * k;
+  if (r.data.freq === 'sett') {
+    const t = new Date(Date.UTC(y, m - 1, d + 7 * n));
+    return isoOf(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate());
+  }
+  const tot = m - 1 + (r.data.freq === 'anno' ? 12 : 1) * n;
+  const yy = y + Math.floor(tot / 12), mm = (tot % 12) + 1;
+  return isoOf(yy, mm, Math.min(d, new Date(yy, mm, 0).getDate()));
+}
+
+// Scadenze fino a una data (inclusa), nei limiti della data di fine
+export function ricDates(r, upTo, max = 1500) {
+  if (!ISO.test(r.data.inizio || '')) return [];
+  const out = [];
+  for (let k = 0; k < max; k++) {
+    const date = ricDate(r, k);
+    if (date > upTo || (r.data.fine && date > r.data.fine)) break;
+    if (r.data.da && date <= r.data.da) continue; // dopo una modifica del calendario non si rigenera il passato
+    out.push(date);
+  }
+  return out;
+}
+
+// Prossima scadenza dopo oggi (null se la ricorrenza è finita)
+export function ricNext(r, from = todayIso()) {
+  if (!ISO.test(r.data.inizio || '')) return null;
+  for (let k = 0; k < 20000; k++) {
+    const date = ricDate(r, k);
+    if (r.data.fine && date > r.data.fine) return null;
+    if (date > from) return date;
+  }
+  return null;
+}
+
+// Costo o entrata media al mese
+export function ricMensile(r) {
+  const v = r.data.val;
+  if (typeof v !== 'number') return 0;
+  const per = r.data.freq === 'sett' ? 52 / 12 : r.data.freq === 'anno' ? 1 / 12 : 1;
+  return (v * per) / ricOgni(r);
+}
+
+// Crea i movimenti delle scadenze arrivate (anche quelle perse mentre l'app era chiusa). Restituisce quanti ne ha aggiunti.
+export function generaRicorrenti() {
+  const oggi = todayIso();
+  const nuovi = [];
+  for (const r of rics()) {
+    const d = r.data;
+    if (typeof d.val !== 'number' || !d.tipo) continue;
+    for (const date of ricDates(r, oggi)) {
+      const [y, m, g] = date.split('-').map(Number);
+      nuovi.push({ kind: 'mov', id: `mov-r-${r.id}-${date}`, data: {
+        y, m, d: g, tipo: d.tipo, val: d.val, espr: d.espr || null, desc: d.desc || '',
+        cat: d.cat || fallbackCat(d.tipo), catAuto: false, conti: d.conti || [], contoAuto: false,
+        tags: d.tags || [], note: d.note || null, escl: !!d.escl, ord: d.ord ?? 0, ricId: r.id,
+      } });
+    }
+  }
+  return store.saveMissing(nuovi);
+}
+
 // Aggiornamenti una tantum dei dati salvati con versioni precedenti dell'app (idempotente)
 export function migrate() {
   for (const c of store.all('cont')) {

@@ -7,6 +7,7 @@ import * as vPat from './view-patrimonio.js';
 import * as vAltro from './view-altro.js';
 import * as vConti from './view-conti.js';
 import * as vDebiti from './view-debiti.js';
+import * as vRic from './view-ricorrenti.js';
 import { $, $$, setupTooltips, debounce, toast } from './ui.js';
 import { fmtEur } from './expr.js';
 
@@ -16,8 +17,8 @@ const view = () => $('#view');
 let current = '';
 let pendingRemote = false;
 
-const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', altro: 'altro' };
-const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', altro: 'Altro' };
+const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', ricorrenti: 'altro', altro: 'altro' };
+const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', ricorrenti: 'Movimenti ricorrenti', altro: 'Altro' };
 
 function route() {
   const h = location.hash.replace(/^#/, '');
@@ -35,6 +36,7 @@ function route() {
   else if (current === 'conti') vConti.renderConfig(view());
   else if (current === 'conto') vConti.renderConto(view(), a);
   else if (current === 'debiti') vDebiti.render(view());
+  else if (current === 'ricorrenti') vRic.render(view());
   else if (current === 'altro') vAltro.render(view());
   document.title = TITLES[current] + ' · Contabilità';
   paintTargetDot();
@@ -71,6 +73,7 @@ function refreshAfterRemote() {
   else if (current === 'patrimonio') vPat.redraw();
   else if (current === 'conto') route();
   else if (current === 'debiti') vDebiti.redraw();
+  else if (current === 'ricorrenti') vRic.redraw();
 }
 
 function paintSyncDot(st) {
@@ -79,6 +82,16 @@ function paintSyncDot(st) {
   dot.dataset.state = st.state;
   dot.title = st.msg || '';
   dot.setAttribute('aria-label', 'Sincronizzazione: ' + (st.msg || st.state));
+}
+
+// Aggiunge i movimenti ricorrenti arrivati a scadenza. Dopo l'avvio avvisa e aggiorna la vista.
+function runRicorrenti(avvisa = true) {
+  const n = M.generaRicorrenti();
+  if (n && avvisa) {
+    toast(n === 1 ? 'Aggiunto 1 movimento ricorrente' : `Aggiunti ${n} movimenti ricorrenti`);
+    refreshAfterRemote();
+  }
+  return n;
 }
 
 async function boot() {
@@ -93,9 +106,10 @@ async function boot() {
   }
   M.ensureCategories();
   M.migrate();
+  const ricAvvio = runRicorrenti(false);
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   setupTooltips();
-  store.subscribe((info) => { if (info.remote) { M.migrate(); refreshAfterRemote(); } checkTargetsSoon(); });
+  store.subscribe((info) => { if (info.remote) { M.migrate(); if (!runRicorrenti()) refreshAfterRemote(); } checkTargetsSoon(); });
   document.addEventListener('focusout', () => {
     if (pendingRemote) setTimeout(() => { if (!view().contains(document.activeElement)) refreshAfterRemote(); }, 50);
   });
@@ -111,6 +125,10 @@ async function boot() {
   }, 200));
   route();
   checkTargets();
+  if (ricAvvio) toast(ricAvvio === 1 ? 'Aggiunto 1 movimento ricorrente' : `Aggiunti ${ricAvvio} movimenti ricorrenti`);
+  // le scadenze arrivano anche con l'app aperta (cambio di giorno) o ripresa dopo ore in secondo piano
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) runRicorrenti(); });
+  setInterval(() => { if (!document.hidden) runRicorrenti(); }, 10 * 60 * 1000);
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('./sw.js').then((reg) => {

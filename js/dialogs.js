@@ -1,7 +1,7 @@
 import * as store from './store.js';
 import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, plain, round2 } from './expr.js';
-import { esc, $, $$, modal, toast } from './ui.js';
+import { esc, $, $$, modal, toast, confirmBox } from './ui.js';
 
 const accOptions = (sel, { empty = '' } = {}) =>
   (empty ? `<option value="">${esc(empty)}</option>` : '') +
@@ -180,4 +180,143 @@ export function tagEditorHTML(tags = []) {
 }
 export function tagsDatalist() {
   return `<datalist id="dl-tags">${M.tagStats().map((t) => `<option value="${esc(t.tag)}">`).join('')}</datalist>`;
+}
+
+// --- Movimento ricorrente (nuovo, esistente, oppure precompilato da un movimento) ---
+const fmtDay = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+// Frase che spiega quando verrà aggiunto il movimento
+export function ricSummary({ inizio, freq, ogni, fine }) {
+  if (!inizio) return '';
+  const n = Math.max(1, Math.floor(ogni) || 1);
+  const [y, m, d] = inizio.split('-').map(Number);
+  let s;
+  if (freq === 'sett') {
+    const g = new Date(y, m - 1, d).toLocaleDateString('it-IT', { weekday: 'long' });
+    s = n === 1 ? `Ogni settimana, di ${g}` : `Ogni ${n} settimane, di ${g}`;
+  } else if (freq === 'anno') {
+    s = (n === 1 ? 'Ogni anno' : `Ogni ${n} anni`) + `, il ${d} ${M.MESI[m - 1].toLowerCase()}`;
+  } else {
+    s = (n === 1 ? 'Ogni mese' : `Ogni ${n} mesi`) + `, il giorno ${d}` + (d > 28 ? ' (o l\'ultimo giorno se il mese è più corto)' : '');
+  }
+  return `${s}, a partire dal ${fmtDay(inizio)}${fine ? ` fino al ${fmtDay(fine)}` : ''}.`;
+}
+
+// Proposta di ricorrenza a partire da un movimento già registrato: la prima ripetizione è il mese dopo
+export function ricSeedFromMov(r) {
+  const d = r.data;
+  const rec = { data: { inizio: M.recDate(r), freq: 'mese', ogni: 1 } };
+  return {
+    tipo: d.tipo, desc: d.desc || '', val: d.val ?? null, espr: d.espr || null, cat: d.cat, conti: (d.conti || []).length === 1 ? [{ c: d.conti[0].c }] : [],
+    note: d.note || null, tags: d.tags || [], escl: !!d.escl, inizio: M.ricDate(rec, 1), freq: 'mese', ogni: 1, fine: null, ord: Date.now(),
+  };
+}
+
+export function ricDialog({ rec = null, seed = null, onDone } = {}) {
+  const isNew = !rec;
+  const d = rec ? JSON.parse(JSON.stringify(rec.data)) : {
+    tipo: 'out', desc: '', val: null, espr: null, cat: null, conti: [], note: null, tags: [], escl: false,
+    inizio: M.todayIso(), freq: 'mese', ogni: 1, fine: null, ord: Date.now(), ...(seed ? JSON.parse(JSON.stringify(seed)) : {}),
+  };
+  if (!d.cat || !M.catById(d.cat)) d.cat = M.fallbackCat(d.tipo);
+  if (isNew && !seed) d.conti = M.suggestConto(d.tipo, '') ? [{ c: M.suggestConto(d.tipo, '') }] : [];
+  let amount = typeof d.val === 'number' ? { val: d.val, espr: d.espr } : null;
+  let catManual = !isNew || !!seed;
+
+  const dlg = modal(`
+    <form class="dlg" method="dialog">
+      <header class="dlg-head"><h2>${isNew ? 'Nuovo movimento ricorrente' : 'Movimento ricorrente'}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
+      <p class="muted">Viene aggiunto da solo ai movimenti, ogni volta che arriva la scadenza.</p>
+      <div class="seg wide" role="group">
+        <button type="button" data-tipo="out" aria-pressed="${d.tipo === 'out'}">Uscita</button>
+        <button type="button" data-tipo="in" aria-pressed="${d.tipo === 'in'}">Entrata</button>
+      </div>
+      <div class="form-grid">
+        <label class="field"><span>Descrizione</span><input name="desc" list="dl-ric-${d.tipo}" value="${esc(d.desc)}" placeholder="es. Netflix" autocomplete="off" required></label>
+        <label class="field"><span>Importo</span><input name="val" class="amt" inputmode="decimal" value="${amount ? fmt(amount.val) : ''}" required></label>
+        <label class="field"><span>Categoria</span><select name="cat"></select></label>
+        <label class="field"><span data-conto-label></span><select name="conto"></select></label>
+      </div>
+      <div class="form-grid">
+        <label class="field"><span>Prima scadenza</span><input name="inizio" type="date" value="${d.inizio}" required></label>
+        <div class="field"><span>Si ripete ogni</span>
+          <div class="ric-every"><input name="ogni" type="number" min="1" max="99" step="1" value="${Math.max(1, d.ogni || 1)}" inputmode="numeric" aria-label="Ogni quante volte">
+            <select name="freq" aria-label="Unità">${M.FREQ.map(([k, p]) => `<option value="${k}"${k === d.freq ? ' selected' : ''}>${p}</option>`).join('')}</select></div></div>
+        <label class="field"><span>Ultima scadenza (facoltativa)</span><input name="fine" type="date" value="${d.fine || ''}"></label>
+      </div>
+      <p class="ric-sum muted small-note"></p>
+      <label class="field"><span>Nota</span><input name="note" value="${esc(d.note || '')}" autocomplete="off"></label>
+      <datalist id="dl-ric-in">${M.frequentDescs('in').map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
+      <datalist id="dl-ric-out">${M.frequentDescs('out').map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
+      <div class="actions">
+        ${isNew ? '' : '<button type="button" class="btn ghost danger" data-del>Elimina</button><span class="spacer"></span>'}
+        <button type="button" class="btn ghost" data-x>Annulla</button><button class="btn primary" value="save">Salva</button>
+      </div>
+    </form>`, { wide: true });
+  const f = $('form', dlg);
+  bindAmount(f.val, () => amount, (p) => { amount = p; });
+
+  function paintOptions() {
+    f.cat.innerHTML = M.cats(d.tipo).map((c) => `<option value="${c.id}"${c.id === d.cat ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('');
+    const single = d.conti.length === 1 ? d.conti[0].c : '';
+    f.conto.innerHTML = `<option value="">—</option>` + accOptions(single) +
+      (single && !M.accounts().some((c) => c.id === single) ? `<option value="${single}" selected>${esc(M.accName(single))}</option>` : '');
+    $('[data-conto-label]', f).textContent = d.tipo === 'in' ? 'Ricevuto su' : 'Pagato con';
+    f.desc.setAttribute('list', 'dl-ric-' + d.tipo);
+    $$('[data-tipo]', f).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tipo === d.tipo)));
+  }
+  const scheduleChanged = () => !isNew && (f.inizio.value !== rec.data.inizio || f.freq.value !== rec.data.freq || (Number(f.ogni.value) || 1) !== (rec.data.ogni || 1));
+  function paintSummary() {
+    const extra = scheduleChanged() ? ' Il nuovo calendario vale da oggi: i movimenti già aggiunti restano come sono.'
+      : isNew && f.inizio.value && f.inizio.value <= M.todayIso() ? ' Le scadenze già passate vengono aggiunte subito.' : '';
+    $('.ric-sum', f).textContent = ricSummary({ inizio: f.inizio.value, freq: f.freq.value, ogni: f.ogni.value, fine: f.fine.value }) + extra;
+  }
+  paintOptions(); paintSummary();
+
+  f.addEventListener('input', (e) => { if (['inizio', 'ogni', 'fine'].includes(e.target.name)) paintSummary(); });
+  f.addEventListener('change', (e) => {
+    if (e.target.name === 'freq') paintSummary();
+    if (e.target.name === 'cat') { d.cat = e.target.value; catManual = true; }
+    if (e.target.name === 'conto') d.conti = e.target.value ? [{ c: e.target.value }] : [];
+    if (e.target.name === 'desc' && !catManual) {
+      const sug = M.suggestCat(d.tipo, e.target.value.trim());
+      if (sug) { d.cat = sug; f.cat.value = sug; }
+      const c = M.suggestConto(d.tipo, e.target.value.trim());
+      if (c && !d.conti.length) { d.conti = [{ c }]; paintOptions(); }
+    }
+  });
+  f.addEventListener('click', async (e) => {
+    const tb = e.target.closest('[data-tipo]');
+    if (tb && tb.dataset.tipo !== d.tipo) {
+      d.tipo = tb.dataset.tipo; catManual = false; d.cat = M.fallbackCat(d.tipo);
+      d.conti = M.suggestConto(d.tipo, f.desc.value.trim()) ? [{ c: M.suggestConto(d.tipo, f.desc.value.trim()) }] : [];
+      paintOptions();
+    }
+    if (e.target.closest('[data-x]')) dlg.close();
+    if (e.target.closest('[data-del]')) {
+      if (!(await confirmBox('Eliminare questo movimento ricorrente? Quelli già aggiunti restano dove sono, ma non ne verranno aggiunti altri.', { ok: 'Elimina', danger: true }))) return;
+      const backup = rec.data;
+      store.remove(rec.id); dlg.close();
+      toast('Ricorrenza eliminata', { action: 'Annulla', onAction: () => { store.save('ric', rec.id, backup); onDone && onDone(); } });
+      onDone && onDone();
+    }
+  });
+  f.addEventListener('submit', (e) => {
+    if (e.submitter && e.submitter.value !== 'save') return;
+    document.activeElement?.blur?.();
+    if (!amount || !(amount.val > 0)) { e.preventDefault(); toast('Indica un importo maggiore di zero.'); return; }
+    if (!f.desc.value.trim()) { e.preventDefault(); toast('Scrivi una descrizione.'); return; }
+    if (!f.inizio.value) { e.preventDefault(); toast('Indica la prima scadenza.'); return; }
+    if (f.fine.value && f.fine.value < f.inizio.value) { e.preventDefault(); toast("L'ultima scadenza non può essere prima della prima."); return; }
+    const ogni = Math.min(99, Math.max(1, Math.floor(Number(f.ogni.value)) || 1));
+    const changed = scheduleChanged();
+    const ieri = new Date(); ieri.setDate(ieri.getDate() - 1);
+    store.save('ric', rec ? rec.id : store.newId(), {
+      ...d, ...(changed ? { da: M.isoOf(ieri.getFullYear(), ieri.getMonth() + 1, ieri.getDate()) } : {}), desc: f.desc.value.trim(), val: amount.val, espr: amount.espr, cat: f.cat.value, conti: d.conti,
+      inizio: f.inizio.value, freq: f.freq.value, ogni, fine: f.fine.value || null, note: f.note.value.trim() || null,
+    });
+    const n = M.generaRicorrenti();
+    toast(n ? `Salvato: ${n === 1 ? 'aggiunto 1 movimento' : `aggiunti ${n} movimenti`} già scaduti` : 'Ricorrenza salvata');
+    onDone && onDone();
+  });
 }

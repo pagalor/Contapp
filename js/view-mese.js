@@ -2,7 +2,7 @@ import * as store from './store.js';
 import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, fmtSigned, plain } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
-import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist } from './dialogs.js';
+import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov } from './dialogs.js';
 
 let state = { y: 0, m: 0, q: '' };
 let root = null;
@@ -168,11 +168,11 @@ function rowFlags(r) {
   const inizio = M.cfg().inizio;
   const needAcc = inizio && M.recDate(r) > inizio && typeof d.val === 'number' && !M.allocations(r).length;
   return (d.note ? ' has-note' : '') + (d.escl ? ' excluded' : '') + (d.espr ? ' has-expr' : '') +
-    (needAcc ? ' no-acc' : '') + (M.splitMismatch(r) ? ' split-ko' : '') + (d.tags?.length ? ' has-tags' : '');
+    (needAcc ? ' no-acc' : '') + (M.splitMismatch(r) ? ' split-ko' : '') + (d.tags?.length || d.ricId ? ' has-tags' : '');
 }
 
 function tagLine(d) {
-  return (d.tags || []).map((t) => `<a class="tag" href="#tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join('');
+  return (d.ricId ? '<a class="tag ric" href="#ricorrenti" title="Aggiunto in automatico da un movimento ricorrente">↻ Ricorrente</a>' : '') + (d.tags || []).map((t) => `<a class="tag" href="#tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join('');
 }
 
 function rowHTML(r) {
@@ -207,6 +207,7 @@ function detailsHTML(r) {
     <label class="check"><input type="checkbox" data-f="escl"${d.escl ? ' checked' : ''}> Escludi dai totali di entrate e uscite (es. entrate straordinarie)</label>
     <div class="detail-actions">
       <button class="btn ghost small" data-act="dup">Duplica</button>
+      ${d.ricId || typeof d.val !== 'number' ? '' : '<button class="btn ghost small" data-act="ric">Rendi ricorrente</button>'}
       <label class="btn ghost small move">Sposta in un altro mese<input type="month" data-act="move" value="${ymHash(d.y, d.m)}"></label>
       <button class="btn ghost small danger" data-act="del">Elimina</button>
     </div>`;
@@ -288,9 +289,11 @@ function bindBody(body) {
     const r = rec(row);
     if (act === 'more') toggleDetails(row);
     if (act === 'split' && r) splitEditor(r, () => { replaceRow(r.id); renderAlerts(); });
+    if (act === 'ric' && r) ricDialog({ seed: ricSeedFromMov(r), onDone: () => renderBody() });
     if (act === 'dup' && r) {
       const id = store.newId();
-      store.save('mov', id, { ...r.data, ord: Date.now() });
+      const { ricId, ...copia } = r.data; // la copia è un movimento normale, non una scadenza
+      store.save('mov', id, { ...copia, ord: Date.now() });
       renderBody(id);
       toast('Movimento duplicato');
     }
