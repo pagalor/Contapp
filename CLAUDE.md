@@ -29,10 +29,11 @@ js/model.js             logica di dominio: totali, categorie, fondi, saldi, targ
 js/expr.js              parser degli importi con espressioni e formattazione dei numeri (it-IT)
 js/sync.js              autenticazione Supabase, pull e push, gestione della frase segreta
 js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle chiavi
+js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio), usato da Mese e Riepilogo
 js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo, anello
 js/ui.js                toast, finestre (dialog), conferme, tooltip, download, debounce
 js/dialogs.js           finestre condivise: ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente
-js/view-mese.js         pagina Mese: elenco modificabile, calendario, ricerca, trasferimenti, avvisi
+js/view-mese.js         pagina Mese: elenco modificabile, calendario, ricerca, trasferimenti, avvisi, categorie in fondo
 js/view-riepilogo.js    pagina Riepilogo: statistiche, grafici, torte per categoria, tag, soldi buttati
 js/view-patrimonio.js   pagina Patrimonio: saldi per fondo, andamento, rilevazioni storiche
 js/view-conti.js        pagina Fondi (configurazione) e dettaglio di un fondo (route #conti, #conto/<id>)

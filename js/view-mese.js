@@ -2,6 +2,7 @@ import * as store from './store.js';
 import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, fmtSigned, plain } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
+import { catBars, toggleCat } from './catstats.js';
 import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov } from './dialogs.js';
 
 let state = { y: 0, m: 0, q: '' };
@@ -106,7 +107,9 @@ export function renderBody(highlight) {
         <a class="btn primary" href="#altro">Importa lo storico</a></div>` : ''}
     ${ledger('in', 'Entrate', ins)}
     ${ledger('out', 'Uscite', outs)}
-    ${M.autoAttivo() || trs.length ? transfers(trs) : ''}`;
+    ${M.autoAttivo() || trs.length ? transfers(trs) : ''}
+    <section class="card"><h2>Uscite per categoria</h2><div id="mese-cat-out"></div></section>
+    <section class="card"><h2>Entrate per categoria</h2><div id="mese-cat-in"></div></section>`;
   updateSums();
   if (highlight) {
     const row = body.querySelector(`[data-id="${CSS.escape(highlight)}"]`);
@@ -257,12 +260,29 @@ function updateSums() {
     const e = root.querySelector(`[data-tot="${t}"]`);
     if (e) e.textContent = fmtEur(t === 'in' ? s.tin : s.tout);
   }
+  updateCats();
+}
+
+// Torte per categoria in fondo all'elenco: si aggiornano a ogni modifica, ricordando i dettagli aperti.
+function updateCats() {
+  const list = M.movsOf(state.y, state.m);
+  for (const t of ['out', 'in']) {
+    const box = root.querySelector(`#mese-cat-${t}`);
+    if (!box) continue;
+    const aperte = [...box.querySelectorAll('.catbar[aria-expanded="true"]')].map((b) => b.dataset.cat);
+    box.innerHTML = catBars(list, t);
+    for (const b of box.querySelectorAll('.catbar')) {
+      if (aperte.includes(b.dataset.cat)) toggleCat(b, list);
+    }
+  }
 }
 
 const rec = (row) => store.get(row.dataset.id);
 
 function bindBody(body) {
   body.addEventListener('click', async (e) => {
+    const cb = e.target.closest('.catbar');
+    if (cb) { toggleCat(cb, M.movsOf(state.y, state.m)); return; }
     const add = e.target.closest('[data-add]');
     if (add) { addRow(add.dataset.add); return; }
     if (e.target.closest('[data-addtr]')) {
