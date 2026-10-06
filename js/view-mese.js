@@ -3,7 +3,7 @@ import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, fmtSigned, plain } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
 import { catBars, toggleCat } from './catstats.js';
-import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov } from './dialogs.js';
+import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov, movDialog } from './dialogs.js';
 
 let state = { y: 0, m: 0, q: '' };
 let root = null;
@@ -507,8 +507,18 @@ function commitAmount(inp, row) {
   inp.value = fmt(val);
 }
 
+// Su telefono un movimento nuovo si scrive in una finestra con campi grandi e i pulsanti Annulla e Aggiungi
+const compact = () => matchMedia('(max-width: 700px)').matches;
+
 function addRow(tipo, day) {
   const t = today();
+  if (compact()) {
+    movDialog({
+      tipo, y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
+      onDone: (id) => renderBody(id),
+    });
+    return;
+  }
   const id = store.newId();
   const c = M.suggestConto(tipo, '');
   store.save('mov', id, {
@@ -641,6 +651,7 @@ function paintDay(per) {
     ${o.items.length ? o.items.map(calItem).join('') : '<p class="muted">Nessun movimento in questo giorno.</p>'}
     <div class="btn-row"><button class="btn small" data-calnew="out">+ Uscita</button><button class="btn small ghost" data-calnew="in">+ Entrata</button></div>`;
   $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {
+    if (compact()) { addRow(b.dataset.calnew, selDay); return; }
     setMode('lista');
     $$('.seg [data-mode]', root).forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.mode === 'lista')));
     renderBody();

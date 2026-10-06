@@ -97,6 +97,121 @@ export function splitEditor(rec, onDone) {
   paint();
 }
 
+// --- Nuovo movimento (da telefono): finestra a tutto schermo con campi grandi ---
+// Non salva niente finché non si preme "Aggiungi"; "Annulla" chiude senza lasciare tracce.
+export function movDialog({ tipo = 'out', y, m, d = null, onDone } = {}) {
+  const mese = `${M.MESI[m - 1]} ${y}`;
+  const max = new Date(y, m, 0).getDate();
+  let catAuto = true, contoAuto = true;
+  const catOpts = (t, sel) => M.cats(t).map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('');
+  const dlg = modal(`
+    <form class="dlg mov-dlg" method="dialog" novalidate>
+      <header class="dlg-head"><h2 data-title></h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
+      <div class="seg wide" role="group" aria-label="Tipo di movimento">
+        <button type="button" data-seg="out">Uscita</button>
+        <button type="button" data-seg="in">Entrata</button>
+      </div>
+      <label class="field big-amt"><span>Importo (€)</span>
+        <input name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" enterkeyhint="next">
+        <small class="amt-prev muted"></small>
+      </label>
+      <div class="opkeys-big">
+        ${['+', '−', '×', '÷', '(', ')'].map((k) => `<button type="button" tabindex="-1" data-op="${k}">${k}</button>`).join('')}
+      </div>
+      <label class="field"><span>Descrizione</span><input name="desc" list="dl-out" autocomplete="off" placeholder="Per esempio: spesa, stipendio…" enterkeyhint="done"></label>
+      <div class="form-grid">
+        <label class="field"><span>Giorno</span><input name="d" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="1–${max}" value="${d ?? ''}"></label>
+        <label class="field"><span>Categoria</span><select name="cat"></select></label>
+      </div>
+      <label class="field"><span data-accl></span><select name="acc"></select></label>
+      <div class="actions sticky-actions">
+        <button type="button" class="btn ghost" data-x>Annulla</button>
+        <button type="submit" class="btn primary" value="ok">Aggiungi</button>
+      </div>
+    </form>`, { sheet: true });
+  const f = $('form', dlg);
+  const prev = $('.amt-prev', f);
+  const t = () => f.dataset.tipo;
+
+  function setTipo(next) {
+    f.dataset.tipo = next;
+    $$('[data-seg]', f).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.seg === next)));
+    $('[data-title]', f).textContent = `${next === 'in' ? 'Nuova entrata' : 'Nuova uscita'} · ${mese}`;
+    $('[data-accl]', f).textContent = next === 'in' ? 'Ricevuto su' : 'Pagato con';
+    f.desc.setAttribute('list', 'dl-' + next);
+    catAuto = true; contoAuto = true;
+    f.cat.innerHTML = catOpts(next, M.fallbackCat(next));
+    suggest();
+  }
+  function suggest() {
+    const desc = f.desc.value.trim();
+    if (catAuto) { const s = M.suggestCat(t(), desc); if (s) f.cat.value = s; else if (!desc) f.cat.value = M.fallbackCat(t()); }
+    if (contoAuto) {
+      const c = M.suggestConto(t(), desc);
+      f.acc.innerHTML = '<option value="">Nessun fondo</option>' +
+        M.accounts().map((a) => `<option value="${a.id}"${a.id === c ? ' selected' : ''}>${esc(a.data.nome)}</option>`).join('');
+    }
+  }
+  function preview() {
+    try {
+      const p = parseAmount(f.amt.value);
+      prev.textContent = p && p.espr ? `= ${fmtEur(p.val)}` : '';
+      f.amt.classList.remove('err');
+    } catch { prev.textContent = ''; }
+  }
+
+  f.addEventListener('click', (e) => {
+    if (e.target.closest('[data-x]')) { dlg.close(); return; }
+    const tb = e.target.closest('[data-seg]');
+    if (tb) { setTipo(tb.dataset.seg); return; }
+    const op = e.target.closest('[data-op]');
+    if (op) {
+      const ch = { '−': '-', '×': '*', '÷': '/' }[op.dataset.op] || op.dataset.op;
+      const inp = f.amt;
+      const s = inp.selectionStart ?? inp.value.length, en = inp.selectionEnd ?? s;
+      let v = inp.value;
+      if (!v.startsWith('=') && /[+\-*/]/.test(ch)) v = '=' + v;
+      const off = v.length - inp.value.length;
+      inp.value = v.slice(0, s + off) + ch + v.slice(en + off);
+      inp.focus();
+      inp.setSelectionRange(s + off + 1, s + off + 1);
+      preview();
+    }
+  });
+  f.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-op]')) e.preventDefault(); });
+  f.amt.addEventListener('input', preview);
+  f.desc.addEventListener('change', suggest);
+  f.cat.addEventListener('change', () => { catAuto = false; });
+  f.acc.addEventListener('change', () => { contoAuto = false; });
+  f.amt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); f.desc.focus(); } });
+
+  f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    let p;
+    try { p = parseAmount(f.amt.value); } catch (err) { f.amt.classList.add('err'); f.amt.focus(); toast(err.message); return; }
+    if (!p) { f.amt.classList.add('err'); f.amt.focus(); toast("Scrivi l'importo."); return; }
+    let giorno = null;
+    const dv = f.d.value.trim();
+    if (dv) {
+      giorno = parseInt(dv, 10);
+      if (!(giorno >= 1 && giorno <= max)) { f.d.classList.add('err'); f.d.focus(); toast(`Il giorno deve essere tra 1 e ${max}`); return; }
+    }
+    const id = store.newId();
+    store.save('mov', id, {
+      y, m, d: giorno, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
+      cat: f.cat.value || M.fallbackCat(t()), catAuto, conti: f.acc.value ? [{ c: f.acc.value }] : [], contoAuto,
+      tags: [], note: null, escl: false, ord: Date.now(),
+    });
+    dlg.close();
+    toast(t() === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta');
+    onDone && onDone(id);
+  });
+
+  setTipo(tipo);
+  f.amt.focus();
+  return dlg;
+}
+
 // --- Trasferimento tra conti (nuovo o esistente) ---
 export function transferDialog({ rec = null, da = '', a = '', val = null, date = null, onDone } = {}) {
   const d0 = rec ? M.recDate(rec) : (date || M.todayIso());
