@@ -24,6 +24,7 @@ function draw() {
         <h1>Patrimonio</h1>
         <div class="btn-row">
           ${auto ? '<button class="btn ghost" data-act="trasf">Trasferimento</button>' : ''}
+          <button class="btn ghost" data-act="rilev">Rilevazione manuale</button>
           <a class="btn ${auto ? 'ghost' : 'primary'}" href="#conti">Fondi</a>
         </div>
       </header>
@@ -127,12 +128,13 @@ function historyHTML() {
   if (!snaps.length) return '';
   return `<details class="card history">
     <summary><h2>Rilevazioni storiche</h2><span class="muted">${snaps.length}</span></summary>
-    <p class="muted">Le fotografie del patrimonio che segnavi nell'Excel. Restano nel grafico per il periodo prima del calcolo automatico.</p>
+    <p class="muted">Le fotografie del patrimonio: quelle dell'Excel (restano nel grafico per il periodo prima del calcolo automatico) e le rilevazioni manuali che aggiungi tu.</p>
     <table class="tbl clickable"><thead><tr><th>Data</th><th class="num">Totale</th><th class="num">Variazione</th></tr></thead><tbody>
     ${snaps.slice().reverse().map((s, i, arr) => {
       const t = M.snapTotals(s).tot;
       const p = arr[i + 1] ? M.snapTotals(arr[i + 1]).tot : null;
-      return `<tr data-snap="${s.id}" tabindex="0"><td>${fmtDateShort(s.data.date)}</td>
+      const tag = s.data.scelta === 'manuale' ? 'saldi allineati alla rilevazione' : s.data.scelta === 'auto' ? 'solo confronto' : '';
+      return `<tr data-snap="${s.id}" tabindex="0"><td>${fmtDateShort(s.data.date)}${tag ? `<small class="snap-tag">${tag}</small>` : ''}</td>
         <td class="num">${fmt(t)}</td><td class="num ${p == null ? '' : t - p >= 0 ? 'pos' : 'neg'}">${p == null ? '' : fmtSigned(t - p)}</td></tr>`;
     }).join('')}
     </tbody></table></details>`;
@@ -140,47 +142,98 @@ function historyHTML() {
 
 function bind() {
   root.querySelector('[data-act="trasf"]')?.addEventListener('click', () => transferDialog({ onDone: draw }));
+  root.querySelector('[data-act="rilev"]')?.addEventListener('click', () => snapDialog(null));
   $$('tr[data-snap]', root).forEach((tr) => {
-    const open = () => snapEditor(store.get(tr.dataset.snap));
+    const open = () => snapDialog(store.get(tr.dataset.snap));
     tr.addEventListener('click', open);
     tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
   });
 }
 
-// Modifica di una rilevazione storica
-function snapEditor(snap) {
-  const vals = JSON.parse(JSON.stringify(snap.data.vals || {}));
+// Rilevazione manuale del portafoglio (nuova o esistente).
+// Dal giorno di partenza in poi si confronta con il calcolo automatico e si sceglie quale dei due vale da quel giorno.
+function snapDialog(snap) {
+  const id = snap ? snap.id : store.newId();
+  const vals = JSON.parse(JSON.stringify(snap?.data.vals || {}));
   const conts = M.accounts(true).filter((c) => vals[c.id] || !c.data.archiviato);
+  const scelta0 = snap?.data.scelta || 'auto';
   const dlg = modal(`
     <form class="dlg" method="dialog">
-      <header class="dlg-head"><h2>Rilevazione del ${fmtDateShort(snap.data.date)}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
-      <label class="field inline"><span>Data</span><input type="date" name="date" value="${snap.data.date}" required></label>
-      ${conts.map((c) => `<label class="snap-row"><span>${esc(c.data.nome)}</span>
-        <input class="amt" data-c="${c.id}" inputmode="decimal" value="${vals[c.id] ? fmt(vals[c.id].val) : ''}" placeholder="–"></label>`).join('')}
+      <header class="dlg-head"><h2>${snap ? 'Rilevazione del ' + fmtDateShort(snap.data.date) : 'Rilevazione manuale'}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
+      <p class="muted">Scrivi quanto c'è davvero in ogni fondo in un certo giorno. I fondi che lasci vuoti non vengono rilevati.</p>
+      <label class="field inline"><span>Data</span><input type="date" name="date" value="${snap?.data.date || M.todayIso()}" required></label>
+      ${conts.map((c) => `<div class="snap-item"><label class="snap-row"><span>${esc(c.data.nome)}</span>
+        <input class="amt" data-c="${c.id}" inputmode="decimal" value="${vals[c.id] ? fmt(vals[c.id].val) : ''}" placeholder="–"></label>
+        <small class="snap-cmp" data-cmp="${c.id}"></small></div>`).join('')}
       <p class="snap-total">Totale <b></b></p>
-      <div class="actions"><button type="button" class="btn ghost danger" data-del>Elimina</button><span class="spacer"></span>
+      <div class="snap-compare" hidden>
+        <p class="snap-sum"></p>
+        <fieldset class="snap-choice">
+          <legend>Da questa data, quale valore vuoi usare?</legend>
+          <label class="check"><input type="radio" name="scelta" value="auto"${scelta0 === 'auto' ? ' checked' : ''}>
+            <span><b>Il calcolo automatico</b><small>La rilevazione resta come confronto: i saldi non cambiano.</small></span></label>
+          <label class="check"><input type="radio" name="scelta" value="manuale"${scelta0 === 'manuale' ? ' checked' : ''}>
+            <span><b>La mia rilevazione</b><small>I fondi che hai compilato ripartono dai valori scritti qui: registro una correzione per ogni differenza.</small></span></label>
+        </fieldset>
+      </div>
+      <p class="snap-note muted" hidden></p>
+      <div class="actions">${snap ? '<button type="button" class="btn ghost danger" data-del>Elimina</button>' : ''}<span class="spacer"></span>
         <button type="button" class="btn ghost" data-x>Annulla</button><button class="btn primary" value="save">Salva</button></div>
     </form>`);
   const f = $('form', dlg);
-  const total = () => { $('.snap-total b', f).textContent = fmtEur(round2(Object.values(vals).reduce((s, v) => s + (v.val || 0), 0))); };
-  total();
+  const signed = (v) => `<span class="${v >= 0 ? 'pos' : 'neg'}">${fmtSigned(v)}</span>`;
+  const update = () => {
+    const date = f.date.value;
+    const conf = M.snapConfrontabile(date);
+    const cmp = conf ? M.confrontaRilevazione(date, vals, snap?.id) : null;
+    const bal = conf ? M.balances(date, { senzaSnap: snap?.id }) : null;
+    for (const c of conts) {
+      const inp = f.querySelector(`input[data-c="${c.id}"]`);
+      if (document.activeElement !== inp) inp.placeholder = conf ? fmt(bal.get(c.id) || 0) : '–';
+      const x = cmp?.righe.find((r) => r.c.id === c.id);
+      f.querySelector(`[data-cmp="${c.id}"]`).innerHTML = x ? `Calcolo automatico ${fmtEur(x.auto)} · ${Math.abs(x.diff) < 0.005 ? 'uguale' : signed(x.diff)}` : '';
+    }
+    $('.snap-total b', f).textContent = fmtEur(round2(Object.values(vals).reduce((t, v) => t + (v.val || 0), 0)));
+    const box = $('.snap-compare', f), note = $('.snap-note', f);
+    const hasDiff = !!cmp && cmp.righe.some((r) => Math.abs(r.diff) >= 0.005);
+    box.hidden = !hasDiff;
+    note.hidden = false;
+    if (!date) note.hidden = true;
+    else if (!M.autoAttivo()) note.textContent = 'Il calcolo automatico non è attivo: la rilevazione viene salvata come fotografia del patrimonio.';
+    else if (!conf) note.textContent = `Prima del ${fmtDateShort(M.cfg().inizio)} (data di partenza) non c'è un calcolo automatico con cui confrontare: la rilevazione resta una fotografia storica.`;
+    else if (!cmp.righe.length) note.textContent = 'Scrivi i saldi: l\'app li confronta con il calcolo automatico di quel giorno.';
+    else if (!hasDiff) note.textContent = 'La rilevazione coincide con il calcolo automatico.';
+    else note.hidden = true;
+    if (hasDiff) {
+      $('.snap-sum', f).innerHTML = `Rilevato <b>${fmtEur(cmp.rilevato)}</b> · calcolo automatico <b>${fmtEur(cmp.auto)}</b> · differenza ${signed(cmp.diff)}` +
+        (cmp.righe.length < conts.length ? '<small>Confronto sui soli fondi compilati.</small>' : '');
+    }
+  };
+  update();
+  f.date.addEventListener('input', update);
   f.addEventListener('focusin', (e) => { const c = e.target.dataset.c; if (c) { e.target.value = vals[c] ? (vals[c].espr || plain(vals[c].val)) : ''; e.target.select(); } });
   f.addEventListener('focusout', (e) => {
     const c = e.target.dataset.c; if (!c) return;
     try { const p = parseAmount(e.target.value); if (p) vals[c] = { val: p.val, espr: p.espr }; else delete vals[c]; } catch (err) { toast(err.message); }
-    e.target.value = vals[c] ? fmt(vals[c].val) : ''; total();
+    e.target.value = vals[c] ? fmt(vals[c].val) : '';
+    update();
   });
   f.addEventListener('click', async (e) => {
     if (e.target.closest('[data-x]')) dlg.close();
     if (e.target.closest('[data-del]')) {
-      if (!(await confirmBox('Eliminare questa rilevazione?', { ok: 'Elimina', danger: true }))) return;
-      store.remove(snap.id); dlg.close(); draw();
+      const msg = M.rettsOfSnap(snap.id).length
+        ? 'Eliminare questa rilevazione? Verranno tolte anche le correzioni che ha registrato sui saldi.'
+        : 'Eliminare questa rilevazione?';
+      if (!(await confirmBox(msg, { ok: 'Elimina', danger: true }))) return;
+      M.eliminaRilevazione(snap.id); dlg.close(); draw();
     }
   });
   f.addEventListener('submit', (e) => {
     if (e.submitter && e.submitter.value !== 'save') return;
     document.activeElement?.blur?.();
-    store.save('snap', snap.id, { ...snap.data, date: f.date.value, vals });
+    if (!Object.keys(vals).length) { e.preventDefault(); toast('Scrivi almeno un saldo.'); return; }
+    const r = M.salvaRilevazione(id, { date: f.date.value, vals, note: snap?.data.note ?? null, scelta: f.elements.scelta.value });
+    toast(r.scelta === 'manuale' && r.ritocchi ? `Saldi allineati alla rilevazione del ${fmtDateShort(f.date.value)}` : 'Rilevazione salvata');
     draw();
   });
 }

@@ -540,6 +540,18 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .split-check.ko { color: var(--warn); }
 .snap-row { display: grid; grid-template-columns: 1fr 9rem; align-items: center; gap: .6rem; padding: .2rem 0; }
 .snap-total { text-align: right; font-size: 1.1rem; margin: .8rem 0 0; }
+.snap-cmp { display: block; min-height: 0; text-align: right; font-size: .8rem; color: var(--muted); margin: -.1rem 0 .3rem; }
+.snap-cmp:empty { display: none; }
+.snap-tag { display: block; color: var(--muted); font-size: .75rem; }
+.snap-compare { margin-top: 1rem; padding: .8rem .9rem; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--hover); }
+.snap-sum { margin: 0 0 .7rem; }
+.snap-sum small { display: block; color: var(--muted); font-size: .8rem; margin-top: .2rem; }
+.snap-choice { border: 0; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.snap-choice legend { padding: 0; font-weight: 600; margin-bottom: .5rem; }
+.snap-choice .check { align-items: flex-start; }
+.snap-choice .check input { margin-top: .25rem; }
+.snap-choice small { display: block; color: var(--muted); font-size: .82rem; }
+.snap-note { margin: .8rem 0 0; font-size: .88rem; }
 .adj-diff { font-weight: 600; }
 
 #toast {

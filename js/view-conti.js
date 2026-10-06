@@ -212,7 +212,8 @@ export function renderConto(el, id) {
   el.querySelector('[data-act="adj"]')?.addEventListener('click', () => adjustDialog(id, draw));
   $$('[data-rett]', el).forEach((a) => a.addEventListener('click', async (e) => {
     e.preventDefault();
-    if (!(await confirmBox('Eliminare questa correzione del saldo?', { ok: 'Elimina', danger: true }))) return;
+    const daRilev = !!store.get(a.dataset.rett)?.data.snapId;
+    if (!(await confirmBox(daRilev ? 'Questa correzione è stata registrata da una rilevazione manuale. Eliminarla?' : 'Eliminare questa correzione del saldo?', { ok: 'Elimina', danger: true }))) return;
     store.remove(a.dataset.rett);
     draw();
   }));

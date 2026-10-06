@@ -260,6 +260,50 @@ export function migrate() {
   }
 }
 
+// Rilevazione manuale del portafoglio (snap): { date, vals: { idFondo: { val, espr } }, note, scelta }
+// scelta: assente = rilevazione storica; 'auto' = solo confronto, il calcolo automatico non cambia;
+//         'manuale' = dal giorno della rilevazione i saldi ripartono dai valori rilevati (correzioni `rett` con snapId).
+export const SNAP_SCELTE = ['auto', 'manuale'];
+export const snapConfrontabile = (date) => autoAttivo() && !!date && date >= cfg().inizio;
+export const rettsOfSnap = (snapId) => retts().filter((r) => r.data.snapId === snapId);
+
+// Confronto tra una rilevazione manuale e il calcolo automatico a fine giornata.
+// Considera solo i fondi rilevati: [{ c, rilevato, auto, diff }] più i totali sugli stessi fondi.
+export function confrontaRilevazione(date, vals, snapId = null) {
+  const bal = balances(date, { senzaSnap: snapId });
+  const righe = [];
+  let rilevato = 0, auto = 0;
+  for (const c of accounts(true)) {
+    const v = vals[c.id];
+    if (!v || typeof v.val !== 'number') continue;
+    const a = bal.get(c.id) || 0;
+    righe.push({ c, rilevato: v.val, auto: a, diff: round2(v.val - a) });
+    rilevato += v.val; auto += a;
+  }
+  return { righe, rilevato: round2(rilevato), auto: round2(auto), diff: round2(rilevato - auto) };
+}
+
+// Salva la rilevazione e, se si sceglie quella manuale, allinea i saldi dei fondi rilevati dal giorno stesso in poi
+export function salvaRilevazione(snapId, { date, vals, note = null, scelta = null }) {
+  const attive = snapConfrontabile(date);
+  const sc = attive && SNAP_SCELTE.includes(scelta) ? scelta : null;
+  for (const r of rettsOfSnap(snapId)) store.remove(r.id);
+  let ritocchi = 0;
+  if (sc === 'manuale') {
+    for (const x of confrontaRilevazione(date, vals, snapId).righe) {
+      if (Math.abs(x.diff) < 0.005) continue;
+      store.save('rett', store.newId(), { date, c: x.c.id, delta: x.diff, note: 'rilevazione manuale', snapId });
+      ritocchi++;
+    }
+  }
+  store.save('snap', snapId, { date, vals, note, ...(sc ? { scelta: sc } : {}) });
+  return { scelta: sc, ritocchi };
+}
+export function eliminaRilevazione(snapId) {
+  for (const r of rettsOfSnap(snapId)) store.remove(r.id);
+  store.remove(snapId);
+}
+
 export function snapshots() {
   return store.all('snap').sort((a, b) => a.data.date.localeCompare(b.data.date));
 }
@@ -335,7 +379,8 @@ export const retts = () => store.all('rett');
 
 // Tutte le variazioni dei conti dopo la data di partenza
 // { date, c, val (con segno), kind, id, desc }
-export function ledgerEntries() {
+// senzaSnap: id di una rilevazione manuale di cui ignorare le correzioni (serve a confrontarla con il calcolo automatico puro)
+export function ledgerEntries({ senzaSnap = null } = {}) {
   const inizio = cfg().inizio;
   if (!inizio) return [];
   const out = [];
@@ -368,6 +413,7 @@ export function ledgerEntries() {
   }
   for (const r of retts()) {
     if (r.data.date < inizio || typeof r.data.delta !== 'number') continue;
+    if (senzaSnap && r.data.snapId === senzaSnap) continue;
     out.push({ date: r.data.date, c: r.data.c, val: r.data.delta, kind: 'rett', id: r.id,
       desc: 'Correzione del saldo' + (r.data.note ? ': ' + r.data.note : ''), ord: r.updated_at });
   }
@@ -375,10 +421,10 @@ export function ledgerEntries() {
 }
 
 // Saldo di ogni conto (alla data asOf inclusa, oppure a oggi e oltre se omessa)
-export function balances(asOf) {
+export function balances(asOf, opts) {
   const map = new Map();
   for (const c of accounts(true)) map.set(c.id, c.data.saldoIniziale || 0);
-  for (const e of ledgerEntries()) {
+  for (const e of ledgerEntries(opts)) {
     if (asOf && e.date > asOf) continue;
     map.set(e.c, (map.get(e.c) || 0) + e.val);
   }
