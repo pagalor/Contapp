@@ -51,7 +51,7 @@ function autoHTML() {
   const tot = M.totaleGruppi(bal);
   const start = M.totaleGruppi(M.balances(inizio));
   const accs = M.accounts(true).filter((c) => !c.data.archiviato || Math.abs(bal.get(c.id) || 0) > 0.005);
-  const groups = groupsIn(new Set(accs.map((c) => c.id)));
+  const groups = groupsIn(new Set(accs.map((c) => c.id))).sort((a, b) => (tot.gruppi[b] || 0) - (tot.gruppi[a] || 0));
   const senza = M.senzaConto();
   const dt = M.debtTotals();
   return `
@@ -73,7 +73,7 @@ function autoHTML() {
     ${groups.map((g) => `
       <section class="acc-group">
         <h2><i class="sw ${g}"></i>${M.gruppoNome(g)}<span>${fmtEur(tot.gruppi[g] || 0)}</span></h2>
-        <div class="acc-list">${accs.filter((c) => c.data.gruppo === g).map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>
+        <div class="acc-list">${accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0)).map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>
       </section>`).join('')}`;
 }
 
