@@ -424,6 +424,7 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .hero-sub { margin: 0 0 .9rem; color: var(--muted); }
 .hero-sub span, .hero-sub b { font-weight: 650; }
 .hero-sub.neg b { color: var(--neg); }
+.hero-sub.over b { color: var(--pos); }
 .hero-split { margin: 0; display: flex; flex-wrap: wrap; gap: .6rem 2rem; }
 .hero-split dt { font-size: .82rem; color: var(--muted); }
 .hero-split dd { margin: .1rem 0 0; font-size: 1.1rem; font-weight: 650; }
@@ -446,6 +447,14 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .acc.below { border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
 .acc.below .acc-track span { background: var(--warn); }
 .acc.below .acc-status { color: var(--warn); font-weight: 650; }
+/* Oltre il target: verde, con la parte eccedente a strisce */
+.acc.over { border-color: color-mix(in srgb, var(--in) 40%, transparent); background: color-mix(in srgb, var(--in) 6%, var(--surface)); }
+.acc.over .acc-track span {
+  background: linear-gradient(90deg, var(--in) var(--tp, 100%), transparent var(--tp, 100%)),
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--in) 55%, transparent) 0 3px, transparent 3px 6px);
+}
+.acc.over .acc-status { color: var(--in); font-weight: 650; white-space: normal; }
+.acc.over .acc-status b { white-space: nowrap; }
 details.history > summary { display: flex; align-items: center; gap: .6rem; cursor: pointer; list-style: none; }
 details.history > summary::-webkit-details-marker { display: none; }
 details.history > summary::after { content: "+"; margin-left: auto; color: var(--muted); font-size: 1.2rem; }

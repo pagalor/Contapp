@@ -78,18 +78,20 @@ function autoHTML() {
 
 function accCard(c, v) {
   const t = c.data.obiettivo;
-  let status = '', cls = '', pct = 0;
+  let status = '', cls = '', pct = 0, tp = 100;
   if (typeof t === 'number') {
     const diff = round2(v - t);
     pct = t > 0 ? Math.max(0, Math.min(100, (v / t) * 100)) : 100;
     if (diff < -0.005) { status = `Mancano ${fmtEur(-diff)}`; cls = 'below'; }
-    else if (diff > 0.005) status = `${fmtEur(diff)} oltre il target`;
-    else status = 'Al target';
+    else if (diff > 0.005) {
+      status = `<b>▲ ${fmtEur(diff)}</b> oltre il target`; cls = 'over';
+      tp = v > 0 ? Math.max(0, Math.min(100, (t / v) * 100)) : 100;
+    } else status = 'Al target';
   }
   return `<a class="acc ${cls}" href="#conto/${c.id}">
     <span class="acc-name">${esc(c.data.nome)}</span>
     <span class="acc-bal">${fmtEur(v)}</span>
-    ${typeof t === 'number' ? `<span class="acc-track"><span style="width:${pct}%"></span></span>
+    ${typeof t === 'number' ? `<span class="acc-track"><span style="width:${cls === 'over' ? 100 : pct}%${cls === 'over' ? `;--tp:${tp.toFixed(1)}%` : ''}"></span></span>
       <span class="acc-target">Target ${fmtEur(t)}</span><span class="acc-status">${status}</span>` : ''}
   </a>`;
 }
