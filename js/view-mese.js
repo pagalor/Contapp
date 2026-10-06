@@ -16,7 +16,7 @@ const mode = () => { try { return localStorage.getItem(MODE_KEY) === 'cal' ? 'ca
 const setMode = (m) => { try { localStorage.setItem(MODE_KEY, m); } catch {} };
 let selDay = null;
 const openCal = new Set(); // movimenti del calendario con le voci extra aperte
-const ROW = '.row, .cal-item'; // una riga dell'elenco o una voce del calendario
+const ROW = '.row'; // una riga dei movimenti, nell'elenco o nel calendario (qui senza il giorno, classe `nodate`)
 
 export function render(el, { y, m, q = '', highlight } = {}) {
   root = el;
@@ -170,21 +170,22 @@ function tagLine(d) {
 
 const PENCIL = '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
 
-function rowHTML(r) {
+// `nodate`: nel calendario il giorno è già indicato dalla data scelta; `open`: voci extra già aperte
+function rowHTML(r, { nodate = false, open = false } = {}) {
   const d = r.data;
   const cat = M.catById(d.cat);
   const flags = rowFlags(r);
   const fondo = d.conti?.length ? M.contiLabel(r) : flags.includes('no-acc') ? 'Scegli il fondo' : '—';
   return `
-    <div class="row${flags}" data-id="${r.id}" style="--cat:${cat?.data.colore || 'transparent'}" tabindex="0" aria-expanded="false">
-      <span class="c-day">${d.d ?? '–'}</span>
+    <div class="row t-${d.tipo}${nodate ? ' nodate' : ''}${flags}${open ? ' open' : ''}" data-id="${r.id}" style="--cat:${cat?.data.colore || 'transparent'}" tabindex="0" aria-expanded="${open}">
+      ${nodate ? '' : `<span class="c-day">${d.d ?? '–'}</span>`}
       <span class="c-amt"${d.espr ? ` title="${esc(d.espr)}"` : ''}>${fmt(d.val)}</span>
       <span class="c-desc${d.desc ? '' : ' empty'}">${esc(d.desc || 'Senza descrizione')}</span>
       <span class="c-cat"><i></i><span class="c-lbl">${esc(cat ? M.catLabel(cat) : '(categoria eliminata)')}</span></span>
       <span class="c-acc"><span class="c-lbl">${esc(fondo)}</span></span>
       <button class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
       <div class="tagline">${tagLine(d)}</div>
-      <div class="details" hidden></div>
+      <div class="details"${open ? '' : ' hidden'}>${open ? detailsHTML(r) : ''}</div>
     </div>`;
 }
 
@@ -206,12 +207,12 @@ function detailsHTML(r) {
 }
 
 function replaceRow(id, open = false) {
-  const old = root.querySelector(`${ROW.split(', ').map((c) => `${c}[data-id="${CSS.escape(id)}"]`).join(', ')}`);
+  const old = root.querySelector(`.row[data-id="${CSS.escape(id)}"]`);
   const r = store.get(id);
   if (!old || !r || !old.parentNode) return;
-  if (old.classList.contains('cal-item')) { if (open) toggleDetails(old, true); return; } // nel calendario basta ridisegnare le voci extra
-  old.outerHTML = rowHTML(r);
-  if (open) toggleDetails(root.querySelector(`.row[data-id="${CSS.escape(id)}"]`), true);
+  const nodate = old.classList.contains('nodate');
+  old.outerHTML = rowHTML(r, { nodate, open });
+  if (nodate) { if (open) openCal.add(id); else openCal.delete(id); }
 }
 
 // Mostra o nasconde le voci extra (tag, nota, duplica…) di un movimento
@@ -220,9 +221,9 @@ function toggleDetails(row, force) {
   const open = force ?? det.hidden;
   if (open) det.innerHTML = detailsHTML(store.get(row.dataset.id));
   det.hidden = !open;
-  (row.classList.contains('row') ? row : $('[data-act="more"]', row))?.setAttribute('aria-expanded', String(open));
+  row.setAttribute('aria-expanded', String(open));
   row.classList.toggle('open', open);
-  if (row.classList.contains('cal-item')) { if (open) openCal.add(row.dataset.id); else openCal.delete(row.dataset.id); }
+  if (row.classList.contains('nodate')) { if (open) openCal.add(row.dataset.id); else openCal.delete(row.dataset.id); }
 }
 
 function transfers(list) {
@@ -299,7 +300,6 @@ function bindBody(body) {
     if (row && !act && !e.target.closest('.details, button, a, input, select, textarea, label')) { toggleDetails(row); return; }
     if (!row || !act || act === 'move') return;
     const r = rec(row);
-    if (act === 'more') toggleDetails(row);
     if (act === 'edit' && r) {
       movDialog({
         rec: r,
@@ -352,7 +352,7 @@ function bindBody(body) {
       row.classList.toggle('excluded', e.target.checked);
     }
     updateSums();
-    if (f === 'escl' && row.classList.contains('cal-item')) renderBody(); // il calendario mostra i totali di ogni giorno
+    if (f === 'escl' && row.classList.contains('nodate')) renderBody(); // il calendario mostra i totali di ogni giorno
   });
 
   body.addEventListener('input', (e) => {
@@ -389,7 +389,7 @@ function addTag(row, raw, refocus = false) {
   }
   store.patch(r.id, { tags });
   replaceRow(r.id, true);
-  if (refocus) root.querySelector(`${ROW.split(', ').map((c) => `${c}[data-id="${CSS.escape(r.id)}"] [data-tagin]`).join(', ')}`)?.focus();
+  if (refocus) root.querySelector(`.row[data-id="${CSS.escape(r.id)}"] [data-tagin]`)?.focus();
 }
 
 // "+ Aggiungi uscita/entrata" apre una finestra come quella dei trasferimenti, con i pulsanti Annulla e Aggiungi
@@ -503,21 +503,8 @@ function renderCalendar(body) {
   });
 }
 
-// Voce del calendario: un tocco apre le voci extra, la matita apre la finestra di modifica
-function calItem(r) {
-  const d = r.data;
-  const cat = M.catById(d.cat);
-  const open = openCal.has(r.id);
-  return `<div class="cal-item t-${d.tipo}${d.escl ? ' excluded' : ''}${open ? ' open' : ''}" data-id="${r.id}">
-    <button type="button" class="ci-head" data-act="more" aria-expanded="${open}">
-      <span class="ci-emoji" style="--c:${cat?.data.colore || '#999'}">${esc(cat?.data.emoji || '')}</span>
-      <span class="ci-desc">${esc(d.desc || '(senza descrizione)')}<small>${esc(cat?.data.nome || '')}${d.conti?.length ? ', ' + esc(M.contiLabel(r)) : ''}</small></span>
-      <span class="ci-amt">${d.tipo === 'in' ? '+' : '−'}${fmt(d.val)}</span>
-    </button>
-    <button type="button" class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
-    <div class="details"${open ? '' : ' hidden'}>${open ? detailsHTML(r) : ''}</div>
-  </div>`;
-}
+// Voce del calendario: identica alla riga dell'elenco, senza il giorno
+const calItem = (r) => rowHTML(r, { nodate: true, open: openCal.has(r.id) });
 
 function paintDay(per) {
   const panel = $('#cal-panel', root);
