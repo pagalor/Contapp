@@ -15,12 +15,15 @@ const MODE_KEY = 'contabilita.meseView';
 const mode = () => { try { return localStorage.getItem(MODE_KEY) === 'cal' ? 'cal' : 'lista'; } catch { return 'lista'; } };
 const setMode = (m) => { try { localStorage.setItem(MODE_KEY, m); } catch {} };
 let selDay = null;
+const openCal = new Set(); // movimenti del calendario con le voci extra aperte
+const ROW = '.row, .cal-item'; // una riga dell'elenco o una voce del calendario
 
 export function render(el, { y, m, q = '', highlight } = {}) {
   root = el;
   const t = today();
   state = { y: y || t.y, m: m || t.m, q };
   selDay = state.y === t.y && state.m === t.m ? t.d : null;
+  openCal.clear();
   if (highlight && mode() === 'cal') setMode('lista');
   const isNow = state.y === t.y && state.m === t.m;
   el.innerHTML = `
@@ -184,6 +187,8 @@ function tagLine(d) {
   return (d.ricId ? '<a class="tag ric" href="#ricorrenti" title="Aggiunto in automatico da un movimento ricorrente">↻ Ricorrente</a>' : '') + (d.tags || []).map((t) => `<a class="tag" href="#tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join('');
 }
 
+const PENCIL = '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
+
 function rowHTML(r) {
   const d = r.data;
   const cat = M.catById(d.cat);
@@ -194,9 +199,7 @@ function rowHTML(r) {
       <input class="c-desc" data-f="desc" list="dl-${d.tipo}" autocomplete="off" value="${esc(d.desc)}" placeholder="Descrizione" aria-label="Descrizione">
       <span class="c-cat"><i></i><select data-f="cat" aria-label="Categoria">${catOptions(d.tipo, d.cat)}</select></span>
       <span class="c-acc"><select data-f="acc" aria-label="${d.tipo === 'in' ? 'Ricevuto su' : 'Pagato con'}">${accOptions(r)}</select></span>
-      <button class="c-more" data-act="more" aria-label="Dettagli" aria-expanded="false">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-      </button>
+      <button class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
       <div class="tagline">${tagLine(d)}</div>
       <div class="opkeys" aria-hidden="true">
         ${['+', '−', '×', '÷', '(', ')'].map((k) => `<button type="button" tabindex="-1" data-op="${k}">${k}</button>`).join('')}
@@ -223,20 +226,23 @@ function detailsHTML(r) {
 }
 
 function replaceRow(id, open = false) {
-  const old = root.querySelector(`.row[data-id="${CSS.escape(id)}"]`);
+  const old = root.querySelector(`${ROW.split(', ').map((c) => `${c}[data-id="${CSS.escape(id)}"]`).join(', ')}`);
   const r = store.get(id);
   if (!old || !r || !old.parentNode) return;
+  if (old.classList.contains('cal-item')) { if (open) toggleDetails(old, true); return; } // nel calendario basta ridisegnare le voci extra
   old.outerHTML = rowHTML(r);
   if (open) toggleDetails(root.querySelector(`.row[data-id="${CSS.escape(id)}"]`), true);
 }
 
+// Mostra o nasconde le voci extra (tag, nota, duplica…) di un movimento
 function toggleDetails(row, force) {
   const det = $('.details', row);
   const open = force ?? det.hidden;
   if (open) det.innerHTML = detailsHTML(store.get(row.dataset.id));
   det.hidden = !open;
-  $('[data-act="more"]', row).setAttribute('aria-expanded', String(open));
+  $('[data-act="more"]', row)?.setAttribute('aria-expanded', String(open));
   row.classList.toggle('open', open);
+  if (row.classList.contains('cal-item')) { if (open) openCal.add(row.dataset.id); else openCal.delete(row.dataset.id); }
 }
 
 function transfers(list) {
@@ -303,17 +309,29 @@ function bindBody(body) {
     if (op) { insertOp(op); return; }
     const rmtag = e.target.closest('[data-rmtag]');
     if (rmtag) {
-      const row = rmtag.closest('.row'); const r = rec(row);
+      const row = rmtag.closest(ROW); const r = rec(row);
       store.patch(r.id, { tags: (r.data.tags || []).filter((t) => t !== rmtag.dataset.rmtag) });
       replaceRow(r.id, true);
       return;
     }
     const actEl = e.target.closest('[data-act]');
     const act = actEl?.dataset.act;
-    const row = e.target.closest('.row');
+    const row = e.target.closest(ROW);
+    // Un tocco sulla riga (fuori dai campi e dai pulsanti) apre o chiude le voci extra
+    if (row && !act && !e.target.closest('.details, button, a, input, select, textarea, label')) { toggleDetails(row); return; }
     if (!row || !act || act === 'move') return;
     const r = rec(row);
     if (act === 'more') toggleDetails(row);
+    if (act === 'edit' && r) {
+      movDialog({
+        rec: r,
+        onDone: (id, data) => {
+          if (!data || (data.y === state.y && data.m === state.m)) { renderBody(id ?? undefined); return; }
+          renderBody();
+          toast(`Spostato in ${M.MESI[data.m - 1]} ${data.y}`, { action: 'Vai', onAction: () => { location.hash = `#mese/${ymHash(data.y, data.m)}/${id}`; } });
+        },
+      });
+    }
     if (act === 'split' && r) splitEditor(r, () => { replaceRow(r.id); renderAlerts(); });
     if (act === 'ric' && r) ricDialog({ seed: ricSeedFromMov(r), onDone: () => renderBody() });
     if (act === 'dup' && r) {
@@ -337,6 +355,8 @@ function bindBody(body) {
 
   body.addEventListener('focusin', (e) => {
     const inp = e.target;
+    const riga = inp.closest?.('.row');
+    if (riga && inp.matches('input, select') && !inp.closest('.details') && !riga.classList.contains('open')) toggleDetails(riga, true);
     if (inp.dataset?.f !== 'amt') return;
     const r = rec(inp.closest('.row'));
     if (!r) return;
@@ -365,7 +385,7 @@ function bindBody(body) {
 
   body.addEventListener('change', (e) => {
     const f = e.target.dataset?.f;
-    const row = e.target.closest('.row');
+    const row = e.target.closest(ROW);
     if (!row || !f || f === 'amt') return;
     const r = rec(row);
     if (!r) return;
@@ -422,12 +442,13 @@ function bindBody(body) {
       row.classList.toggle('excluded', e.target.checked);
     }
     updateSums();
+    if (f === 'escl' && row.classList.contains('cal-item')) renderBody(); // il calendario mostra i totali di ogni giorno
   });
 
   body.addEventListener('input', (e) => {
     if (e.target.dataset?.act !== 'move') return;
     const [y, m] = e.target.value.split('-').map(Number);
-    const r = rec(e.target.closest('.row'));
+    const r = rec(e.target.closest(ROW));
     if (!r || !y || !m || (y === r.data.y && m === r.data.m)) return;
     const d = r.data.d && r.data.d <= daysIn(y, m) ? r.data.d : null;
     store.patch(r.id, { y, m, d });
@@ -440,7 +461,7 @@ function bindBody(body) {
       e.preventDefault();
       const v = e.target.value;
       e.target.value = '';
-      if (v.trim()) addTag(e.target.closest('.row'), v, true);
+      if (v.trim()) addTag(e.target.closest(ROW), v, true);
       return;
     }
     if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA') return;
@@ -461,7 +482,7 @@ function bindBody(body) {
 
 function refreshRowState(row) {
   const r = rec(row);
-  if (!r) return;
+  if (!r || !row.classList.contains('row')) return;
   const keepOpen = row.classList.contains('open');
   row.className = 'row' + rowFlags(r) + (keepOpen ? ' open' : '');
 }
@@ -476,7 +497,7 @@ function addTag(row, raw, refocus = false) {
   }
   store.patch(r.id, { tags });
   replaceRow(r.id, true);
-  if (refocus) root.querySelector(`.row[data-id="${CSS.escape(r.id)}"] [data-tagin]`)?.focus();
+  if (refocus) root.querySelector(`${ROW.split(', ').map((c) => `${c}[data-id="${CSS.escape(r.id)}"] [data-tagin]`).join(', ')}`)?.focus();
 }
 
 function insertOp(op) {
@@ -639,14 +660,20 @@ function renderCalendar(body) {
   });
 }
 
+// Voce del calendario: un tocco apre le voci extra, la matita apre la finestra di modifica
 function calItem(r) {
   const d = r.data;
   const cat = M.catById(d.cat);
-  return `<a class="cal-item t-${d.tipo}${d.escl ? ' excluded' : ''}" href="#mese/${ymHash(d.y, d.m)}/${r.id}">
-    <span class="ci-emoji" style="--c:${cat?.data.colore || '#999'}">${esc(cat?.data.emoji || '')}</span>
-    <span class="ci-desc">${esc(d.desc || '(senza descrizione)')}<small>${esc(cat?.data.nome || '')}${d.conti?.length ? ', ' + esc(M.contiLabel(r)) : ''}</small></span>
-    <span class="ci-amt">${d.tipo === 'in' ? '+' : '−'}${fmt(d.val)}</span>
-  </a>`;
+  const open = openCal.has(r.id);
+  return `<div class="cal-item t-${d.tipo}${d.escl ? ' excluded' : ''}${open ? ' open' : ''}" data-id="${r.id}">
+    <button type="button" class="ci-head" data-act="more" aria-expanded="${open}">
+      <span class="ci-emoji" style="--c:${cat?.data.colore || '#999'}">${esc(cat?.data.emoji || '')}</span>
+      <span class="ci-desc">${esc(d.desc || '(senza descrizione)')}<small>${esc(cat?.data.nome || '')}${d.conti?.length ? ', ' + esc(M.contiLabel(r)) : ''}</small></span>
+      <span class="ci-amt">${d.tipo === 'in' ? '+' : '−'}${fmt(d.val)}</span>
+    </button>
+    <button type="button" class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
+    <div class="details"${open ? '' : ' hidden'}>${open ? detailsHTML(r) : ''}</div>
+  </div>`;
 }
 
 function paintDay(per) {
@@ -663,5 +690,4 @@ function paintDay(per) {
   $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {
     addRow(b.dataset.calnew, selDay);
   }));
-  $$('.cal-item', panel.parentElement).forEach((a) => a.addEventListener('click', () => setMode('lista')));
 }

@@ -32,8 +32,8 @@ js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle ch
 js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio), usato da Mese e Riepilogo
 js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo, anello
 js/ui.js                toast, finestre (dialog), conferme, tooltip, download, debounce
-js/dialogs.js           finestre condivise: ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente
-js/view-mese.js         pagina Mese: elenco modificabile, calendario, ricerca, trasferimenti, avvisi, categorie in fondo
+js/dialogs.js           finestre condivise: movimento (nuovo e modifica), ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente
+js/view-mese.js         pagina Mese: elenco modificabile, calendario, ricerca, trasferimenti, avvisi, categorie in fondo. Toccando un movimento (elenco o calendario) si aprono le voci extra; la matita apre la finestra di modifica (`movDialog`), la stessa del "+ Aggiungi"
 js/view-riepilogo.js    pagina Riepilogo: statistiche, grafici, torte per categoria, tag, soldi buttati
 js/view-patrimonio.js   pagina Patrimonio: saldi per fondo, andamento, rilevazioni storiche
 js/view-conti.js        pagina Fondi (configurazione) e dettaglio di un fondo (route #conti, #conto/<id>)

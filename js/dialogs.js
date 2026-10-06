@@ -98,15 +98,18 @@ export function splitEditor(rec, onDone) {
   paint();
 }
 
-// --- Nuovo movimento (da telefono): finestra a tutto schermo con campi grandi ---
-// Non salva niente finché non si preme "Aggiungi"; "Annulla" chiude senza lasciare tracce.
-// `seed` precompila i campi (serve a "Aggiungi e duplica").
-export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } = {}) {
+// --- Movimento: finestra per aggiungerne uno nuovo o modificarne uno esistente ---
+// Non salva niente finché non si preme "Aggiungi" (o "Salva"); "Annulla" chiude senza lasciare tracce.
+// `rec` è il movimento da modificare; `seed` precompila i campi di un nuovo movimento (serve a "Aggiungi e duplica").
+export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = null, onDone } = {}) {
+  const isEdit = !!rec;
+  const init = rec ? rec.data : seed;
+  if (rec) ({ tipo, y, m, d } = rec.data);
   const ymVal = (yy, mm) => `${yy}-${String(mm).padStart(2, '0')}`;
   const daysIn = (yy, mm) => new Date(yy, mm, 0).getDate();
-  let catAuto = !seed, contoAuto = !seed;
-  let tags = [...(seed?.tags || [])];
-  let split = seed?.conti?.length > 1 ? seed.conti.map((x) => ({ ...x })) : null; // ripartizione su più fondi, se scelta
+  let catAuto = rec ? rec.data.catAuto !== false : !seed, contoAuto = rec ? rec.data.contoAuto !== false : !seed;
+  let tags = [...(init?.tags || [])];
+  let split = init?.conti?.length > 1 ? init.conti.map((x) => ({ ...x })) : null; // ripartizione su più fondi, se scelta
   const catOpts = (t, sel) => M.cats(t).map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('');
   const dlg = modal(`
     <form class="dlg mov-dlg" method="dialog" novalidate>
@@ -130,16 +133,17 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
       <label class="field"><span data-accl></span><select name="acc"></select></label>
       <h3 class="mov-more">Altre opzioni</h3>
       <div class="field"><span>Tag</span><div data-tags></div></div>
-      <label class="field"><span>Nota</span><textarea name="note" rows="2">${esc(seed?.note || '')}</textarea></label>
-      <label class="check big-check"><input type="checkbox" name="escl"${seed?.escl ? ' checked' : ''}> Escludi dai totali di entrate e uscite (es. entrate straordinarie)</label>
+      <label class="field"><span>Nota</span><textarea name="note" rows="2">${esc(init?.note || '')}</textarea></label>
+      <label class="check big-check"><input type="checkbox" name="escl"${init?.escl ? ' checked' : ''}> Escludi dai totali di entrate e uscite (es. entrate straordinarie)</label>
       <label class="field"><span>Mese</span><input type="month" name="month" value="${ymVal(y, m)}"></label>
       <div class="detail-actions big-actions">
-        <button type="button" class="btn ghost" data-dup>Aggiungi e duplica</button>
-        <button type="button" class="btn ghost" data-ric>Rendi ricorrente…</button>
+        <button type="button" class="btn ghost" data-dup>${isEdit ? 'Salva e duplica' : 'Aggiungi e duplica'}</button>
+        ${rec?.data.ricId ? '' : '<button type="button" class="btn ghost" data-ric>Rendi ricorrente…</button>'}
+        ${isEdit ? '<button type="button" class="btn ghost danger" data-del>Elimina</button>' : ''}
       </div>
       <div class="actions sticky-actions">
         <button type="button" class="btn ghost" data-x>Annulla</button>
-        <button type="submit" class="btn primary" value="ok">Aggiungi</button>
+        <button type="submit" class="btn primary" value="ok">${isEdit ? 'Salva' : 'Aggiungi'}</button>
       </div>
     </form>`);
   const f = $('form', dlg);
@@ -163,27 +167,31 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
     }
     paintTags(focus);
   }
-  function setTipo(next) {
+  // `keep`: si apre un movimento che ha già i suoi valori, quindi niente suggerimenti
+  function setTipo(next, keep = false) {
     f.dataset.tipo = next;
     $$('[data-seg]', f).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.seg === next)));
     setTitle();
     $('[data-accl]', f).textContent = next === 'in' ? 'Ricevuto su' : 'Pagato con';
     f.desc.setAttribute('list', 'dl-' + next);
+    if (keep) { f.cat.innerHTML = catOpts(next, M.catById(init.cat) ? init.cat : M.fallbackCat(next)); return; }
     catAuto = true; contoAuto = true;
     f.cat.innerHTML = catOpts(next, M.fallbackCat(next));
     suggest();
   }
   // Elenco dei fondi; con una ripartizione attiva mostra anche la voce "Diviso tra N fondi"
   function accOpts(sel) {
+    const list = M.accounts();
     return '<option value="">Nessun fondo</option>' +
-      M.accounts().map((a) => `<option value="${a.id}"${a.id === sel ? ' selected' : ''}>${esc(a.data.nome)}</option>`).join('') +
+      list.map((a) => `<option value="${a.id}"${a.id === sel ? ' selected' : ''}>${esc(a.data.nome)}</option>`).join('') +
+      (sel && !list.some((a) => a.id === sel) ? `<option value="${sel}" selected>${esc(M.accName(sel))}</option>` : '') +
       (split ? `<option value="__split" selected>Diviso tra ${split.length} fondi</option>` : '') +
       `<option value="__new">${split ? 'Modifica ripartizione…' : 'Dividi tra più fondi…'}</option>`;
   }
   function suggest() {
     const desc = f.desc.value.trim();
-    if (catAuto) { const s = M.suggestCat(t(), desc); if (s) f.cat.value = s; else if (!desc) f.cat.value = M.fallbackCat(t()); }
-    if (contoAuto && !split) f.acc.innerHTML = accOpts(M.suggestConto(t(), desc));
+    if (catAuto) { const s = M.suggestCat(t(), desc, rec?.id); if (s) f.cat.value = s; else if (!desc) f.cat.value = M.fallbackCat(t()); }
+    if (contoAuto && !split) f.acc.innerHTML = accOpts(M.suggestConto(t(), desc, rec?.id));
   }
   function preview() {
     try {
@@ -214,17 +222,18 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
     return {
       y: mm.y, m: mm.m, d: giorno, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
       cat: f.cat.value || M.fallbackCat(t()), catAuto, conti, contoAuto,
-      tags: [...tags], note: f.note.value.trim() || null, escl: f.escl.checked, ord: Date.now(),
+      tags: [...tags], note: f.note.value.trim() || null, escl: f.escl.checked,
     };
   }
-  function save(data) {
+  // Un movimento nuovo (anche come copia di quello aperto)
+  function create(data) {
     const id = store.newId();
-    store.save('mov', id, data);
-    toast(data.tipo === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta');
+    const { ricId, ...copia } = data; // la copia è un movimento normale, non una scadenza
+    store.save('mov', id, { ...copia, ord: Date.now() });
     return id;
   }
 
-  f.addEventListener('click', (e) => {
+  f.addEventListener('click', async (e) => {
     if (e.target.closest('[data-x]')) { dlg.close(); return; }
     const tb = e.target.closest('[data-seg]');
     if (tb) { setTipo(tb.dataset.seg); return; }
@@ -233,8 +242,17 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
     if (e.target.closest('[data-dup]')) {
       const data = read();
       if (!data) return;
-      const id = save(data);
+      if (isEdit) {
+        store.patch(rec.id, data);
+        const id = create(data);
+        dlg.close();
+        toast('Movimento duplicato');
+        onDone && onDone(id, data);
+        return;
+      }
+      const id = create(data);
       dlg.close();
+      toast(data.tipo === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta');
       onDone && onDone(id, data);
       movDialog({ tipo: data.tipo, y: data.y, m: data.m, d: data.d, seed: data, onDone });
       return;
@@ -242,7 +260,17 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
     if (e.target.closest('[data-ric]')) {
       const data = read();
       if (!data) return;
-      ricDialog({ seed: ricSeedFromMov({ data }), onDone: () => toast('Movimento ricorrente salvato. Ricorda di premere Aggiungi.') });
+      ricDialog({ seed: ricSeedFromMov({ data }), onDone: () => toast(`Movimento ricorrente salvato. Ricorda di premere ${isEdit ? 'Salva' : 'Aggiungi'}.`) });
+      return;
+    }
+    if (e.target.closest('[data-del]')) {
+      const ok = await confirmBox(`Eliminare "${rec.data.desc || 'movimento senza descrizione'}" (${fmtEur(rec.data.val)})?`, { ok: 'Elimina', danger: true });
+      if (!ok) return;
+      const backup = { ...rec.data };
+      store.remove(rec.id);
+      dlg.close();
+      onDone && onDone(null, null);
+      toast('Movimento eliminato', { action: 'Annulla', onAction: () => { store.save('mov', rec.id, backup); onDone && onDone(rec.id, backup); } });
       return;
     }
     const op = e.target.closest('[data-op]');
@@ -290,29 +318,36 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
   });
   f.month.addEventListener('change', () => { f.d.placeholder = `1–${daysIn(mese().y, mese().m)}`; setTitle(); });
   function setTitle() {
-    $('[data-title]', f).textContent = `${t() === 'in' ? 'Nuova entrata' : 'Nuova uscita'} · ${M.MESI_BREVI[mese().m - 1]} ${mese().y}`;
+    $('[data-title]', f).textContent = `${isEdit ? (t() === 'in' ? 'Modifica entrata' : 'Modifica uscita') : (t() === 'in' ? 'Nuova entrata' : 'Nuova uscita')} · ${M.MESI_BREVI[mese().m - 1]} ${mese().y}`;
   }
 
   f.addEventListener('submit', (e) => {
     e.preventDefault();
     const data = read();
     if (!data) return;
-    const id = save(data);
+    let id;
+    if (isEdit) {
+      id = rec.id;
+      store.patch(id, data);
+      toast('Modifiche salvate');
+    } else {
+      id = create(data);
+      toast(data.tipo === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta');
+    }
     dlg.close();
     onDone && onDone(id, data);
   });
 
   paintTags();
-  setTipo(tipo);
+  setTipo(tipo, !!init);
   f.d.placeholder = `1–${daysIn(y, m)}`;
-  if (seed) {
-    f.amt.value = seed.espr || String(seed.val).replace('.', ',');
-    f.desc.value = seed.desc || '';
-    f.cat.value = seed.cat || f.cat.value;
-    f.acc.innerHTML = accOpts(split ? null : seed.conti?.[0]?.c);
+  if (init) {
+    f.amt.value = init.espr || plain(init.val);
+    f.desc.value = init.desc || '';
+    f.acc.innerHTML = accOpts(split ? null : init.conti?.[0]?.c);
     preview();
   }
-  f.amt.focus();
+  if (!isEdit) f.amt.focus();
   return dlg;
 }
 
