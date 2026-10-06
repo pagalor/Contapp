@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import * as M from './model.js';
-import { parseAmount, fmt, fmtEur, fmtSigned, plain } from './expr.js';
+import { fmt, fmtEur, fmtSigned } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
 import { catBars, toggleCat } from './catstats.js';
 import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov, movDialog } from './dialogs.js';
@@ -156,25 +156,6 @@ function ledger(tipo, title, list) {
     </section>`;
 }
 
-function catOptions(tipo, sel) {
-  return M.cats(tipo).map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('') +
-    (sel && !M.catById(sel) ? '<option value="" selected>(categoria eliminata)</option>' : '');
-}
-
-function accOptions(r) {
-  const conti = r.data.conti || [];
-  const single = conti.length === 1 ? conti[0].c : null;
-  const list = M.accounts();
-  const inizio = M.cfg().inizio;
-  const serve = inizio && M.recDate(r) > inizio;
-  let html = `<option value=""${conti.length ? '' : ' selected'}>${serve ? 'Scegli il fondo' : '—'}</option>`;
-  html += list.map((c) => `<option value="${c.id}"${c.id === single ? ' selected' : ''}>${esc(c.data.nome)}</option>`).join('');
-  if (single && !list.some((c) => c.id === single)) html += `<option value="${single}" selected>${esc(M.accName(single))}</option>`;
-  if (conti.length > 1) html += `<option value="__split" selected>${esc(M.contiLabel(r))}</option>`;
-  html += `<option value="__new">${conti.length > 1 ? 'Modifica ripartizione…' : 'Dividi tra più fondi…'}</option>`;
-  return html;
-}
-
 function rowFlags(r) {
   const d = r.data;
   const inizio = M.cfg().inizio;
@@ -192,18 +173,17 @@ const PENCIL = '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="tru
 function rowHTML(r) {
   const d = r.data;
   const cat = M.catById(d.cat);
+  const flags = rowFlags(r);
+  const fondo = d.conti?.length ? M.contiLabel(r) : flags.includes('no-acc') ? 'Scegli il fondo' : '—';
   return `
-    <div class="row${rowFlags(r)}" data-id="${r.id}" style="--cat:${cat?.data.colore || 'transparent'}">
-      <input class="c-day" data-f="d" inputmode="numeric" maxlength="2" placeholder="–" value="${d.d ?? ''}" aria-label="Giorno">
-      <input class="c-amt" data-f="amt" inputmode="decimal" autocomplete="off" value="${fmt(d.val)}" aria-label="Importo" title="${esc(d.espr || '')}">
-      <input class="c-desc" data-f="desc" list="dl-${d.tipo}" autocomplete="off" value="${esc(d.desc)}" placeholder="Descrizione" aria-label="Descrizione">
-      <span class="c-cat"><i></i><select data-f="cat" aria-label="Categoria">${catOptions(d.tipo, d.cat)}</select></span>
-      <span class="c-acc"><select data-f="acc" aria-label="${d.tipo === 'in' ? 'Ricevuto su' : 'Pagato con'}">${accOptions(r)}</select></span>
+    <div class="row${flags}" data-id="${r.id}" style="--cat:${cat?.data.colore || 'transparent'}" tabindex="0" aria-expanded="false">
+      <span class="c-day">${d.d ?? '–'}</span>
+      <span class="c-amt"${d.espr ? ` title="${esc(d.espr)}"` : ''}>${fmt(d.val)}</span>
+      <span class="c-desc${d.desc ? '' : ' empty'}">${esc(d.desc || 'Senza descrizione')}</span>
+      <span class="c-cat"><i></i><span class="c-lbl">${esc(cat ? M.catLabel(cat) : '(categoria eliminata)')}</span></span>
+      <span class="c-acc"><span class="c-lbl">${esc(fondo)}</span></span>
       <button class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
       <div class="tagline">${tagLine(d)}</div>
-      <div class="opkeys" aria-hidden="true">
-        ${['+', '−', '×', '÷', '(', ')'].map((k) => `<button type="button" tabindex="-1" data-op="${k}">${k}</button>`).join('')}
-      </div>
       <div class="details" hidden></div>
     </div>`;
 }
@@ -240,7 +220,7 @@ function toggleDetails(row, force) {
   const open = force ?? det.hidden;
   if (open) det.innerHTML = detailsHTML(store.get(row.dataset.id));
   det.hidden = !open;
-  $('[data-act="more"]', row)?.setAttribute('aria-expanded', String(open));
+  (row.classList.contains('row') ? row : $('[data-act="more"]', row))?.setAttribute('aria-expanded', String(open));
   row.classList.toggle('open', open);
   if (row.classList.contains('cal-item')) { if (open) openCal.add(row.dataset.id); else openCal.delete(row.dataset.id); }
 }
@@ -305,8 +285,6 @@ function bindBody(body) {
     }
     const tr = e.target.closest('[data-trasf]');
     if (tr) { transferDialog({ rec: store.get(tr.dataset.trasf), onDone: () => renderBody() }); return; }
-    const op = e.target.closest('[data-op]');
-    if (op) { insertOp(op); return; }
     const rmtag = e.target.closest('[data-rmtag]');
     if (rmtag) {
       const row = rmtag.closest(ROW); const r = rec(row);
@@ -317,7 +295,7 @@ function bindBody(body) {
     const actEl = e.target.closest('[data-act]');
     const act = actEl?.dataset.act;
     const row = e.target.closest(ROW);
-    // Un tocco sulla riga (fuori dai campi e dai pulsanti) apre o chiude le voci extra
+    // Un tocco sulla riga (fuori dai pulsanti e dai link) apre o chiude le voci extra
     if (row && !act && !e.target.closest('.details, button, a, input, select, textarea, label')) { toggleDetails(row); return; }
     if (!row || !act || act === 'move') return;
     const r = rec(row);
@@ -351,87 +329,19 @@ function bindBody(body) {
     }
   });
 
-  body.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-op]')) e.preventDefault(); });
-
-  body.addEventListener('focusin', (e) => {
-    const inp = e.target;
-    const riga = inp.closest?.('.row');
-    if (riga && inp.matches('input, select') && !inp.closest('.details') && !riga.classList.contains('open')) toggleDetails(riga, true);
-    if (inp.dataset?.f !== 'amt') return;
-    const r = rec(inp.closest('.row'));
-    if (!r) return;
-    inp.classList.remove('err');
-    inp.value = r.data.espr || plain(r.data.val);
-    requestAnimationFrame(() => inp.select());
-  });
-
+  // Il tag scritto nelle voci extra si aggiunge quando si lascia il campo
   body.addEventListener('focusout', (e) => {
     const inp = e.target;
-    const row = inp.closest?.('.row');
-    if (!row || !row.isConnected) return;
-    if (inp.dataset?.f === 'amt') commitAmount(inp, row);
-    if (inp.matches?.('[data-tagin]') && inp.value.trim()) addTag(row, inp.value);
-    if (!row.contains(e.relatedTarget)) {
-      setTimeout(() => {
-        const r = rec(row);
-        if (r && r.data.val == null && !r.data.desc && !r.data.note && !r.data.tags?.length && !row.contains(document.activeElement)) {
-          store.remove(r.id);
-          row.remove();
-          updateSums();
-        }
-      }, 0);
-    }
+    const row = inp.closest?.(ROW);
+    if (row?.isConnected && inp.matches?.('[data-tagin]') && inp.value.trim()) addTag(row, inp.value);
   });
 
   body.addEventListener('change', (e) => {
     const f = e.target.dataset?.f;
     const row = e.target.closest(ROW);
-    if (!row || !f || f === 'amt') return;
+    if (!row || !f) return;
     const r = rec(row);
     if (!r) return;
-    if (f === 'd') {
-      const v = e.target.value.trim();
-      if (!v) { store.patch(r.id, { d: null }); refreshRowState(row); return; }
-      const n = parseInt(v, 10);
-      const max = daysIn(r.data.y, r.data.m);
-      if (!(n >= 1 && n <= max)) { e.target.value = r.data.d ?? ''; toast(`Il giorno deve essere tra 1 e ${max}`); return; }
-      e.target.value = n;
-      store.patch(r.id, { d: n });
-      refreshRowState(row);
-    }
-    if (f === 'desc') {
-      const desc = e.target.value.trim();
-      const changes = { desc };
-      if (r.data.catAuto !== false) {
-        const s = M.suggestCat(r.data.tipo, desc, r.id);
-        if (s) { changes.cat = s; $('[data-f="cat"]', row).value = s; row.style.setProperty('--cat', M.catById(s)?.data.colore || 'transparent'); }
-      }
-      if (r.data.contoAuto !== false && (r.data.conti || []).length <= 1) {
-        const c = M.suggestConto(r.data.tipo, desc, r.id);
-        if (c) { changes.conti = [{ c }]; }
-      }
-      store.patch(r.id, changes);
-      if (changes.conti) $('[data-f="acc"]', row).innerHTML = accOptions(store.get(r.id));
-      refreshRowState(row);
-    }
-    if (f === 'cat') {
-      store.patch(r.id, { cat: e.target.value, catAuto: false });
-      row.style.setProperty('--cat', M.catById(e.target.value)?.data.colore || 'transparent');
-    }
-    if (f === 'acc') {
-      const v = e.target.value;
-      if (v === '__new') {
-        e.target.innerHTML = accOptions(r);
-        if (typeof r.data.val !== 'number') { toast('Scrivi prima l\'importo.'); return; }
-        splitEditor(r, () => { replaceRow(r.id); renderAlerts(); });
-        return;
-      }
-      if (v === '__split') return;
-      store.patch(r.id, { conti: v ? [{ c: v }] : [], contoAuto: false });
-      e.target.innerHTML = accOptions(store.get(r.id));
-      refreshRowState(row);
-      renderAlerts();
-    }
     if (f === 'note') {
       const note = e.target.value.trim() || null;
       store.patch(r.id, { note });
@@ -464,27 +374,9 @@ function bindBody(body) {
       if (v.trim()) addTag(e.target.closest(ROW), v, true);
       return;
     }
-    if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA') return;
-    const f = e.target.dataset?.f;
-    const row = e.target.closest('.row');
-    if (!row || !f) return;
-    e.preventDefault();
-    if (f === 'd') $('.c-amt', row).focus();
-    else if (f === 'amt') $('.c-desc', row).focus();
-    else if (f === 'desc' || f === 'cat' || f === 'acc') {
-      e.target.dispatchEvent(new Event('change', { bubbles: true }));
-      const next = row.nextElementSibling;
-      if (next) $('.c-amt', next).focus();
-      else addInlineRow(row.closest('.ledger').dataset.tipo);
-    }
+    // Da tastiera la riga si apre con Invio o Spazio
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.row')) { e.preventDefault(); toggleDetails(e.target); }
   });
-}
-
-function refreshRowState(row) {
-  const r = rec(row);
-  if (!r || !row.classList.contains('row')) return;
-  const keepOpen = row.classList.contains('open');
-  row.className = 'row' + rowFlags(r) + (keepOpen ? ' open' : '');
 }
 
 function addTag(row, raw, refocus = false) {
@@ -500,40 +392,6 @@ function addTag(row, raw, refocus = false) {
   if (refocus) root.querySelector(`${ROW.split(', ').map((c) => `${c}[data-id="${CSS.escape(r.id)}"] [data-tagin]`).join(', ')}`)?.focus();
 }
 
-function insertOp(op) {
-  const inp = op.closest('.row').querySelector('.c-amt');
-  const ch = { '−': '-', '×': '*', '÷': '/' }[op.dataset.op] || op.dataset.op;
-  const s = inp.selectionStart ?? inp.value.length, en = inp.selectionEnd ?? s;
-  let v = inp.value;
-  if (!v.startsWith('=') && /[+\-*/]/.test(ch)) v = '=' + v;
-  const off = v.length - inp.value.length;
-  inp.value = v.slice(0, s + off) + ch + v.slice(en + off);
-  const pos = s + off + ch.length;
-  inp.setSelectionRange(pos, pos);
-}
-
-function commitAmount(inp, row) {
-  const r = rec(row);
-  if (!r) return;
-  let parsed;
-  try { parsed = parseAmount(inp.value); } catch (err) {
-    inp.classList.add('err');
-    toast(err.message + '. Il valore precedente è stato mantenuto.');
-    inp.value = fmt(r.data.val);
-    return;
-  }
-  const val = parsed ? parsed.val : null;
-  const espr = parsed ? parsed.espr : null;
-  if (val !== r.data.val || espr !== (r.data.espr || null)) {
-    store.patch(r.id, { val, espr });
-    inp.title = espr || '';
-    refreshRowState(row);
-    updateSums();
-    renderAlerts();
-  }
-  inp.value = fmt(val);
-}
-
 // "+ Aggiungi uscita/entrata" apre una finestra come quella dei trasferimenti, con i pulsanti Annulla e Aggiungi
 function addRow(tipo, day) {
   const t = today();
@@ -545,21 +403,6 @@ function addRow(tipo, day) {
       toast(`Aggiunto in ${M.MESI[data.m - 1]} ${data.y}`, { action: 'Vai', onAction: () => { location.hash = `#mese/${ymHash(data.y, data.m)}/${id}`; } });
     },
   });
-}
-
-// Riga vuota da compilare direttamente nell'elenco: serve a chi continua a scrivere con Invio dall'ultima riga
-function addInlineRow(tipo) {
-  const t = today();
-  const id = store.newId();
-  const c = M.suggestConto(tipo, '');
-  store.save('mov', id, {
-    y: state.y, m: state.m, d: state.y === t.y && state.m === t.m ? t.d : null,
-    tipo, espr: null, val: null, desc: '', cat: M.fallbackCat(tipo), catAuto: true,
-    conti: c ? [{ c }] : [], contoAuto: true, tags: [], note: null, escl: false, ord: Date.now(),
-  });
-  const rows = root.querySelector(`.ledger[data-tipo="${tipo}"] .rows`);
-  rows.insertAdjacentHTML('beforeend', rowHTML(store.get(id)));
-  $('.c-amt', rows.lastElementChild).focus();
 }
 
 // ---------------------------------------------------------------- ricerca
