@@ -237,7 +237,7 @@ details.alert summary { cursor: pointer; }
 .row.no-acc .c-acc::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: .45rem; flex: none; }
 .row.split-ko .c-acc select { color: var(--out); }
 .c-more { grid-area: more; background: none; border: 0; color: var(--faint); cursor: pointer; position: relative; height: 34px; border-radius: 8px; }
-.c-more svg { fill: currentColor; }
+.c-more svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .c-more:hover { color: var(--ink); }
 .row.has-note .c-more::after { content: ""; position: absolute; top: 6px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--g-conti); }
 .row.excluded .c-amt, .row.excluded .c-desc { text-decoration: line-through; opacity: .55; }
@@ -608,7 +608,14 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .cal-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1rem 1.1rem; margin-bottom: 1rem; }
 .cal-panel h2 { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
 .cal-panel .btn-row { margin-top: .8rem; }
-.cal-item { display: grid; grid-template-columns: 2.1rem minmax(0, 1fr) auto; gap: .7rem; align-items: center; padding: .55rem 0; border-top: 1px solid var(--line); }
+.cal-item { display: grid; grid-template-columns: minmax(0, 1fr) 2.6rem; align-items: center; border-top: 1px solid var(--line); }
+.cal-item .ci-head {
+  display: grid; grid-template-columns: 2.1rem minmax(0, 1fr) auto; gap: .7rem; align-items: center; padding: .55rem 0; min-height: 3rem;
+  font: inherit; color: inherit; text-align: left; background: none; border: 0; cursor: pointer; width: 100%;
+}
+.cal-item .c-more { grid-area: auto; height: 40px; width: 100%; }
+.cal-item .details { grid-column: 1 / -1; padding: .2rem 0 .8rem; }
+.cal-item.open { background: var(--hover); margin: 0 -.5rem; padding: 0 .5rem; }
 .cal-item:hover .ci-desc { color: var(--focus); }
 .ci-emoji { width: 2.1rem; height: 2.1rem; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 16%, transparent); }
 .ci-desc { font-weight: 550; min-width: 0; }
@@ -736,3 +743,7 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .mov-dlg .big-check input { width: 1.6rem; height: 1.6rem; flex: none; }
 .mov-dlg .big-actions { margin: .6rem 0 1rem; }
 .mov-dlg .big-actions .btn { flex: 1; justify-content: center; min-height: 3.2rem; font-size: .98rem; white-space: normal; text-align: center; }
+
+/* Voci extra di un movimento (tag, nota, duplica…) e matita di modifica */
+.details { color: var(--ink); }
+@media (pointer: coarse) { .c-more { height: 44px; } .cal-item .c-more { height: 44px; } }
