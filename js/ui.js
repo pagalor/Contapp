@@ -17,13 +17,21 @@ export function toast(msg, { action, onAction, ms = 3500 } = {}) {
 }
 
 // Finestra modale basata su <dialog>. Restituisce il dialog; chiamare dlg.close() per chiudere.
-export function modal(html, { onClose, wide } = {}) {
+// Con { sheet: true } la finestra occupa tutto lo schermo e segue l'area visibile, così la tastiera non copre i pulsanti.
+export function modal(html, { onClose, wide, sheet } = {}) {
   const dlg = document.createElement('dialog');
-  dlg.className = 'modal' + (wide ? ' wide' : '');
+  dlg.className = 'modal' + (wide ? ' wide' : '') + (sheet ? ' sheet' : '');
   dlg.innerHTML = html;
   document.body.appendChild(dlg);
-  dlg.addEventListener('close', () => { dlg.remove(); onClose && onClose(); });
-  dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+  const vv = sheet ? window.visualViewport : null;
+  const fit = () => { dlg.style.height = vv.height + 'px'; dlg.style.top = vv.offsetTop + 'px'; };
+  if (vv) { vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); fit(); }
+  dlg.addEventListener('close', () => {
+    if (vv) { vv.removeEventListener('resize', fit); vv.removeEventListener('scroll', fit); }
+    dlg.remove(); onClose && onClose();
+  });
+  // Nelle finestre a tutto schermo un tocco accidentale fuori dai campi non deve chiudere nulla
+  if (!sheet) dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
   dlg.showModal();
   return dlg;
 }

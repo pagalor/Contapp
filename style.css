@@ -657,3 +657,40 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .ric-every input, .ric-every select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r-md); padding: .55rem .65rem; min-width: 0; }
 .ric-sum { margin: .2rem 0 .4rem; }
 .tag.ric { color: var(--muted); }
+
+/* ---------- Nuovo movimento da telefono ---------- */
+.modal.sheet { padding: 0; }
+.modal.sheet[open] {
+  position: fixed; inset: 0 auto auto 0; margin: 0; width: 100vw; max-width: 100vw; height: 100dvh; max-height: none;
+  border: 0; border-radius: 0; box-shadow: none;
+}
+.mov-dlg { display: flex; flex-direction: column; min-height: 100%; padding: .9rem 1rem 0; }
+.mov-dlg .dlg-head h2 { font-size: 1.2rem; }
+.mov-dlg .icon-btn { width: 48px; height: 48px; font-size: 1.7rem; }
+.mov-dlg .field { margin: .55rem 0; }
+.mov-dlg .field > span { font-size: .9rem; }
+.mov-dlg .field input, .mov-dlg .field select { font-size: 1rem; min-height: 3.2rem; padding: .6rem .85rem; border-radius: 12px; width: 100%; }
+.mov-dlg .seg.wide button { min-height: 3rem; font-size: 1rem; }
+.mov-dlg[data-tipo="out"] [data-seg="out"][aria-pressed="true"] { color: var(--out); }
+.mov-dlg[data-tipo="in"] [data-seg="in"][aria-pressed="true"] { color: var(--in); }
+.mov-dlg .big-amt input { font-size: 2rem; font-weight: 700; min-height: 4rem; text-align: right; letter-spacing: -0.02em; }
+.mov-dlg[data-tipo="in"] .big-amt input { color: var(--in); }
+.mov-dlg[data-tipo="out"] .big-amt input { color: var(--out); }
+.amt-prev { text-align: right; min-height: 1.1em; font-weight: 600; }
+.opkeys-big { display: grid; grid-template-columns: repeat(6, 1fr); gap: .4rem; margin-bottom: .3rem; }
+.opkeys-big button { font: inherit; font-size: 1.3rem; min-height: 3rem; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); cursor: pointer; }
+.opkeys-big button:active { background: var(--hover); }
+.mov-dlg .form-grid { grid-template-columns: 6.5rem minmax(0, 1fr); gap: 0 .8rem; }
+.mov-dlg .form-grid .field input { text-align: center; }
+.sticky-actions {
+  position: sticky; bottom: 0; margin-top: auto; padding: .8rem 0 calc(.8rem + env(safe-area-inset-bottom));
+  background: var(--surface); border-top: 1px solid var(--line); flex-wrap: nowrap;
+}
+.sticky-actions .btn { flex: 1; justify-content: center; min-height: 3.2rem; font-size: 1.02rem; }
+.sticky-actions .btn.primary { flex: 2; }
+
+/* Bersagli più grandi per le dita */
+@media (pointer: coarse) {
+  .add-row { min-height: 3.2rem; padding-top: 1rem; padding-bottom: 1rem; font-size: 1rem; }
+}
+.mov-dlg .seg.wide { align-self: stretch; }
