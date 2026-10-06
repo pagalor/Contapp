@@ -29,6 +29,7 @@ export function bindAmount(input, get, set) {
 }
 
 // --- Ripartizione di un movimento su più conti ---
+// `rec` può essere una bozza ({ id: null, data }): in quel caso non salva niente e passa la ripartizione a onDone(conti).
 export function splitEditor(rec, onDone) {
   const tot = rec.data.val;
   let parts = (rec.data.conti || []).map((x) => ({ c: x.c, val: x.val ?? null, espr: x.espr || null }));
@@ -89,9 +90,9 @@ export function splitEditor(rec, onDone) {
       if (parts.some((p) => !p.c && p.val)) { toast('Scegli il fondo per ogni importo.'); return; }
       if (Math.abs(rest()) >= 0.005) { toast('La somma dei fondi deve essere uguale al totale del movimento.'); return; }
       const conti = used.length === 1 ? [{ c: used[0].c }] : used.map((p) => ({ c: p.c, val: p.val, espr: p.espr }));
-      store.patch(rec.id, { conti, contoAuto: false });
+      if (rec.id) store.patch(rec.id, { conti, contoAuto: false }); // senza id è una bozza: la ripartizione va a chi ha chiamato
       dlg.close();
-      onDone && onDone();
+      onDone && onDone(conti);
     }
   });
   paint();
@@ -105,6 +106,7 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
   const daysIn = (yy, mm) => new Date(yy, mm, 0).getDate();
   let catAuto = !seed, contoAuto = !seed;
   let tags = [...(seed?.tags || [])];
+  let split = seed?.conti?.length > 1 ? seed.conti.map((x) => ({ ...x })) : null; // ripartizione su più fondi, se scelta
   const catOpts = (t, sel) => M.cats(t).map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('');
   const dlg = modal(`
     <form class="dlg mov-dlg" method="dialog" novalidate>
@@ -139,7 +141,7 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
         <button type="button" class="btn ghost" data-x>Annulla</button>
         <button type="submit" class="btn primary" value="ok">Aggiungi</button>
       </div>
-    </form>`, { sheet: true });
+    </form>`);
   const f = $('form', dlg);
   const prev = $('.amt-prev', f);
   const t = () => f.dataset.tipo;
@@ -171,14 +173,17 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
     f.cat.innerHTML = catOpts(next, M.fallbackCat(next));
     suggest();
   }
+  // Elenco dei fondi; con una ripartizione attiva mostra anche la voce "Diviso tra N fondi"
+  function accOpts(sel) {
+    return '<option value="">Nessun fondo</option>' +
+      M.accounts().map((a) => `<option value="${a.id}"${a.id === sel ? ' selected' : ''}>${esc(a.data.nome)}</option>`).join('') +
+      (split ? `<option value="__split" selected>Diviso tra ${split.length} fondi</option>` : '') +
+      `<option value="__new">${split ? 'Modifica ripartizione…' : 'Dividi tra più fondi…'}</option>`;
+  }
   function suggest() {
     const desc = f.desc.value.trim();
     if (catAuto) { const s = M.suggestCat(t(), desc); if (s) f.cat.value = s; else if (!desc) f.cat.value = M.fallbackCat(t()); }
-    if (contoAuto) {
-      const c = M.suggestConto(t(), desc);
-      f.acc.innerHTML = '<option value="">Nessun fondo</option>' +
-        M.accounts().map((a) => `<option value="${a.id}"${a.id === c ? ' selected' : ''}>${esc(a.data.nome)}</option>`).join('');
-    }
+    if (contoAuto && !split) f.acc.innerHTML = accOpts(M.suggestConto(t(), desc));
   }
   function preview() {
     try {
@@ -202,9 +207,13 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
     }
     const tg = $('[data-tagin]', f);
     if (tg?.value.trim()) addTags(tg.value);
+    const conti = f.acc.value === '__split' ? split : f.acc.value ? [{ c: f.acc.value }] : [];
+    if (f.acc.value === '__split' && Math.abs(round2(p.val - split.reduce((n, x) => n + (x.val || 0), 0))) >= 0.005) {
+      f.acc.focus(); toast("L'importo è cambiato: ripeti la divisione tra i fondi."); return null;
+    }
     return {
       y: mm.y, m: mm.m, d: giorno, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
-      cat: f.cat.value || M.fallbackCat(t()), catAuto, conti: f.acc.value ? [{ c: f.acc.value }] : [], contoAuto,
+      cat: f.cat.value || M.fallbackCat(t()), catAuto, conti, contoAuto,
       tags: [...tags], note: f.note.value.trim() || null, escl: f.escl.checked, ord: Date.now(),
     };
   }
@@ -265,10 +274,23 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
   f.amt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); f.desc.focus(); } });
   f.desc.addEventListener('change', suggest);
   f.cat.addEventListener('change', () => { catAuto = false; });
-  f.acc.addEventListener('change', () => { contoAuto = false; });
+  f.acc.addEventListener('change', () => {
+    contoAuto = false;
+    if (f.acc.value === '__split') return;
+    if (f.acc.value !== '__new') { split = null; return; }
+    // "Dividi tra più fondi…": serve prima l'importo
+    let p = null;
+    try { p = parseAmount(f.amt.value); } catch (err) { toast(err.message); }
+    f.acc.innerHTML = accOpts(split ? null : '');
+    if (!p) { f.amt.classList.add('err'); f.amt.focus(); toast("Scrivi prima l'importo."); return; }
+    splitEditor({ id: null, data: { val: p.val, tipo: t(), desc: f.desc.value.trim(), conti: split || [] } }, (conti) => {
+      split = conti.length > 1 ? conti : null;
+      f.acc.innerHTML = accOpts(conti.length === 1 ? conti[0].c : null);
+    });
+  });
   f.month.addEventListener('change', () => { f.d.placeholder = `1–${daysIn(mese().y, mese().m)}`; setTitle(); });
   function setTitle() {
-    $('[data-title]', f).textContent = `${t() === 'in' ? 'Nuova entrata' : 'Nuova uscita'} · ${M.MESI[mese().m - 1]} ${mese().y}`;
+    $('[data-title]', f).textContent = `${t() === 'in' ? 'Nuova entrata' : 'Nuova uscita'} · ${M.MESI_BREVI[mese().m - 1]} ${mese().y}`;
   }
 
   f.addEventListener('submit', (e) => {
@@ -287,8 +309,7 @@ export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } 
     f.amt.value = seed.espr || String(seed.val).replace('.', ',');
     f.desc.value = seed.desc || '';
     f.cat.value = seed.cat || f.cat.value;
-    f.acc.innerHTML = '<option value="">Nessun fondo</option>' +
-      M.accounts().map((a) => `<option value="${a.id}"${seed.conti?.[0]?.c === a.id ? ' selected' : ''}>${esc(a.data.nome)}</option>`).join('');
+    f.acc.innerHTML = accOpts(split ? null : seed.conti?.[0]?.c);
     preview();
   }
   f.amt.focus();
