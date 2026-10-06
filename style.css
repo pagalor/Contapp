@@ -694,3 +694,13 @@ details.history[open] > summary { margin-bottom: .8rem; }
   .add-row { min-height: 3.2rem; padding-top: 1rem; padding-bottom: 1rem; font-size: 1rem; }
 }
 .mov-dlg .seg.wide { align-self: stretch; }
+.mov-more { font-size: .95rem; color: var(--muted); margin: 1.2rem 0 .2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.mov-dlg .field textarea { font-size: 1rem; padding: .6rem .85rem; border-radius: 12px; width: 100%; min-height: 4.5rem; }
+.mov-dlg .tags-edit { min-height: 3.2rem; border-radius: 12px; padding: .45rem .6rem; gap: .45rem; }
+.mov-dlg .tags-edit input { font-size: 1rem; min-height: 2.4rem; }
+.mov-dlg .tags-edit .tag { font-size: .9rem; padding: .25rem .5rem .25rem .7rem; }
+.mov-dlg .tags-edit .tag button { font-size: 1.3rem; width: 1.8rem; height: 1.8rem; }
+.mov-dlg .big-check { font-size: 1rem; align-items: flex-start; gap: .75rem; margin: .8rem 0; min-height: 3rem; }
+.mov-dlg .big-check input { width: 1.6rem; height: 1.6rem; flex: none; }
+.mov-dlg .big-actions { margin: .6rem 0 1rem; }
+.mov-dlg .big-actions .btn { flex: 1; justify-content: center; min-height: 3.2rem; font-size: .98rem; white-space: normal; text-align: center; }

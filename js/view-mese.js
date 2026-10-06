@@ -515,7 +515,11 @@ function addRow(tipo, day) {
   if (compact()) {
     movDialog({
       tipo, y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
-      onDone: (id) => renderBody(id),
+      onDone: (id, data) => {
+        if (data.y === state.y && data.m === state.m) { renderBody(id); return; }
+        renderBody();
+        toast(`Aggiunto in ${M.MESI[data.m - 1]} ${data.y}`, { action: 'Vai', onAction: () => { location.hash = `#mese/${ymHash(data.y, data.m)}/${id}`; } });
+      },
     });
     return;
   }

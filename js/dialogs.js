@@ -99,10 +99,12 @@ export function splitEditor(rec, onDone) {
 
 // --- Nuovo movimento (da telefono): finestra a tutto schermo con campi grandi ---
 // Non salva niente finché non si preme "Aggiungi"; "Annulla" chiude senza lasciare tracce.
-export function movDialog({ tipo = 'out', y, m, d = null, onDone } = {}) {
-  const mese = `${M.MESI[m - 1]} ${y}`;
-  const max = new Date(y, m, 0).getDate();
-  let catAuto = true, contoAuto = true;
+// `seed` precompila i campi (serve a "Aggiungi e duplica").
+export function movDialog({ tipo = 'out', y, m, d = null, seed = null, onDone } = {}) {
+  const ymVal = (yy, mm) => `${yy}-${String(mm).padStart(2, '0')}`;
+  const daysIn = (yy, mm) => new Date(yy, mm, 0).getDate();
+  let catAuto = !seed, contoAuto = !seed;
+  let tags = [...(seed?.tags || [])];
   const catOpts = (t, sel) => M.cats(t).map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('');
   const dlg = modal(`
     <form class="dlg mov-dlg" method="dialog" novalidate>
@@ -120,10 +122,19 @@ export function movDialog({ tipo = 'out', y, m, d = null, onDone } = {}) {
       </div>
       <label class="field"><span>Descrizione</span><input name="desc" list="dl-out" autocomplete="off" placeholder="Per esempio: spesa, stipendio…" enterkeyhint="done"></label>
       <div class="form-grid">
-        <label class="field"><span>Giorno</span><input name="d" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="1–${max}" value="${d ?? ''}"></label>
+        <label class="field"><span>Giorno</span><input name="d" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="1–31" value="${d ?? ''}"></label>
         <label class="field"><span>Categoria</span><select name="cat"></select></label>
       </div>
       <label class="field"><span data-accl></span><select name="acc"></select></label>
+      <h3 class="mov-more">Altre opzioni</h3>
+      <div class="field"><span>Tag</span><div data-tags></div></div>
+      <label class="field"><span>Nota</span><textarea name="note" rows="2">${esc(seed?.note || '')}</textarea></label>
+      <label class="check big-check"><input type="checkbox" name="escl"${seed?.escl ? ' checked' : ''}> Escludi dai totali di entrate e uscite (es. entrate straordinarie)</label>
+      <label class="field"><span>Mese</span><input type="month" name="month" value="${ymVal(y, m)}"></label>
+      <div class="detail-actions big-actions">
+        <button type="button" class="btn ghost" data-dup>Aggiungi e duplica</button>
+        <button type="button" class="btn ghost" data-ric>Rendi ricorrente…</button>
+      </div>
       <div class="actions sticky-actions">
         <button type="button" class="btn ghost" data-x>Annulla</button>
         <button type="submit" class="btn primary" value="ok">Aggiungi</button>
@@ -132,11 +143,28 @@ export function movDialog({ tipo = 'out', y, m, d = null, onDone } = {}) {
   const f = $('form', dlg);
   const prev = $('.amt-prev', f);
   const t = () => f.dataset.tipo;
+  const mese = () => {
+    const [yy, mm] = (f.month.value || ymVal(y, m)).split('-').map(Number);
+    return { y: yy || y, m: mm || m };
+  };
 
+  function paintTags(focus = false) {
+    $('[data-tags]', f).innerHTML = tagEditorHTML(tags);
+    if (focus) $('[data-tagin]', f).focus();
+  }
+  function addTags(raw, focus = false) {
+    const inp = $('[data-tagin]', f);
+    if (inp) inp.value = ''; // se resta scritto, il ridisegno fa scattare di nuovo l'aggiunta
+    for (const part of raw.split(',')) {
+      const tg = M.normTag(part);
+      if (tg && !tags.some((x) => x.toLowerCase() === tg.toLowerCase())) tags.push(tg);
+    }
+    paintTags(focus);
+  }
   function setTipo(next) {
     f.dataset.tipo = next;
     $$('[data-seg]', f).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.seg === next)));
-    $('[data-title]', f).textContent = `${next === 'in' ? 'Nuova entrata' : 'Nuova uscita'} · ${mese}`;
+    setTitle();
     $('[data-accl]', f).textContent = next === 'in' ? 'Ricevuto su' : 'Pagato con';
     f.desc.setAttribute('list', 'dl-' + next);
     catAuto = true; contoAuto = true;
@@ -159,11 +187,55 @@ export function movDialog({ tipo = 'out', y, m, d = null, onDone } = {}) {
       f.amt.classList.remove('err');
     } catch { prev.textContent = ''; }
   }
+  // Legge e controlla i campi; mostra l'errore e restituisce null se qualcosa non va
+  function read() {
+    let p;
+    try { p = parseAmount(f.amt.value); } catch (err) { f.amt.classList.add('err'); f.amt.focus(); toast(err.message); return null; }
+    if (!p) { f.amt.classList.add('err'); f.amt.focus(); toast("Scrivi l'importo."); return null; }
+    const mm = mese();
+    let giorno = null;
+    const dv = f.d.value.trim();
+    if (dv) {
+      giorno = parseInt(dv, 10);
+      const max = daysIn(mm.y, mm.m);
+      if (!(giorno >= 1 && giorno <= max)) { f.d.classList.add('err'); f.d.focus(); toast(`Il giorno deve essere tra 1 e ${max}`); return null; }
+    }
+    const tg = $('[data-tagin]', f);
+    if (tg?.value.trim()) addTags(tg.value);
+    return {
+      y: mm.y, m: mm.m, d: giorno, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
+      cat: f.cat.value || M.fallbackCat(t()), catAuto, conti: f.acc.value ? [{ c: f.acc.value }] : [], contoAuto,
+      tags: [...tags], note: f.note.value.trim() || null, escl: f.escl.checked, ord: Date.now(),
+    };
+  }
+  function save(data) {
+    const id = store.newId();
+    store.save('mov', id, data);
+    toast(data.tipo === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta');
+    return id;
+  }
 
   f.addEventListener('click', (e) => {
     if (e.target.closest('[data-x]')) { dlg.close(); return; }
     const tb = e.target.closest('[data-seg]');
     if (tb) { setTipo(tb.dataset.seg); return; }
+    const rm = e.target.closest('[data-rmtag]');
+    if (rm) { tags = tags.filter((x) => x !== rm.dataset.rmtag); paintTags(); return; }
+    if (e.target.closest('[data-dup]')) {
+      const data = read();
+      if (!data) return;
+      const id = save(data);
+      dlg.close();
+      onDone && onDone(id, data);
+      movDialog({ tipo: data.tipo, y: data.y, m: data.m, d: data.d, seed: data, onDone });
+      return;
+    }
+    if (e.target.closest('[data-ric]')) {
+      const data = read();
+      if (!data) return;
+      ricDialog({ seed: ricSeedFromMov({ data }), onDone: () => toast('Movimento ricorrente salvato. Ricorda di premere Aggiungi.') });
+      return;
+    }
     const op = e.target.closest('[data-op]');
     if (op) {
       const ch = { '−': '-', '×': '*', '÷': '/' }[op.dataset.op] || op.dataset.op;
@@ -179,35 +251,46 @@ export function movDialog({ tipo = 'out', y, m, d = null, onDone } = {}) {
     }
   });
   f.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-op]')) e.preventDefault(); });
+  f.addEventListener('keydown', (e) => {
+    if (e.target.matches?.('[data-tagin]') && (e.key === 'Enter' || e.key === ',')) {
+      e.preventDefault();
+      const v = e.target.value;
+      if (v.trim()) addTags(v, true);
+    }
+  });
+  f.addEventListener('focusout', (e) => {
+    if (e.target.matches?.('[data-tagin]') && e.target.value.trim()) addTags(e.target.value);
+  });
   f.amt.addEventListener('input', preview);
+  f.amt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); f.desc.focus(); } });
   f.desc.addEventListener('change', suggest);
   f.cat.addEventListener('change', () => { catAuto = false; });
   f.acc.addEventListener('change', () => { contoAuto = false; });
-  f.amt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); f.desc.focus(); } });
+  f.month.addEventListener('change', () => { f.d.placeholder = `1–${daysIn(mese().y, mese().m)}`; setTitle(); });
+  function setTitle() {
+    $('[data-title]', f).textContent = `${t() === 'in' ? 'Nuova entrata' : 'Nuova uscita'} · ${M.MESI[mese().m - 1]} ${mese().y}`;
+  }
 
   f.addEventListener('submit', (e) => {
     e.preventDefault();
-    let p;
-    try { p = parseAmount(f.amt.value); } catch (err) { f.amt.classList.add('err'); f.amt.focus(); toast(err.message); return; }
-    if (!p) { f.amt.classList.add('err'); f.amt.focus(); toast("Scrivi l'importo."); return; }
-    let giorno = null;
-    const dv = f.d.value.trim();
-    if (dv) {
-      giorno = parseInt(dv, 10);
-      if (!(giorno >= 1 && giorno <= max)) { f.d.classList.add('err'); f.d.focus(); toast(`Il giorno deve essere tra 1 e ${max}`); return; }
-    }
-    const id = store.newId();
-    store.save('mov', id, {
-      y, m, d: giorno, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
-      cat: f.cat.value || M.fallbackCat(t()), catAuto, conti: f.acc.value ? [{ c: f.acc.value }] : [], contoAuto,
-      tags: [], note: null, escl: false, ord: Date.now(),
-    });
+    const data = read();
+    if (!data) return;
+    const id = save(data);
     dlg.close();
-    toast(t() === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta');
-    onDone && onDone(id);
+    onDone && onDone(id, data);
   });
 
+  paintTags();
   setTipo(tipo);
+  f.d.placeholder = `1–${daysIn(y, m)}`;
+  if (seed) {
+    f.amt.value = seed.espr || String(seed.val).replace('.', ',');
+    f.desc.value = seed.desc || '';
+    f.cat.value = seed.cat || f.cat.value;
+    f.acc.innerHTML = '<option value="">Nessun fondo</option>' +
+      M.accounts().map((a) => `<option value="${a.id}"${seed.conti?.[0]?.c === a.id ? ' selected' : ''}>${esc(a.data.nome)}</option>`).join('');
+    preview();
+  }
   f.amt.focus();
   return dlg;
 }
