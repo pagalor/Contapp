@@ -323,6 +323,11 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .chip { padding: .38rem .85rem; border-radius: 999px; border: 1px solid var(--line-2); white-space: nowrap; font-weight: 550; font-size: .9rem; background: var(--surface); }
 .chip:hover { background: var(--hover); }
 .chip.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.rie-range { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; }
+.rie-range .field { margin: 0; flex: 1 1 9.5rem; max-width: 15rem; }
+.rie-range .field input { flex: 1; }
+.rie-range .chip { font: inherit; font-weight: 550; font-size: .9rem; cursor: pointer; color: var(--ink); }
+.rie-range .chip[hidden] { display: none; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.1rem 1.2rem; margin-bottom: 1rem; min-width: 0; overflow-x: auto; }
 .card > h2 { margin-bottom: .7rem; }
 .card > p.muted { margin: -.3rem 0 .9rem; max-width: 72ch; font-size: .92rem; }

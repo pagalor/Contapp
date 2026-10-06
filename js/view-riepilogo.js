@@ -6,6 +6,25 @@ import { esc, $, toast } from './ui.js';
 import { catBars, toggleCat } from './catstats.js';
 
 let root, sel; // sel: anno (numero) oppure 'tutto'
+let curList = []; // movimenti del periodo mostrato, per il dettaglio delle categorie
+
+// Intervallo di mesi per "Tutti gli anni" ('AAAA-MM' oppure '' se senza limite). Si ricorda su questo dispositivo.
+const RANGE_KEY = 'contabilita.riepilogo-periodo';
+const MONTH_RE = /^(\d{4})-(0[1-9]|1[0-2])$/;
+const range = (() => {
+  try {
+    const o = JSON.parse(localStorage.getItem(RANGE_KEY));
+    return { from: MONTH_RE.test(o?.from) ? o.from : '', to: MONTH_RE.test(o?.to) ? o.to : '' };
+  } catch { return { from: '', to: '' }; }
+})();
+const saveRange = () => { try { localStorage.setItem(RANGE_KEY, JSON.stringify(range)); } catch {} };
+const monthKey = (v) => { const m = MONTH_RE.exec(v); return m ? Number(m[1]) * 12 + Number(m[2]) - 1 : null; };
+// Estremi dell'intervallo come numero di mese (anno × 12 + mese 0–11); se invertiti vengono scambiati.
+function rangeKeys() {
+  let lo = monthKey(range.from) ?? -Infinity, hi = monthKey(range.to) ?? Infinity;
+  if (lo > hi) [lo, hi] = [hi, lo];
+  return [lo, hi];
+}
 
 export function render(el, { anno } = {}) {
   root = el;
@@ -20,12 +39,40 @@ export function render(el, { anno } = {}) {
           ${ys.map((y) => `<a class="chip${y === sel ? ' on' : ''}" href="#riepilogo/${y}">${y}</a>`).join('')}
           <a class="chip${sel === 'tutto' ? ' on' : ''}" href="#riepilogo/tutto">Tutti gli anni</a>
         </nav>
+        ${sel === 'tutto' ? rangeBar(ys) : ''}
       </header>
       <div id="rie-body"></div>
     </section>`;
   // porta in vista l'anno selezionato nella barra dei periodi
   el.querySelector('.chip.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  bindRange();
   draw();
+}
+
+function rangeBar(ys) {
+  const min = ys.length ? `${ys[0]}-01` : '', max = ys.length ? `${ys[ys.length - 1]}-12` : '';
+  const inp = (id, label, v) => `<label class="field inline"><span>${label}</span>
+    <input type="month" id="${id}" value="${v}" min="${min}" max="${max}" placeholder="AAAA-MM"></label>`;
+  return `<div class="rie-range" role="group" aria-label="Intervallo di date">
+    ${inp('rg-from', 'Dal', range.from)}${inp('rg-to', 'Al', range.to)}
+    <button class="chip" id="rg-reset" type="button"${range.from || range.to ? '' : ' hidden'}>Tutto il periodo</button>
+  </div>`;
+}
+
+function bindRange() {
+  const box = root.querySelector('.rie-range');
+  if (!box) return;
+  const from = $('#rg-from', box), to = $('#rg-to', box), reset = $('#rg-reset', box);
+  const apply = () => {
+    range.from = MONTH_RE.test(from.value) ? from.value : '';
+    range.to = MONTH_RE.test(to.value) ? to.value : '';
+    reset.hidden = !(range.from || range.to);
+    saveRange();
+    draw();
+  };
+  from.addEventListener('change', apply);
+  to.addEventListener('change', apply);
+  reset.addEventListener('click', () => { from.value = ''; to.value = ''; apply(); });
 }
 
 export function redraw() { if (root && root.isConnected) draw(); }
@@ -35,24 +82,31 @@ const width = (id) => Math.floor($(id, root)?.clientWidth || 600);
 function draw() {
   const body = $('#rie-body', root);
   const tutto = sel === 'tutto';
-  const list = tutto ? M.movs() : M.movs().filter((r) => r.data.y === sel);
-  if (!list.length && !M.buttati(sel).length) {
+  const [lo, hi] = tutto ? rangeKeys() : [-Infinity, Infinity];
+  const inR = (y, i) => y * 12 + i >= lo && y * 12 + i <= hi; // i: mese 0–11
+  const filtrato = tutto && (lo > -Infinity || hi < Infinity);
+  const list = tutto ? M.movs().filter((r) => inR(r.data.y, r.data.m - 1)) : M.movs().filter((r) => r.data.y === sel);
+  curList = list;
+  const ysAll = M.years();
+  const ys = tutto ? ysAll.filter((y) => y * 12 + 11 >= lo && y * 12 <= hi) : ysAll; // anni che toccano l'intervallo
+  // I soldi buttati sono registrati per anno: con un intervallo contano solo gli anni compresi per intero.
+  const ysButt = ys.filter((y) => inR(y, 0) && inR(y, 11));
+  if (!list.length && !(tutto ? ysButt.some((y) => M.buttati(y).length) : M.buttati(sel).length)) {
     body.innerHTML = '<div class="empty-hint"><p>Nessun movimento in questo periodo.</p></div>';
     return;
   }
   const s = M.sums(list);
-  const ys = M.years();
 
   // serie per il grafico principale
   let labels, vin, vout, cum = [];
   if (tutto) {
     labels = ys.map(String);
-    const per = ys.map((y) => M.sums(M.movs().filter((r) => r.data.y === y)));
+    const per = ys.map((y) => M.sums(list.filter((r) => r.data.y === y)));
     vin = per.map((p) => p.tin); vout = per.map((p) => p.tout);
     let acc = 0;
     for (const y of ys) {
       M.monthly(y).forEach((o, i) => {
-        if (!o.n) return;
+        if (!o.n || !inR(y, i)) return;
         acc += o.saldo;
         cum.push({ label: `${M.MESI[i]} ${y}`, short: i === 0 || !cum.length ? String(y) : '', value: round2(acc) });
       });
@@ -65,9 +119,9 @@ function draw() {
     mo.forEach((o, i) => { if (!o.n) return; acc += o.saldo; cum.push({ label: `${M.MESI[i]} ${sel}`, short: M.MESI_BREVI[i], value: round2(acc) }); });
   }
   const mesiAttivi = tutto
-    ? ys.reduce((n, y) => n + M.monthly(y).filter((o) => o.n).length, 0)
+    ? ys.reduce((n, y) => n + M.monthly(y).filter((o, i) => o.n && inR(y, i)).length, 0)
     : M.monthly(sel).filter((o) => o.n).length;
-  const butt = tutto ? round2(ys.reduce((a, y) => a + M.buttTot(y), 0)) : M.buttTot(sel);
+  const butt = tutto ? round2(ysButt.reduce((a, y) => a + M.buttTot(y), 0)) : M.buttTot(sel);
 
   body.innerHTML = `
     <dl class="stats stats-main">
@@ -91,7 +145,7 @@ function draw() {
 
     <section class="card">
       <h2>Saldo accumulato</h2>
-      <p class="muted">Quanto hai messo da parte sommando i saldi mese dopo mese${tutto ? ', dal primo mese registrato' : ` nel ${sel}`}.</p>
+      <p class="muted">Quanto hai messo da parte sommando i saldi mese dopo mese${tutto ? (filtrato ? ', nel periodo scelto' : ', dal primo mese registrato') : ` nel ${sel}`}.</p>
       <div class="chart-box" id="ch-line"></div>
     </section>
 
@@ -107,7 +161,7 @@ function draw() {
     <div class="two">
       <section class="card">
         <h2>${tutto ? 'Anno per anno' : 'Mese per mese'}</h2>
-        ${tutto ? yearTable(ys) : monthTable(sel)}
+        ${tutto ? yearTable(ys, list) : monthTable(sel)}
       </section>
       <section class="card">
         <h2>Le spese più grandi</h2>
@@ -122,7 +176,7 @@ function draw() {
 
     <section class="card" id="butt-card">
       <h2>Soldi buttati</h2>
-      ${tutto ? buttYears(ys) : buttEditor(sel)}
+      ${tutto ? buttYears(ysButt) : buttEditor(sel)}
     </section>`;
 
   $('#ch-bars', root).innerHTML = C.bars({
@@ -145,9 +199,9 @@ function monthTable(y) {
   </tbody></table>`;
 }
 
-function yearTable(ys) {
+function yearTable(ys, list) {
   return `<table class="tbl"><thead><tr><th>Anno</th><th class="num">Entrate</th><th class="num">Uscite</th><th class="num">Saldo</th></tr></thead><tbody>
-    ${ys.map((y) => { const s = M.sums(M.movs().filter((r) => r.data.y === y)); return `<tr>
+    ${ys.map((y) => { const s = M.sums(list.filter((r) => r.data.y === y)); return `<tr>
       <td><a href="#riepilogo/${y}">${y}</a></td><td class="num in">${fmt(s.tin)}</td><td class="num out">${fmt(s.tout)}</td>
       <td class="num saldo">${fmtSigned(s.saldo)}</td></tr>`; }).join('')}
   </tbody></table>`;
@@ -197,7 +251,7 @@ function buttEditor(y) {
 
 function bind() {
   root.querySelectorAll('.catbar').forEach((b) => b.addEventListener('click', () =>
-    toggleCat(b, sel === 'tutto' ? M.movs() : M.movs().filter((r) => r.data.y === sel))));
+    toggleCat(b, curList)));
   root.querySelectorAll('tr[data-href]').forEach((tr) => tr.addEventListener('click', (e) => {
     if (!e.target.closest('a')) location.hash = tr.dataset.href;
   }));
