@@ -121,12 +121,18 @@ function renderAlerts() {
   const box = $('#alerts', root);
   if (!box) return;
   const sotto = M.sottoTarget();
+  const oltre = M.oltreTarget();
   const senza = M.senzaConto().filter((r) => r.data.y === state.y && r.data.m === state.m);
   let html = '';
   if (sotto.length) {
     html += `<div class="alert warn"><span>${sotto.length === 1 ? 'Sotto il target' : sotto.length + ' fondi sotto il target'}:</span>
       <span class="alert-items">${sotto.map((s) => `<button class="pill" data-reint="${s.c.id}" data-val="${s.manca}"
         title="Reintegra ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>−${fmt(s.manca)}</b></button>`).join('')}</span></div>`;
+  }
+  if (oltre.length) {
+    html += `<div class="alert good"><span>${oltre.length === 1 ? 'Oltre il target' : oltre.length + ' fondi oltre il target'}:</span>
+      <span class="alert-items">${oltre.map((s) => `<a class="pill" href="#conto/${s.c.id}"
+        title="Apri ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>+${fmt(s.extra)}</b></a>`).join('')}</span></div>`;
   }
   if (senza.length && state.q.length < 2) {
     html += `<div class="alert"><span>${senza.length === 1 ? 'Un movimento' : senza.length + ' movimenti'} di questo mese non ${senza.length === 1 ? 'indica' : 'indicano'} il fondo:
