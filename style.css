@@ -435,6 +435,7 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .hero-sub span, .hero-sub b { font-weight: 650; }
 .hero-sub.neg b { color: var(--neg); }
 .hero-sub.over b { color: var(--pos); }
+.hero-sub.under b { color: var(--warn); }
 .hero-split { margin: 0; display: flex; flex-wrap: wrap; gap: .6rem 2rem; }
 .hero-split dt { font-size: .82rem; color: var(--muted); }
 .hero-split dd { margin: .1rem 0 0; font-size: 1.1rem; font-weight: 650; }
@@ -454,9 +455,14 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .acc-track span { display: block; height: 100%; background: var(--ink); border-radius: 2px; }
 .acc-target, .acc-status { font-size: .78rem; color: var(--muted); white-space: nowrap; }
 .acc-status { text-align: right; }
-.acc.below { border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
-.acc.below .acc-track span { background: var(--warn); }
-.acc.below .acc-status { color: var(--warn); font-weight: 650; }
+/* Sotto il target: ambra, con la parte mancante a strisce */
+.acc.below { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-bg); }
+.acc.below .acc-track span {
+  background: linear-gradient(90deg, var(--warn) var(--tp, 0%), transparent var(--tp, 0%)),
+    repeating-linear-gradient(135deg, color-mix(in srgb, var(--warn) 55%, transparent) 0 3px, transparent 3px 6px);
+}
+.acc.below .acc-status { color: var(--warn); font-weight: 650; white-space: normal; }
+.acc.below .acc-status b { white-space: nowrap; }
 /* Oltre il target: verde, con la parte eccedente a strisce */
 .acc.over { border-color: color-mix(in srgb, var(--in) 40%, transparent); background: color-mix(in srgb, var(--in) 6%, var(--surface)); }
 .acc.over .acc-track span {

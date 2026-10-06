@@ -82,7 +82,10 @@ function accCard(c, v) {
   if (typeof t === 'number') {
     const diff = round2(v - t);
     pct = t > 0 ? Math.max(0, Math.min(100, (v / t) * 100)) : 100;
-    if (diff < -0.005) { status = `Mancano ${fmtEur(-diff)}`; cls = 'below'; }
+    if (diff < -0.005) {
+      status = `<b>▼ ${fmtEur(-diff)}</b> sotto il target`; cls = 'below';
+      tp = t > 0 ? Math.max(0, Math.min(100, (v / t) * 100)) : 0;
+    }
     else if (diff > 0.005) {
       status = `<b>▲ ${fmtEur(diff)}</b> oltre il target`; cls = 'over';
       tp = v > 0 ? Math.max(0, Math.min(100, (t / v) * 100)) : 100;
@@ -91,7 +94,7 @@ function accCard(c, v) {
   return `<a class="acc ${cls}" href="#conto/${c.id}">
     <span class="acc-name">${esc(c.data.nome)}</span>
     <span class="acc-bal">${fmtEur(v)}</span>
-    ${typeof t === 'number' ? `<span class="acc-track"><span style="width:${cls === 'over' ? 100 : pct}%${cls === 'over' ? `;--tp:${tp.toFixed(1)}%` : ''}"></span></span>
+    ${typeof t === 'number' ? `<span class="acc-track"><span style="width:${cls ? 100 : pct}%${cls ? `;--tp:${tp.toFixed(1)}%` : ''}"></span></span>
       <span class="acc-target">Target ${fmtEur(t)}</span><span class="acc-status">${status}</span>` : ''}
   </a>`;
 }
