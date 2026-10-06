@@ -184,8 +184,8 @@ export function renderConto(el, id) {
       <div class="hero">
         <p class="hero-label">Saldo attuale</p>
         <p class="hero-num">${fmtEur(bal)}</p>
-        ${typeof t === 'number' ? `<p class="hero-sub ${diff < -0.005 ? 'neg' : diff > 0.005 ? 'over' : ''}">Target ${fmtEur(t)}:
-          ${diff < -0.005 ? `mancano <b>${fmtEur(-diff)}</b>` : diff > 0.005 ? `<b>▲ ${fmtEur(diff)}</b> oltre il target` : 'al target'}</p>` : ''}
+        ${typeof t === 'number' ? `<p class="hero-sub ${diff < -0.005 ? 'under' : diff > 0.005 ? 'over' : ''}">Target ${fmtEur(t)}:
+          ${diff < -0.005 ? `<b>▼ ${fmtEur(-diff)}</b> sotto il target` : diff > 0.005 ? `<b>▲ ${fmtEur(diff)}</b> oltre il target` : 'al target'}</p>` : ''}
         <div class="btn-row">
           ${diff != null && diff < -0.005 ? '<button class="btn primary small" data-act="reint">Reintegra</button>' : ''}
           <button class="btn small" data-act="tr-in">Trasferisci qui</button>
