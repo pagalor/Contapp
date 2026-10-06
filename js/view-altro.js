@@ -44,13 +44,24 @@ export function render(el) {
           </select></label>
         <div id="install-box"></div>
       </section>
-      <p class="muted version">Contabilità, versione 1.0. I dati sono salvati su questo dispositivo${sync.session() ? ' e sincronizzati, cifrati, sul tuo progetto Supabase' : ''}.</p>
+      <p class="muted version">Contabilità<span id="app-ver"></span>. I dati sono salvati su questo dispositivo${sync.session() ? ' e sincronizzati, cifrati, sul tuo progetto Supabase' : ''}.</p>
     </section>`;
   renderSync();
   renderCats();
   bind();
+  showVersion();
   if (unsub) unsub();
   unsub = sync.onStatus(() => { if (root.isConnected) paintStatus(); else unsub(); });
+}
+
+// La versione è il numero della cache del service worker (VERSION in sw.js, "contabilita-vN"):
+// è quella dei file che l'app sta davvero usando. Se non è disponibile, non si scrive nessun numero.
+async function showVersion() {
+  try {
+    const nums = (await caches.keys()).map((k) => /^contabilita-v(\d+)$/.exec(k)).filter(Boolean).map((m) => +m[1]);
+    const el = $('#app-ver', root);
+    if (nums.length && el) el.textContent = `, versione ${Math.max(...nums)}`;
+  } catch { /* cache non disponibile (es. navigazione privata): nessun numero */ }
 }
 
 // --- Sincronizzazione ---
