@@ -454,7 +454,7 @@ function bindBody(body) {
       e.target.dispatchEvent(new Event('change', { bubbles: true }));
       const next = row.nextElementSibling;
       if (next) $('.c-amt', next).focus();
-      else addRow(row.closest('.ledger').dataset.tipo);
+      else addInlineRow(row.closest('.ledger').dataset.tipo);
     }
   });
 }
@@ -513,22 +513,26 @@ function commitAmount(inp, row) {
   inp.value = fmt(val);
 }
 
-// Su telefono un movimento nuovo si scrive in una finestra con campi grandi e i pulsanti Annulla e Aggiungi
-const compact = () => matchMedia('(max-width: 700px)').matches;
-
+// "+ Aggiungi uscita/entrata" apre una finestra come quella dei trasferimenti, con i pulsanti Annulla e Aggiungi
 function addRow(tipo, day) {
   const t = today();
-  if (compact()) {
-    movDialog({
-      tipo, y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
-      onDone: (id) => renderBody(id),
-    });
-    return;
-  }
+  movDialog({
+    tipo, y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
+    onDone: (id, data) => {
+      if (data.y === state.y && data.m === state.m) { renderBody(id); return; }
+      renderBody();
+      toast(`Aggiunto in ${M.MESI[data.m - 1]} ${data.y}`, { action: 'Vai', onAction: () => { location.hash = `#mese/${ymHash(data.y, data.m)}/${id}`; } });
+    },
+  });
+}
+
+// Riga vuota da compilare direttamente nell'elenco: serve a chi continua a scrivere con Invio dall'ultima riga
+function addInlineRow(tipo) {
+  const t = today();
   const id = store.newId();
   const c = M.suggestConto(tipo, '');
   store.save('mov', id, {
-    y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
+    y: state.y, m: state.m, d: state.y === t.y && state.m === t.m ? t.d : null,
     tipo, espr: null, val: null, desc: '', cat: M.fallbackCat(tipo), catAuto: true,
     conti: c ? [{ c }] : [], contoAuto: true, tags: [], note: null, escl: false, ord: Date.now(),
   });
@@ -657,10 +661,6 @@ function paintDay(per) {
     ${o.items.length ? o.items.map(calItem).join('') : '<p class="muted">Nessun movimento in questo giorno.</p>'}
     <div class="btn-row"><button class="btn small" data-calnew="out">+ Uscita</button><button class="btn small ghost" data-calnew="in">+ Entrata</button></div>`;
   $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {
-    if (compact()) { addRow(b.dataset.calnew, selDay); return; }
-    setMode('lista');
-    $$('.seg [data-mode]', root).forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.mode === 'lista')));
-    renderBody();
     addRow(b.dataset.calnew, selDay);
   }));
   $$('.cal-item', panel.parentElement).forEach((a) => a.addEventListener('click', () => setMode('lista')));
