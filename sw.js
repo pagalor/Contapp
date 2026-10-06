@@ -1,6 +1,6 @@
 // Service worker: rende l'app utilizzabile offline.
 // Quando pubblichi una nuova versione dei file, aumenta il numero di VERSION.
-const VERSION = 'contabilita-v9';
+const VERSION = 'contabilita-v11';
 const SHELL = [
   './', './index.html', './style.css', './manifest.webmanifest',
   './js/main.js', './js/store.js', './js/model.js', './js/sync.js', './js/expr.js', './js/charts.js', './js/catstats.js', './js/ui.js',

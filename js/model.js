@@ -406,6 +406,14 @@ export function sottoTarget(bal = balances()) {
     .filter((x) => x.manca > 0.005);
 }
 
+// Conti oltre il target: [{ c, bal, target, extra }]
+export function oltreTarget(bal = balances()) {
+  if (!autoAttivo()) return [];
+  return accounts().filter((c) => typeof c.data.obiettivo === 'number')
+    .map((c) => ({ c, bal: bal.get(c.id) || 0, target: c.data.obiettivo, extra: round2((bal.get(c.id) || 0) - c.data.obiettivo) }))
+    .filter((x) => x.extra > 0.005);
+}
+
 // Movimenti dopo la partenza che non dicono da quale conto sono passati
 export function senzaConto() {
   const inizio = cfg().inizio;
