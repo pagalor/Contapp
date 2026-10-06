@@ -205,37 +205,30 @@ details.alert summary { cursor: pointer; }
 .row {
   display: grid; position: relative; border-top: 1px solid var(--line); align-items: center;
   grid-template-columns: 2.4rem minmax(0, 1.3fr) minmax(0, .2fr) 6.8rem 2.4rem;
-  grid-template-areas: "day desc desc amt more" "day cat acc acc more" "tags tags tags tags tags" "ops ops ops ops ops" "det det det det det";
+  grid-template-areas: "day desc desc amt more" "day cat acc acc more" "tags tags tags tags tags" "det det det det det";
   padding: .15rem .25rem;
 }
 .row:hover { background: var(--hover); }
 .row.open { background: var(--hover); }
-.row > input {
-  font: inherit; color: var(--ink); background: transparent; border: 1px solid transparent; border-radius: 8px;
-  padding: .45rem .45rem; min-width: 0; width: 100%;
-}
-.row > input:focus { background: var(--surface); border-color: var(--focus); box-shadow: none; }
+/* Righe di sola lettura: un tocco apre le voci extra, la matita apre la modifica */
+.row { cursor: pointer; color: var(--ink); }
+.row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.row > .c-day, .row > .c-amt, .row > .c-desc { padding: .55rem .45rem; min-width: 0; }
 .c-day { grid-area: day; text-align: center; color: var(--muted); font-size: .9rem; }
 .c-amt { grid-area: amt; text-align: right; font-weight: 650; }
 .ledger.in .c-amt { color: var(--in); }
 .row.has-expr .c-amt { text-decoration: underline dotted var(--faint); text-underline-offset: 4px; }
-.c-amt.err { border-color: var(--out) !important; }
 .c-desc { grid-area: desc; font-weight: 500; }
-.c-desc::placeholder { color: var(--faint); }
+.c-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-desc.empty { color: var(--faint); font-weight: 400; }
 .c-cat, .c-acc { display: flex; align-items: center; min-width: 0; }
 .c-cat { grid-area: cat; }
 .c-acc { grid-area: acc; }
 .c-cat i { width: 8px; height: 8px; border-radius: 50%; background: var(--cat); flex: none; margin-left: .45rem; }
-.c-cat select, .c-acc select {
-  font: inherit; font-size: .82rem; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 8px;
-  padding: .25rem .4rem; min-width: 0; width: 100%; cursor: pointer; appearance: none; -webkit-appearance: none;
-  text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
-}
-.c-cat select:hover, .c-acc select:hover { color: var(--ink); }
-.c-cat select:focus, .c-acc select:focus { border-color: var(--focus); color: var(--ink); background: var(--surface); }
-.row.no-acc .c-acc select { color: var(--warn); font-weight: 600; }
+.c-cat .c-lbl, .c-acc .c-lbl { font-size: .82rem; color: var(--muted); padding: .55rem .4rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row.no-acc .c-acc .c-lbl { color: var(--warn); font-weight: 600; }
 .row.no-acc .c-acc::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); margin-left: .45rem; flex: none; }
-.row.split-ko .c-acc select { color: var(--out); }
+.row.split-ko .c-acc .c-lbl { color: var(--out); }
 .c-more { grid-area: more; background: none; border: 0; color: var(--faint); cursor: pointer; position: relative; height: 34px; border-radius: 8px; }
 .c-more svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .c-more:hover { color: var(--ink); }
@@ -250,9 +243,6 @@ details.alert summary { cursor: pointer; }
   background: var(--hover); border: 1px solid var(--line); border-radius: 999px; padding: .08rem .55rem; white-space: nowrap;
 }
 a.tag:hover { color: var(--ink); border-color: var(--line-2); }
-.opkeys { grid-area: ops; display: none; gap: .35rem; padding: .3rem .4rem .5rem; justify-content: flex-end; }
-.opkeys button { font: inherit; font-size: 1.1rem; min-width: 2.7rem; height: 2.5rem; border-radius: var(--r-md); border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); }
-@media (pointer: coarse) { .row:has(.c-amt:focus) .opkeys { display: flex; } }
 .details { grid-area: det; padding: .2rem .7rem .9rem; }
 .details .field { margin: .5rem 0; }
 .tags-edit { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; padding: .35rem .45rem; }
@@ -280,7 +270,7 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 @container ledger (min-width: 680px) {
   .row {
     grid-template-columns: 3rem 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem;
-    grid-template-areas: "day amt desc cat acc more" "tags tags tags tags tags tags" "ops ops ops ops ops ops" "det det det det det det";
+    grid-template-areas: "day amt desc cat acc more" "tags tags tags tags tags tags" "det det det det det det";
     padding: .1rem .35rem;
   }
   .tagline { padding-left: 11.2rem; }
