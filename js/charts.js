@@ -53,6 +53,7 @@ export function bars({ width, height = 220, labels, series, onClick }) {
 }
 
 // Linea con area (es. saldo cumulato). points: [{ label, value }]
+// Il grafico è interattivo (mouse, tocco, frecce): vedi bindTimeHover.
 export function line({ width, height = 200, points, cls = 'line-in' }) {
   const padL = 46, padR = 10, padT = 12, padB = 24;
   const W = Math.max(width, 280), H = height;
@@ -74,11 +75,14 @@ export function line({ width, height = 200, points, cls = 'line-in' }) {
   const useShort = points.some((p) => p.short !== undefined);
   const every = points.length > 14 ? Math.ceil(points.length / 10) : 1;
   points.forEach((p, i) => {
-    g += `<circle class="dot ${cls}" cx="${sx(i)}" cy="${sy(p.value)}" r="${points.length > 40 ? 2 : 3.2}" data-tip="${esc(p.label + ': ' + fmtEur(p.value))}"/>`;
+    g += `<circle class="dot ${cls}" cx="${sx(i)}" cy="${sy(p.value)}" r="${points.length > 40 ? 2 : 3.2}"/>`;
     const lab = useShort ? p.short : (i % every === 0 ? p.label : '');
     if (lab) g += `<text class="axis" x="${sx(i)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : 'middle'}">${esc(lab)}</text>`;
   });
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img">${g}</svg>`;
+  g += `<line class="cross" x1="0" x2="0" y1="${padT}" y2="${H - padB}" hidden/><circle class="dot total" r="4" hidden/>`;
+  const xs = points.map((_, i) => sx(i).toFixed(1)).join(','), ys = points.map((p) => sy(p.value).toFixed(1)).join(',');
+  return `<svg class="chart interactive" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" tabindex="0"
+    data-xs="${xs}" data-ys="${ys}">${g}</svg>`;
 }
 
 // Aree impilate su asse temporale reale. points: [{ date: 'YYYY-MM-DD', parts: [{ key, cls, value, name }] }]
@@ -151,7 +155,7 @@ export function stackedTime({ width, height = 230, points, markers = [] }) {
     data-xs="${xs}" data-ys="${ys}">${g}</svg>`;
 }
 
-// Rende interattivo un grafico di stackedTime: passando il mouse, toccando o con le frecce
+// Rende interattivo un grafico di stackedTime o di line: passando il mouse, toccando o con le frecce
 // si sceglie il punto più vicino; onPick(indice) riceve l'indice, oppure null quando la selezione finisce.
 export function bindTimeHover(box, onPick) {
   const svg = box.querySelector('svg.interactive');

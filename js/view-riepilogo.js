@@ -98,11 +98,11 @@ function draw() {
   const s = M.sums(list);
 
   // serie per il grafico principale
-  let labels, vin, vout, cum = [];
+  let labels, vin, vout, vsal, cum = [];
   if (tutto) {
     labels = ys.map(String);
     const per = ys.map((y) => M.sums(list.filter((r) => r.data.y === y)));
-    vin = per.map((p) => p.tin); vout = per.map((p) => p.tout);
+    vin = per.map((p) => p.tin); vout = per.map((p) => p.tout); vsal = per.map((p) => p.saldo);
     let acc = 0;
     for (const y of ys) {
       M.monthly(y).forEach((o, i) => {
@@ -114,7 +114,7 @@ function draw() {
   } else {
     labels = M.MESI_BREVI;
     const mo = M.monthly(sel);
-    vin = mo.map((o) => o.tin); vout = mo.map((o) => o.tout);
+    vin = mo.map((o) => o.tin); vout = mo.map((o) => o.tout); vsal = mo.map((o) => o.saldo);
     let acc = 0;
     mo.forEach((o, i) => { if (!o.n) return; acc += o.saldo; cum.push({ label: `${M.MESI[i]} ${sel}`, short: M.MESI_BREVI[i], value: round2(acc) }); });
   }
@@ -139,13 +139,14 @@ function draw() {
 
     <section class="card">
       <h2>${tutto ? 'Entrate e uscite per anno' : 'Entrate e uscite per mese'}</h2>
-      <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span></div>
+      <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span><span class="lg saldo">Saldo</span></div>
       <div class="chart-box" id="ch-bars"></div>
     </section>
 
     <section class="card">
       <h2>Saldo accumulato</h2>
       <p class="muted">Quanto hai messo da parte sommando i saldi mese dopo mese${tutto ? (filtrato ? ', nel periodo scelto' : ', dal primo mese registrato') : ` nel ${sel}`}.</p>
+      <p class="chart-info" id="ch-line-info"></p>
       <div class="chart-box" id="ch-line"></div>
     </section>
 
@@ -181,9 +182,15 @@ function draw() {
 
   $('#ch-bars', root).innerHTML = C.bars({
     width: width('#ch-bars'), labels,
-    series: [{ name: 'Entrate', cls: 'in', values: vin }, { name: 'Uscite', cls: 'out', values: vout }],
+    series: [{ name: 'Entrate', cls: 'in', values: vin }, { name: 'Uscite', cls: 'out', values: vout }, { name: 'Saldo', cls: 'saldo', values: vsal }],
   });
-  $('#ch-line', root).innerHTML = C.line({ width: width('#ch-line'), points: cum, cls: 'line-saldo' });
+  const lineBox = $('#ch-line', root), lineInfo = $('#ch-line-info', root);
+  lineBox.innerHTML = C.line({ width: width('#ch-line'), points: cum, cls: 'line-saldo' });
+  // toccando o passando il mouse sul grafico si legge il saldo accumulato di quel mese
+  C.bindTimeHover(lineBox, (i) => {
+    const p = cum[i ?? cum.length - 1];
+    lineInfo.innerHTML = p ? `<b>${p.label}</b> · <span class="${saldoCls(p.value)}">${fmtSigned(p.value)}</span>` : '';
+  });
   $('#cat-out', root).innerHTML = catBars(list, 'out');
   $('#cat-in', root).innerHTML = catBars(list, 'in');
   bind();
