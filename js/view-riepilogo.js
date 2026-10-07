@@ -1,7 +1,7 @@
 import * as store from './store.js';
 import * as M from './model.js';
 import * as C from './charts.js';
-import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, plain, round2 } from './expr.js';
+import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, saldoCls, plain, round2 } from './expr.js';
 import { esc, $, toast } from './ui.js';
 import { catBars, toggleCat } from './catstats.js';
 
@@ -127,12 +127,12 @@ function draw() {
     <dl class="stats stats-main">
       <div><dt>Entrate</dt><dd class="in">${fmtEur(s.tin)}</dd></div>
       <div><dt>Uscite</dt><dd class="out">${fmtEur(s.tout)}</dd></div>
-      <div><dt>Saldo</dt><dd class="saldo">${fmtSigned(s.saldo)}</dd></div>
+      <div><dt>Saldo</dt><dd class="${saldoCls(s.saldo)}">${fmtSigned(s.saldo)}</dd></div>
     </dl>
     <dl class="stats stats-sub">
       <div><dt>Entrate medie al mese</dt><dd class="in">${fmtEur(mesiAttivi ? s.tin / mesiAttivi : 0)}</dd></div>
       <div><dt>Uscite medie al mese</dt><dd>${fmtEur(mesiAttivi ? s.tout / mesiAttivi : 0)}</dd></div>
-      <div><dt>Saldo medio al mese</dt><dd class="saldo">${fmtSigned(mesiAttivi ? s.saldo / mesiAttivi : 0)}</dd></div>
+      <div><dt>Saldo medio al mese</dt><dd class="${saldoCls(mesiAttivi ? s.saldo / mesiAttivi : 0)}">${fmtSigned(mesiAttivi ? s.saldo / mesiAttivi : 0)}</dd></div>
       <div><dt>Risparmio</dt><dd class="saldo">${s.tin > 0 ? (s.saldo / s.tin * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%' : '–'}</dd></div>
       <div><dt>Soldi buttati</dt><dd class="butt">${fmtEur(butt)}</dd></div>
     </dl>
@@ -195,7 +195,7 @@ function monthTable(y) {
     ${mo.map((o, i) => o.n ? `<tr data-href="#mese/${y}-${String(i + 1).padStart(2, '0')}">
       <td><a href="#mese/${y}-${String(i + 1).padStart(2, '0')}">${M.MESI[i]}</a></td>
       <td class="num in">${fmt(o.tin)}</td><td class="num out">${fmt(o.tout)}</td>
-      <td class="num saldo">${fmtSigned(o.saldo)}</td></tr>` : '').join('')}
+      <td class="num ${saldoCls(o.saldo)}">${fmtSigned(o.saldo)}</td></tr>` : '').join('')}
   </tbody></table>`;
 }
 
@@ -203,7 +203,7 @@ function yearTable(ys, list) {
   return `<table class="tbl"><thead><tr><th>Anno</th><th class="num">Entrate</th><th class="num">Uscite</th><th class="num">Saldo</th></tr></thead><tbody>
     ${ys.map((y) => { const s = M.sums(list.filter((r) => r.data.y === y)); return `<tr>
       <td><a href="#riepilogo/${y}">${y}</a></td><td class="num in">${fmt(s.tin)}</td><td class="num out">${fmt(s.tout)}</td>
-      <td class="num saldo">${fmtSigned(s.saldo)}</td></tr>`; }).join('')}
+      <td class="num ${saldoCls(s.saldo)}">${fmtSigned(s.saldo)}</td></tr>`; }).join('')}
   </tbody></table>`;
 }
 

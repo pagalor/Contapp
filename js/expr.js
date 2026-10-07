@@ -95,6 +95,8 @@ export const fmt = (n) => (n == null || isNaN(n) ? '' : nf.format(n));
 export const fmtEur = (n) => (n == null || isNaN(n) ? '–' : nf.format(n) + ' €');
 export const fmtEur0 = (n) => (n == null || isNaN(n) ? '–' : nf0.format(n) + ' €');
 export const fmtSigned = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + nf.format(Math.abs(n)) + ' €';
+// Classe di colore del saldo: verde se positivo, rosso se negativo, neutro se in pari (al centesimo)
+export const saldoCls = (n) => (Math.round(n * 100) > 0 ? 'sal-pos' : Math.round(n * 100) < 0 ? 'sal-neg' : 'sal-zero');
 
 // Valore "grezzo" da mostrare in modifica quando non c'è un'espressione
 export const plain = (n) => (n == null ? '' : String(round2(n)).replace('.', ','));
