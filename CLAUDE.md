@@ -29,8 +29,8 @@ js/model.js             logica di dominio: totali, categorie, fondi, saldi, targ
 js/expr.js              parser degli importi con espressioni e formattazione dei numeri (it-IT)
 js/sync.js              autenticazione Supabase, pull e push, gestione della frase segreta
 js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle chiavi
-js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio con sottocategorie), torte per categoria di un tag; usato da Mese e Riepilogo
-js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo (con selezione interattiva del punto), anello
+js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio con sottocategorie), torte per categoria di un tag; usato da Mese e Riepilogo. Si vede solo la torta: toccando il centro (`.donut-hit`, un solo ascolto sul documento) si apre l'elenco delle voci
+js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo (con selezione interattiva del punto), anello (si anima quando compare scorrendo la pagina)
 js/ui.js                toast, finestre (dialog), conferme, tooltip, download, debounce
 js/dialogs.js           finestre condivise: movimento (nuovo e modifica), ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente
 js/view-mese.js         pagina Mese: elenco e calendario, ricerca, trasferimenti, avvisi, categorie in fondo. I movimenti sono di sola lettura: toccandone uno (elenco o calendario) si aprono le voci extra (tag, nota, duplica…), e solo la matita apre la finestra di modifica (`movDialog`), la stessa del "+ Aggiungi"

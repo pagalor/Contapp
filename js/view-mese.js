@@ -2,7 +2,7 @@ import * as store from './store.js';
 import * as M from './model.js';
 import { fmt, fmtEur, fmtSigned, saldoCls } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
-import { catBars, toggleCat } from './catstats.js';
+import { catBars, toggleCat, setPieOpen } from './catstats.js';
 import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov, movDialog } from './dialogs.js';
 
 let state = { y: 0, m: 0, q: '' };
@@ -272,7 +272,9 @@ function updateCats() {
     const box = root.querySelector(`#mese-cat-${t}`);
     if (!box) continue;
     const aperte = [...box.querySelectorAll('.catbar[aria-expanded="true"]')].map((b) => b.dataset.cat);
+    const tortaAperta = !!box.querySelector('.cat-split.open');
     box.innerHTML = catBars(list, t);
+    if (tortaAperta) setPieOpen(box.querySelector('.cat-split'), true);
     for (const b of box.querySelectorAll('.catbar')) {
       if (aperte.includes(b.dataset.cat)) toggleCat(b, list);
     }

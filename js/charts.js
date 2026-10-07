@@ -192,10 +192,15 @@ export function bindTimeHover(box, onPick) {
 }
 
 // Torta ad anello. slices: [{ label, value, color }]; al centro il totale.
-export function donut({ size = 200, slices, center = '' }) {
+// Con `toggle` il centro è un pulsante (classe .donut-hit) per aprire i dettagli sotto la torta.
+// La torta si "chiude" (animazione) la prima volta che compare scorrendo la pagina: vedi animateDonuts.
+// `key` identifica la torta: se è già stata animata in questa pagina, non si ripete a ogni ridisegno.
+let donutSeq = 0;
+export function donut({ size = 200, slices, center = '', toggle = false, key = '' }) {
   const tot = slices.reduce((s, x) => s + Math.max(0, x.value), 0);
   if (!tot) return '';
   const R = size / 2, r0 = R * 0.62, cx = R, cy = R;
+  const maskId = `donut-m${++donutSeq}`;
   let a = -Math.PI / 2, g = '';
   const pt = (rad, ang) => `${(cx + rad * Math.cos(ang)).toFixed(2)},${(cy + rad * Math.sin(ang)).toFixed(2)}`;
   for (const s of slices) {
@@ -212,6 +217,54 @@ export function donut({ size = 200, slices, center = '' }) {
       fill="${s.color}" data-tip="${esc(tip)}"/>`;
     a = b;
   }
-  g += `<text class="donut-tot" x="${cx}" y="${cy + 6}" text-anchor="middle">${esc(center)}</text>`;
-  return `<svg class="donut" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img">${g}</svg>`;
+  const mask = `<mask id="${maskId}"><circle class="donut-sweep" cx="${cx}" cy="${cy}" r="${R / 2}" fill="none" stroke="#fff"
+    stroke-width="${R}" pathLength="100" transform="rotate(-90 ${cx} ${cy})"/></mask>`;
+  let html = `<defs>${mask}</defs><g mask="url(#${maskId})">${g}</g>`;
+  if (toggle) {
+    html += `<circle class="donut-hit" cx="${cx}" cy="${cy}" r="${r0 - 2}" tabindex="0" role="button" aria-expanded="false" aria-label="Mostra o nascondi le voci"/>`;
+    html += `<text class="donut-tot" x="${cx}" y="${cy + 2}" text-anchor="middle">${esc(center)}</text>`;
+    html += `<text class="donut-chev" x="${cx}" y="${cy + 20}" text-anchor="middle">▾</text>`;
+  } else {
+    html += `<text class="donut-tot" x="${cx}" y="${cy + 6}" text-anchor="middle">${esc(center)}</text>`;
+  }
+  return `<svg class="donut pre" data-key="${esc(key)}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img">${html}</svg>`;
 }
+
+// Fa partire l'animazione di ogni torta quando entra nello schermo. Si installa una sola volta e
+// osserva la pagina: le torte create dopo (ridisegni, riquadri aperti) vengono trovate da sole.
+const animate = new Set();
+function startDonut(svg) {
+  const key = svg.dataset.key;
+  if (key && animate.has(key)) svg.classList.add('seen'); // già animata in questa pagina: nessun replay
+  else if (key) animate.add(key);
+  svg.classList.add('go');
+}
+function initDonutAnimation() {
+  if (typeof document === 'undefined') return;
+  const io = 'IntersectionObserver' in window
+    ? new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        io.unobserve(e.target);
+        startDonut(e.target);
+      }
+    }, { threshold: 0.35 })
+    : null;
+  const watch = (el) => {
+    if (el.nodeType !== 1) return;
+    const list = el.matches?.('svg.donut.pre') ? [el] : [...(el.querySelectorAll?.('svg.donut.pre') || [])];
+    for (const s of list) {
+      if (s.dataset.watched) continue;
+      s.dataset.watched = '1';
+      // già animata in questa pagina (ridisegno dopo una modifica): si mostra subito, senza lampi
+      if (!io || (s.dataset.key && animate.has(s.dataset.key))) startDonut(s);
+      else io.observe(s);
+    }
+  };
+  new MutationObserver((muts) => { for (const m of muts) m.addedNodes.forEach(watch); })
+    .observe(document.documentElement, { childList: true, subtree: true });
+  watch(document.documentElement);
+  // cambiando pagina (mese, anno…) le torte possono animarsi di nuovo
+  window.addEventListener('hashchange', () => animate.clear());
+}
+initDonutAnimation();

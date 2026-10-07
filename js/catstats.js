@@ -8,11 +8,13 @@ export function catBars(list, tipo) {
   const rows = M.byCategory(list, tipo);
   const tot = rows.reduce((a, r) => a + r.tot, 0);
   if (!rows.length) return '<p class="muted">Nessun dato.</p>';
+  const slices = rows.map((r) => ({ label: M.catLabel(r.cat), value: r.tot, color: r.cat?.data.colore || '#999' }));
   const pie = C.donut({
-    size: 190, center: fmtEur0(tot),
-    slices: rows.map((r) => ({ label: M.catLabel(r.cat), value: r.tot, color: r.cat?.data.colore || '#999' })),
+    size: 190, center: fmtEur0(tot), toggle: true, slices,
+    key: `${tipo}:${slices.map((s) => s.label).join('|')}`,
   });
-  return `<div class="cat-split"><div class="pie">${pie}</div><ul class="catbars">${rows.map((r) => {
+  // Si vede solo la torta: toccando il centro si aprono le voci (vedi il gestore in fondo al file)
+  return `<div class="cat-split"><div class="pie">${pie}</div><ul class="catbars" hidden>${rows.map((r) => {
     const pct = tot ? (r.tot / tot) * 100 : 0;
     return `<li>
       <button class="catbar" data-cat="${r.id}" data-tipo="${tipo}" aria-expanded="false">
@@ -62,6 +64,35 @@ export function tagPies(list) {
   }
   return html || '<p class="muted">Nessun importo.</p>';
 }
+
+// Apre o chiude l'elenco delle voci sotto la torta (split = il suo .cat-split)
+export function setPieOpen(split, open) {
+  if (!split) return;
+  split.classList.toggle('open', open);
+  const list = split.querySelector('.catbars');
+  if (list) list.hidden = !open;
+  split.querySelector('.donut-hit')?.setAttribute('aria-expanded', String(open));
+  const chev = split.querySelector('.donut-chev');
+  if (chev) chev.textContent = open ? '▴' : '▾';
+}
+
+// Un solo ascolto per tutta la pagina: il centro della torta apre e chiude le voci.
+// Vale per Mese, Riepilogo e per le torte dei tag, anche se vengono ridisegnate.
+function togglePie(hit) {
+  const split = hit.closest('.cat-split');
+  setPieOpen(split, !split.classList.contains('open'));
+}
+document.addEventListener('click', (e) => {
+  const hit = e.target.closest?.('.donut-hit');
+  if (hit) togglePie(hit);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const hit = e.target.closest?.('.donut-hit');
+  if (!hit) return;
+  e.preventDefault();
+  togglePie(hit);
+});
 
 // Apre o chiude il dettaglio di una categoria (il pulsante .catbar è già stato cliccato).
 export function toggleCat(btn, list) {

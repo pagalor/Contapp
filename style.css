@@ -644,8 +644,17 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .donut { max-width: 100%; height: auto; }
 .donut .slice { stroke: var(--surface); stroke-width: 1.5; cursor: pointer; }
 .donut .slice:hover { opacity: .8; }
-.donut-tot { font-family: var(--font); font-weight: 700; font-size: 17px; fill: var(--ink); }
-@media (min-width: 760px) { .cat-split { grid-template-columns: 210px minmax(0, 1fr); } .pie { position: sticky; top: 1rem; } }
+.donut-tot { font-family: var(--font); font-weight: 700; font-size: 17px; fill: var(--ink); pointer-events: none; }
+.donut-chev { font-size: 12px; fill: var(--muted); pointer-events: none; }
+.donut-hit { fill: transparent; cursor: pointer; outline: none; }
+.donut-hit:hover { fill: var(--hover); }
+.donut-hit:focus-visible { stroke: var(--ink); stroke-width: 1.5; }
+/* Animazione: l'anello si chiude (come una lancetta che gira) quando la torta compare sullo schermo */
+.donut-sweep { stroke-dasharray: 100; stroke-dashoffset: 0; }
+.donut.pre:not(.go) .donut-sweep { stroke-dashoffset: 100; }
+.donut.go:not(.seen) .donut-sweep { animation: donut-close .9s cubic-bezier(.3, .6, .3, 1) both; }
+@keyframes donut-close { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@media (min-width: 760px) { .cat-split.open { grid-template-columns: 210px minmax(0, 1fr); } .cat-split.open .pie { position: sticky; top: 1rem; } }
 
 /* ---------- Patrimonio: debiti ---------- */
 .hero-debt { margin: .9rem 0 0; font-size: .9rem; color: var(--muted); }
