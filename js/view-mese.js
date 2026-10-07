@@ -522,7 +522,7 @@ function paintDay(per) {
   const nome = new Date(state.y, state.m - 1, selDay).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   panel.innerHTML = `
     <h2>${nome.charAt(0).toUpperCase() + nome.slice(1)}
-      <span>${o.tout ? `<b class="out">−${fmtEur(o.tout)}</b>` : ''}${o.tin ? ` <b class="in">+${fmtEur(o.tin)}</b>` : ''}${o.tin || o.tout ? ` <b class="${saldoCls(o.tin - o.tout)}" title="Saldo del giorno">= ${fmtSigned(o.tin - o.tout)}</b>` : ''}</span></h2>
+      <span>${o.tin || o.tout ? `<b class="${saldoCls(o.tin - o.tout)}" title="Saldo del giorno">${fmtSigned(o.tin - o.tout)}</b>` : ''}</span></h2>
     ${o.items.length ? o.items.map(calItem).join('') : '<p class="muted">Nessun movimento in questo giorno.</p>'}
     <div class="btn-row"><button class="btn small" data-calnew="out">+ Uscita</button><button class="btn small ghost" data-calnew="in">+ Entrata</button></div>`;
   $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {
