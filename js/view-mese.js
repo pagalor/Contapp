@@ -154,7 +154,7 @@ function renderAlerts() {
 function ledger(tipo, title, list) {
   return `
     <section class="ledger ${tipo}" data-tipo="${tipo}">
-      <h2><span>${title}</span><span class="ledger-tot" data-tot="${tipo}"></span></h2>
+      <h2><span>${title}</span><span class="ledger-tot muted" data-tot="${tipo}"></span></h2>
       <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>${tipo === 'in' ? 'Ricevuto su' : 'Pagato con'}</span><span></span></div>
       <div class="rows">${list.map(rowHTML).join('')}</div>
       <button class="add-row" data-add="${tipo}">+ Aggiungi ${tipo === 'in' ? 'entrata' : 'uscita'}</button>
@@ -246,7 +246,8 @@ function transfers(list) {
 }
 
 function updateSums() {
-  const s = M.sums(M.movsOf(state.y, state.m));
+  const list = M.movsOf(state.y, state.m);
+  const s = M.sums(list);
   const el = $('#sums', root);
   if (el) {
     el.innerHTML = `
@@ -256,7 +257,9 @@ function updateSums() {
   }
   for (const t of ['in', 'out']) {
     const e = root.querySelector(`[data-tot="${t}"]`);
-    if (e) e.textContent = fmtEur(t === 'in' ? s.tin : s.tout);
+    if (!e) continue;
+    // I totali sono già in alto: qui si conta quanti movimenti ci sono, come per "Senza giorno" nel calendario
+    e.textContent = list.filter((r) => r.data.tipo === t).length;
   }
   updateCats();
 }
