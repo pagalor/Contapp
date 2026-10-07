@@ -131,9 +131,9 @@ function draw() {
     </dl>
     <dl class="stats stats-sub">
       <div><dt>Entrate medie al mese</dt><dd class="in">${fmtEur(mesiAttivi ? s.tin / mesiAttivi : 0)}</dd></div>
-      <div><dt>Uscite medie al mese</dt><dd>${fmtEur(mesiAttivi ? s.tout / mesiAttivi : 0)}</dd></div>
+      <div><dt>Uscite medie al mese</dt><dd class="out">${fmtEur(mesiAttivi ? s.tout / mesiAttivi : 0)}</dd></div>
       <div><dt>Saldo medio al mese</dt><dd class="${saldoCls(mesiAttivi ? s.saldo / mesiAttivi : 0)}">${fmtSigned(mesiAttivi ? s.saldo / mesiAttivi : 0)}</dd></div>
-      <div><dt>Risparmio</dt><dd class="saldo">${s.tin > 0 ? (s.saldo / s.tin * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%' : '–'}</dd></div>
+      <div><dt>Risparmio</dt><dd>${s.tin > 0 ? (s.saldo / s.tin * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 }) + '%' : '–'}</dd></div>
       <div><dt>Soldi buttati</dt><dd class="butt">${fmtEur(butt)}</dd></div>
     </dl>
 
