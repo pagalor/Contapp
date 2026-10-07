@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import * as M from './model.js';
-import { fmt, fmtEur, fmtSigned } from './expr.js';
+import { fmt, fmtEur, fmtSigned, saldoCls } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
 import { catBars, toggleCat } from './catstats.js';
 import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov, movDialog } from './dialogs.js';
@@ -247,7 +247,7 @@ function updateSums() {
     el.innerHTML = `
       <div><dt>Entrate</dt><dd class="in">${fmtEur(s.tin)}</dd></div>
       <div><dt>Uscite</dt><dd class="out">${fmtEur(s.tout)}</dd></div>
-      <div class="saldo"><dt>Saldo</dt><dd>${fmtSigned(s.saldo)}</dd></div>`;
+      <div class="saldo"><dt>Saldo</dt><dd class="${saldoCls(s.saldo)}">${fmtSigned(s.saldo)}</dd></div>`;
   }
   for (const t of ['in', 'out']) {
     const e = root.querySelector(`[data-tot="${t}"]`);
@@ -481,6 +481,7 @@ function renderCalendar(body) {
       <span class="cal-n">${d}</span>
       ${o.tout ? `<span class="cal-out"><span class="full">−${fmt(o.tout)}</span><span class="short">${Math.round(o.tout).toLocaleString('it-IT')}</span></span>` : ''}
       ${o.tin ? `<span class="cal-in"><span class="full">+${fmt(o.tin)}</span><span class="short">+${Math.round(o.tin).toLocaleString('it-IT')}</span></span>` : ''}
+      ${o.tin && o.tout ? calSaldo(o.tin - o.tout) : ''}
     </button>`;
   }
   const senza = list.filter((r) => r.data.d == null);
@@ -503,6 +504,13 @@ function renderCalendar(body) {
   });
 }
 
+// Saldo del giorno nella cella del calendario (solo se ci sono sia entrate sia uscite)
+const calSaldo = (v) => {
+  const r = Math.round(v * 100) / 100;
+  const sg = r > 0 ? '+' : r < 0 ? '−' : '';
+  return `<span class="cal-sal ${saldoCls(r)}"><span class="full">${sg}${fmt(Math.abs(r))}</span><span class="short">${sg}${Math.round(Math.abs(r)).toLocaleString('it-IT')}</span></span>`;
+};
+
 // Voce del calendario: identica alla riga dell'elenco, senza il giorno
 const calItem = (r) => rowHTML(r, { nodate: true, open: openCal.has(r.id) });
 
@@ -514,7 +522,7 @@ function paintDay(per) {
   const nome = new Date(state.y, state.m - 1, selDay).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   panel.innerHTML = `
     <h2>${nome.charAt(0).toUpperCase() + nome.slice(1)}
-      <span>${o.tout ? `<b class="out">−${fmtEur(o.tout)}</b>` : ''}${o.tin ? ` <b class="in">+${fmtEur(o.tin)}</b>` : ''}</span></h2>
+      <span>${o.tout ? `<b class="out">−${fmtEur(o.tout)}</b>` : ''}${o.tin ? ` <b class="in">+${fmtEur(o.tin)}</b>` : ''}${o.tin || o.tout ? ` <b class="${saldoCls(o.tin - o.tout)}" title="Saldo del giorno">= ${fmtSigned(o.tin - o.tout)}</b>` : ''}</span></h2>
     ${o.items.length ? o.items.map(calItem).join('') : '<p class="muted">Nessun movimento in questo giorno.</p>'}
     <div class="btn-row"><button class="btn small" data-calnew="out">+ Uscita</button><button class="btn small ghost" data-calnew="in">+ Entrata</button></div>`;
   $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {

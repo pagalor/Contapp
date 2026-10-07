@@ -1,6 +1,6 @@
 import * as store from './store.js';
 import * as M from './model.js';
-import { parseAmount, fmt, fmtEur, plain, round2 } from './expr.js';
+import { parseAmount, fmt, fmtEur, saldoCls, plain, round2 } from './expr.js';
 import { esc, $, $$, modal, toast, confirmBox } from './ui.js';
 
 let root;
@@ -32,7 +32,7 @@ function draw() {
       <dl class="stats">
         <div><dt>Ti devono</dt><dd class="in">${fmtEur(t.crediti)}</dd></div>
         <div><dt>Devi</dt><dd class="out">${fmtEur(t.debiti)}</dd></div>
-        <div><dt>Saldo</dt><dd class="saldo">${t.netto >= 0 ? '+' : '−'}${fmtEur(Math.abs(t.netto))}</dd></div>
+        <div><dt>Saldo</dt><dd class="${saldoCls(t.netto)}">${t.netto >= 0 ? '+' : '−'}${fmtEur(Math.abs(t.netto))}</dd></div>
       </dl>
       <nav class="chips" aria-label="Filtro">
         ${[['aperti', 'Da saldare'], ['saldati', 'Saldati'], ['tutti', 'Tutti']].map(([k, n]) =>
