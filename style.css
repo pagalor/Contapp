@@ -612,6 +612,7 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .cal-in { color: var(--in); }
 .cal-sal { font-size: .74rem; font-weight: 700; white-space: nowrap; }
 .cal-day .short { display: none; }
+.cal-out, .cal-in, .cal-sal { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .cal-panel { container: ledger / inline-size; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1rem 1.1rem; margin-bottom: 1rem; }
 .cal-panel h2 { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
 .cal-panel .btn-row { margin-top: .8rem; }

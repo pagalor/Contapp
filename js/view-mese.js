@@ -484,8 +484,8 @@ function renderCalendar(body) {
     const heat = o.tout ? (0.08 + 0.5 * (o.tout / max)).toFixed(3) : 0;
     cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}" style="--heat:${heat}">
       <span class="cal-n">${d}</span>
-      ${o.tout ? `<span class="cal-out"><span class="full">−${fmt(o.tout)}</span><span class="short">${Math.round(o.tout).toLocaleString('it-IT')}</span></span>` : ''}
-      ${o.tin ? `<span class="cal-in"><span class="full">+${fmt(o.tin)}</span><span class="short">+${Math.round(o.tin).toLocaleString('it-IT')}</span></span>` : ''}
+      ${o.tout ? `<span class="cal-out">${calAmt('−', o.tout)}</span>` : ''}
+      ${o.tin ? `<span class="cal-in">${calAmt('+', o.tin)}</span>` : ''}
       ${o.tin && o.tout ? calSaldo(o.tin - o.tout) : ''}
     </button>`;
   }
@@ -510,11 +510,19 @@ function renderCalendar(body) {
   });
 }
 
+// Importo nella cella: intero con i decimali sul computer; su telefono abbreviato, con il segno come sul computer
+// (da 1.000 in migliaia, "1,2k"; da 10.000 senza decimali, "12k"). Se non entra, il testo termina con "…".
+const calAmt = (sg, n) => {
+  const corto = n >= 10000 ? `${Math.round(n / 1000).toLocaleString('it-IT')}k`
+    : n >= 1000 ? `${(Math.round(n / 100) / 10).toLocaleString('it-IT')}k` : Math.round(n).toLocaleString('it-IT');
+  return `<span class="full">${sg}${fmt(n)}</span><span class="short">${sg}${corto}</span>`;
+};
+
 // Saldo del giorno nella cella del calendario (solo se ci sono sia entrate sia uscite)
 const calSaldo = (v) => {
   const r = Math.round(v * 100) / 100;
   const sg = r > 0 ? '+' : r < 0 ? '−' : '';
-  return `<span class="cal-sal ${saldoCls(r)}"><span class="full">${sg}${fmt(Math.abs(r))}</span><span class="short">${sg}${Math.round(Math.abs(r)).toLocaleString('it-IT')}</span></span>`;
+  return `<span class="cal-sal ${saldoCls(r)}">${calAmt(sg, Math.abs(r))}</span>`;
 };
 
 // Voce del calendario: identica alla riga dell'elenco, senza il giorno
