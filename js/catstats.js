@@ -37,8 +37,30 @@ export function catDetail(list, catId, tipo) {
     map.set(key, o);
   }
   const rows = [...map.values()].sort((a, b) => b.tot - a.tot).slice(0, 12);
-  return `<table class="mini"><tbody>${rows.map((o) =>
+  return subTable(list, catId, tipo) + `<table class="mini"><tbody>${rows.map((o) =>
     `<tr><td><a href="#cerca/${encodeURIComponent(o.k)}">${esc(o.k)}</a></td><td class="num muted">${o.n}×</td><td class="num">${fmtEur(o.tot)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// Le sottocategorie di una categoria, se ci sono movimenti che ne hanno una
+function subTable(list, catId, tipo) {
+  const rows = M.bySub(list, catId, tipo);
+  if (!rows.some((r) => r.id)) return '';
+  const tot = rows.reduce((a, r) => a + r.tot, 0);
+  return `<table class="mini subs"><tbody>${rows.map((r) => `<tr>
+    <td>${r.sub ? esc(r.sub.data.nome) : '<span class="muted">Senza sottocategoria</span>'}</td>
+    <td class="num muted">${r.n}×</td><td class="num muted">${(tot ? (r.tot / tot) * 100 : 0).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</td>
+    <td class="num">${fmtEur(r.tot)}</td></tr>`).join('')}</tbody></table>
+    <h4 class="sub-h">Voci principali</h4>`;
+}
+
+// Torte per categoria dei movimenti di un tag (uscite ed entrate), come in Mese e Riepilogo
+export function tagPies(list) {
+  let html = '';
+  for (const [tipo, titolo] of [['out', 'Uscite'], ['in', 'Entrate']]) {
+    if (!M.byCategory(list, tipo).length) continue;
+    html += `<h4 class="sub-h">${titolo} per categoria</h4>${catBars(list, tipo)}`;
+  }
+  return html || '<p class="muted">Nessun importo.</p>';
 }
 
 // Apre o chiude il dettaglio di una categoria (il pulsante .catbar è già stato cliccato).
