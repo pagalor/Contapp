@@ -1,7 +1,7 @@
 import * as store from './store.js';
 import * as M from './model.js';
 import * as C from './charts.js';
-import { parseAmount, fmt, fmtEur, fmtSigned, plain, round2 } from './expr.js';
+import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, plain, round2 } from './expr.js';
 import { esc, $, $$, toast, modal, confirmBox } from './ui.js';
 import { transferDialog } from './dialogs.js';
 
@@ -100,27 +100,88 @@ function accCard(c, v) {
   </a>`;
 }
 
-function drawChart() {
-  const box = $('#pat-chart', root);
+// Intervallo di date del grafico ('AAAA-MM-GG' oppure '' se senza limite). Si ricorda su questo dispositivo.
+const RANGE_KEY = 'contabilita.patrimonio-periodo';
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const range = (() => {
+  try {
+    const o = JSON.parse(localStorage.getItem(RANGE_KEY));
+    return { from: DATE_RE.test(o?.from) ? o.from : '', to: DATE_RE.test(o?.to) ? o.to : '' };
+  } catch { return { from: '', to: '' }; }
+})();
+const saveRange = () => { try { localStorage.setItem(RANGE_KEY, JSON.stringify(range)); } catch {} };
+
+function chartPoints() {
   const inizio = M.cfg().inizio;
   const snaps = M.snapshots().filter((s) => !inizio || s.data.date < inizio);
-  const auto = M.serieAuto();
   const groups = groupsIn(new Set(M.accounts(true).map((c) => c.id)));
   const pt = (date, t) => ({ date, label: fmtDateShort(date), parts: groups.map((g) => ({ key: g, cls: g, value: t.gruppi[g] || 0 })) });
   const points = [
     ...snaps.map((s) => pt(s.data.date, M.snapTotals(s))),
-    ...auto.map((p) => pt(p.date, M.totaleGruppi(p.bal))),
+    ...M.serieAuto().map((p) => pt(p.date, M.totaleGruppi(p.bal))),
   ];
+  return { points, groups, inizio, hasSnaps: snaps.length > 0 };
+}
+
+function drawChart() {
+  const box = $('#pat-chart', root);
+  const { points, groups } = chartPoints();
   if (points.length < 2) { box.innerHTML = ''; return; }
+  const min = points[0].date, max = points[points.length - 1].date;
   box.innerHTML = `<section class="card">
     <h2>Andamento</h2>
-    <div class="legend">${groups.map((g) => `<span class="lg ${g}">${M.gruppoNome(g)}</span>`).join('')}</div>
+    <div class="rie-range" role="group" aria-label="Intervallo di date">
+      <label class="field inline"><span>Dal</span><input type="date" id="pg-from" value="${range.from}" min="${min}" max="${max}"></label>
+      <label class="field inline"><span>Al</span><input type="date" id="pg-to" value="${range.to}" min="${min}" max="${max}"></label>
+      <button class="chip" id="pg-reset" type="button"${range.from || range.to ? '' : ' hidden'}>Tutto il periodo</button>
+    </div>
+    <div class="chart-info" aria-live="polite"></div>
+    <div class="legend">${groups.map((g) => `<span class="lg ${g}">${M.gruppoNome(g)} <b data-g="${g}"></b></span>`).join('')}</div>
     <div class="chart-box" id="ch-pat"></div>
   </section>`;
-  $('#ch-pat', root).innerHTML = C.stackedTime({
-    width: Math.floor($('#ch-pat', root).clientWidth || 600), points,
-    markers: inizio && snaps.length ? [{ date: inizio, label: 'calcolo automatico' }] : [],
+  const from = $('#pg-from', box), to = $('#pg-to', box), reset = $('#pg-reset', box);
+  const apply = () => {
+    range.from = DATE_RE.test(from.value) ? from.value : '';
+    range.to = DATE_RE.test(to.value) ? to.value : '';
+    reset.hidden = !(range.from || range.to);
+    saveRange();
+    updateChart();
+  };
+  from.addEventListener('change', apply);
+  to.addEventListener('change', apply);
+  reset.addEventListener('click', () => { from.value = ''; to.value = ''; apply(); });
+  updateChart();
+}
+
+// Ridisegna grafico e valori in base all'intervallo scelto.
+function updateChart() {
+  const box = $('#pat-chart', root);
+  const { points: all, groups, inizio, hasSnaps } = chartPoints();
+  let lo = range.from, hi = range.to;
+  if (lo && hi && lo > hi) [lo, hi] = [hi, lo];
+  const points = all.filter((p) => (!lo || p.date >= lo) && (!hi || p.date <= hi));
+  const info = $('.chart-info', box), chart = $('#ch-pat', box);
+  const vals = (p) => { for (const g of groups) { const el = $(`b[data-g="${g}"]`, box); if (el) el.textContent = p ? fmtEur0(p.parts.find((x) => x.key === g)?.value || 0) : ''; } };
+  if (points.length < 2) {
+    chart.innerHTML = '<div class="empty-hint"><p>Nel periodo scelto ci sono meno di due rilevazioni: allarga le date.</p></div>';
+    info.innerHTML = ''; vals(null);
+    return;
+  }
+  const first = points[0];
+  const total = (p) => p.parts.reduce((t, x) => t + x.value, 0);
+  const show = (i) => {
+    const p = points[i ?? points.length - 1];
+    const d = round2(total(p) - total(first));
+    info.innerHTML = `<b>${i == null && p.date === M.todayIso() ? 'Oggi' : fmtDate(p.date)}</b> · Totale <b>${fmtEur0(total(p))}</b>` +
+      (p === first ? '' : ` · <span class="${d >= 0 ? 'pos' : 'neg'}">${fmtSigned(d)}</span> da ${fmtDateShort(first.date)}`);
+    vals(p);
+  };
+  chart.innerHTML = C.stackedTime({
+    width: Math.floor(chart.clientWidth || 600), points,
+    markers: inizio && hasSnaps ? [{ date: inizio, label: 'calcolo automatico' }] : [],
   });
+  C.bindTimeHover(chart, show);
+  show(null);
 }
 
 function historyHTML() {

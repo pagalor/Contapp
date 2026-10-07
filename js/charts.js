@@ -82,6 +82,7 @@ export function line({ width, height = 200, points, cls = 'line-in' }) {
 }
 
 // Aree impilate su asse temporale reale. points: [{ date: 'YYYY-MM-DD', parts: [{ key, cls, value, name }] }]
+// Il grafico è interattivo: vedi bindTimeHover.
 export function stackedTime({ width, height = 230, points, markers = [] }) {
   const padL = 46, padR = 12, padT = 12, padB = 24;
   const W = Math.max(width, 280), H = height;
@@ -89,7 +90,7 @@ export function stackedTime({ width, height = 230, points, markers = [] }) {
   const t = points.map((p) => new Date(p.date + 'T12:00:00').getTime());
   const tMin = t[0], tMax = t[t.length - 1] === tMin ? tMin + 864e5 : t[t.length - 1];
   const totals = points.map((p) => p.parts.reduce((s, x) => s + x.value, 0));
-  const ticks = niceTicks(0, Math.max(...totals));
+  const ticks = niceTicks(0, Math.max(...totals, 1));
   const y1 = ticks[ticks.length - 1];
   const sx = (ms) => padL + (W - padL - padR) * ((ms - tMin) / (tMax - tMin));
   const sy = (v) => padT + (H - padT - padB) * (1 - v / y1);
@@ -98,13 +99,33 @@ export function stackedTime({ width, height = 230, points, markers = [] }) {
     g += `<line class="grid" x1="${padL}" x2="${W - padR}" y1="${sy(tk)}" y2="${sy(tk)}"/>`;
     g += `<text class="axis" x="${padL - 6}" y="${sy(tk) + 4}" text-anchor="end">${shortNum(tk)}</text>`;
   }
-  // etichette degli anni
-  const y0 = new Date(tMin).getFullYear(), yEnd = new Date(tMax).getFullYear();
-  for (let y = y0; y <= yEnd + 1; y++) {
-    const ms = new Date(y, 0, 1).getTime();
-    if (ms < tMin || ms > tMax) continue;
-    g += `<line class="grid year" x1="${sx(ms)}" x2="${sx(ms)}" y1="${padT}" y2="${H - padB}"/>`;
-    g += `<text class="axis" x="${sx(ms) + 4}" y="${H - 6}">${y}</text>`;
+  // asse del tempo: anni se il periodo è lungo, altrimenti mesi
+  const spanMonths = (tMax - tMin) / (30.44 * 864e5);
+  if (spanMonths > 36) {
+    const y0 = new Date(tMin).getFullYear(), yEnd = new Date(tMax).getFullYear();
+    for (let y = y0; y <= yEnd + 1; y++) {
+      const ms = new Date(y, 0, 1).getTime();
+      if (ms < tMin || ms > tMax) continue;
+      g += `<line class="grid year" x1="${sx(ms)}" x2="${sx(ms)}" y1="${padT}" y2="${H - padB}"/>`;
+      g += `<text class="axis" x="${sx(ms) + 4}" y="${H - 6}">${y}</text>`;
+    }
+  } else {
+    const every = spanMonths > 18 ? 3 : spanMonths > 9 ? 2 : 1;
+    const d0 = new Date(tMin);
+    let lastX = -Infinity, first = true;
+    for (let i = 0; i < 40; i++) {
+      const d = new Date(d0.getFullYear(), d0.getMonth() + i, 1);
+      const ms = d.getTime();
+      if (ms > tMax) break;
+      if (ms < tMin || (d.getMonth() % every)) continue;
+      const x = sx(ms);
+      if (x - lastX < 34) continue;
+      lastX = x;
+      const mese = d.toLocaleDateString('it-IT', { month: 'short' }).replace('.', '');
+      g += `<line class="grid year" x1="${x}" x2="${x}" y1="${padT}" y2="${H - padB}"/>`;
+      g += `<text class="axis" x="${x + 4}" y="${H - 6}">${mese}${d.getMonth() === 0 || first ? ' ' + String(d.getFullYear()).slice(2) : ''}</text>`;
+      first = false;
+    }
   }
   for (const mk of markers) {
     const ms = new Date(mk.date + 'T12:00:00').getTime();
@@ -123,11 +144,47 @@ export function stackedTime({ width, height = 230, points, markers = [] }) {
     g += `<path class="stroke ${cls}" d="${up}"/>`;
     base = top;
   });
-  points.forEach((p, i) => {
-    const tip = p.label + ': ' + fmtEur0(totals[i]);
-    g += `<circle class="dot total" cx="${sx(t[i])}" cy="${sy(totals[i])}" r="3.5" data-tip="${esc(tip)}"/>`;
+  // linea di guida e punto del valore selezionato (spostati da bindTimeHover)
+  g += `<line class="cross" x1="0" x2="0" y1="${padT}" y2="${H - padB}" hidden/><circle class="dot total" r="4" hidden/>`;
+  const xs = t.map((ms) => sx(ms).toFixed(1)).join(','), ys = totals.map((v) => sy(v).toFixed(1)).join(',');
+  return `<svg class="chart interactive" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" tabindex="0"
+    data-xs="${xs}" data-ys="${ys}">${g}</svg>`;
+}
+
+// Rende interattivo un grafico di stackedTime: passando il mouse, toccando o con le frecce
+// si sceglie il punto più vicino; onPick(indice) riceve l'indice, oppure null quando la selezione finisce.
+export function bindTimeHover(box, onPick) {
+  const svg = box.querySelector('svg.interactive');
+  if (!svg) return;
+  const xs = svg.dataset.xs.split(',').map(Number), ys = svg.dataset.ys.split(',').map(Number);
+  const cross = svg.querySelector('.cross'), dot = svg.querySelector('.dot.total');
+  const W = svg.viewBox.baseVal.width;
+  let cur = null;
+  const show = (i) => {
+    cur = i;
+    cross.setAttribute('x1', xs[i]); cross.setAttribute('x2', xs[i]);
+    dot.setAttribute('cx', xs[i]); dot.setAttribute('cy', ys[i]);
+    cross.removeAttribute('hidden'); dot.removeAttribute('hidden');
+    onPick(i);
+  };
+  const clear = () => { cur = null; cross.setAttribute('hidden', ''); dot.setAttribute('hidden', ''); onPick(null); };
+  const near = (e) => {
+    const r = svg.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (W / r.width);
+    let best = 0;
+    xs.forEach((v, i) => { if (Math.abs(v - x) < Math.abs(xs[best] - x)) best = i; });
+    return best;
+  };
+  svg.addEventListener('pointerdown', (e) => show(near(e)));
+  svg.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' || e.buttons || e.pointerType === 'touch') show(near(e)); });
+  svg.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') clear(); });
+  svg.addEventListener('blur', clear);
+  svg.addEventListener('keydown', (e) => {
+    const step = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
+    if (!step) { if (e.key === 'Escape') clear(); return; }
+    e.preventDefault();
+    show(Math.max(0, Math.min(xs.length - 1, (cur ?? (step < 0 ? xs.length : -1)) + step)));
   });
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img">${g}</svg>`;
 }
 
 // Torta ad anello. slices: [{ label, value, color }]; al centro il totale.
