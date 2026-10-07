@@ -515,10 +515,10 @@ function renderCalendar(body) {
   });
 }
 
-// Importo nella cella: intero con i decimali sul computer; su telefono abbreviato, con il segno come sul computer
-// (da 1.000 in migliaia, "1,2k"; da 10.000 senza decimali, "12k"). Se non entra, il testo termina con "…".
+// Importo nella cella: intero con i decimali sul computer; su telefono con i decimali sotto i 100 €, poi abbreviato,
+// con il segno come sul computer (da 100 senza decimali, da 1.000 in migliaia, "1,2k"; da 10.000 senza decimali, "12k"). Se non entra, il testo termina con "…".
 const calAmt = (sg, n) => {
-  const corto = n >= 10000 ? `${Math.round(n / 1000).toLocaleString('it-IT')}k`
+  const corto = n < 100 ? fmt(n) : n >= 10000 ? `${Math.round(n / 1000).toLocaleString('it-IT')}k`
     : n >= 1000 ? `${(Math.round(n / 100) / 10).toLocaleString('it-IT')}k` : Math.round(n).toLocaleString('it-IT');
   return `<span class="full">${sg}${fmt(n)}</span><span class="short">${sg}${corto}</span>`;
 };
