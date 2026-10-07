@@ -601,17 +601,18 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .cal-day {
   font: inherit; color: var(--ink); border: 1px solid transparent; border-radius: 10px; min-height: 4.6rem; padding: .35rem .4rem;
   display: flex; flex-direction: column; align-items: flex-start; gap: 1px; cursor: pointer; text-align: left; overflow: hidden;
-  background: color-mix(in srgb, var(--out) calc(var(--heat) * 100%), var(--hover));
+  background: color-mix(in srgb, var(--tint, var(--out)) calc(var(--heat) * 100%), var(--hover));
 }
 .cal-day:hover { border-color: var(--line-2); }
 .cal-day.today .cal-n { background: var(--ink); color: var(--surface); }
 .cal-day.sel { border-color: var(--ink); }
 .cal-n { font-size: .8rem; font-weight: 650; border-radius: 999px; min-width: 1.5rem; height: 1.5rem; display: grid; place-items: center; margin: -.1rem 0 .15rem -.15rem; }
 .cal-out, .cal-in { font-size: .74rem; font-weight: 650; white-space: nowrap; }
-.cal-out { color: var(--ink); }
+.cal-out { color: var(--out); }
 .cal-in { color: var(--in); }
 .cal-sal { font-size: .74rem; font-weight: 700; white-space: nowrap; }
 .cal-day .short { display: none; }
+.cal-out, .cal-in, .cal-sal { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .cal-panel { container: ledger / inline-size; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1rem 1.1rem; margin-bottom: 1rem; }
 .cal-panel h2 { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
 .cal-panel .btn-row { margin-top: .8rem; }
