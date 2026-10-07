@@ -474,15 +474,17 @@ function renderCalendar(body) {
     if (r.data.escl || typeof r.data.val !== 'number') continue;
     if (r.data.tipo === 'in') o.tin += r.data.val; else o.tout += r.data.val;
   }
-  const max = Math.max(1, ...per.map((o) => o.tout));
+  const max = Math.max(1, ...per.map((o) => Math.abs(o.tin - o.tout))); // saldo giornaliero più alto (in valore assoluto) del mese
   const t = today();
   const isNow = y === t.y && m === t.m;
   let cells = GIORNI.map((g) => `<div class="cal-h">${g}</div>`).join('');
   for (let i = 0; i < first; i++) cells += '<div class="cal-pad"></div>';
   for (let d = 1; d <= n; d++) {
     const o = per[d];
-    const heat = o.tout ? (0.08 + 0.5 * (o.tout / max)).toFixed(3) : 0;
-    cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}" style="--heat:${heat}">
+    // Sfondo: verde se il saldo del giorno è positivo, rosso se negativo; più è grande, più è scuro
+    const sal = Math.round((o.tin - o.tout) * 100) / 100;
+    const heat = sal ? (0.1 + 0.5 * Math.sqrt(Math.abs(sal) / max)).toFixed(3) : 0;
+    cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}" style="--heat:${heat};--tint:var(${sal > 0 ? '--in' : '--out'})">
       <span class="cal-n">${d}</span>
       ${o.tout ? `<span class="cal-out">${calAmt('−', o.tout)}</span>` : ''}
       ${o.tin ? `<span class="cal-in">${calAmt('+', o.tin)}</span>` : ''}
