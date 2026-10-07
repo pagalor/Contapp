@@ -363,6 +363,7 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .chart .axis { fill: var(--faint); font-size: 11px; font-family: var(--font); }
 .chart .bar.in { fill: var(--in); }
 .chart .bar.out { fill: var(--out); }
+.chart .bar.saldo { fill: var(--saldo); }
 .chart .bar:hover { opacity: .75; }
 .chart .stroke { fill: none; stroke-width: 2; stroke-linejoin: round; }
 .chart .stroke.line-in { stroke: var(--ink); }
@@ -397,6 +398,7 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .lg::before, .sw { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .4rem; vertical-align: 0; }
 .lg.in::before { background: var(--in); }
 .lg.out::before { background: var(--out); }
+.lg.saldo::before { background: var(--saldo); }
 .lg.contanti::before, .sw.contanti { background: var(--g-contanti); }
 .lg.corrente::before, .sw.corrente { background: var(--g-corrente); }
 .lg.deposito::before, .sw.deposito { background: var(--g-deposito); }
