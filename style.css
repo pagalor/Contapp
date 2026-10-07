@@ -608,7 +608,7 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .cal-day.sel { border-color: var(--ink); }
 .cal-n { font-size: .8rem; font-weight: 650; border-radius: 999px; min-width: 1.5rem; height: 1.5rem; display: grid; place-items: center; margin: -.1rem 0 .15rem -.15rem; }
 .cal-out, .cal-in { font-size: .74rem; font-weight: 650; white-space: nowrap; }
-.cal-out { color: var(--ink); }
+.cal-out { color: var(--out); }
 .cal-in { color: var(--in); }
 .cal-sal { font-size: .74rem; font-weight: 700; white-space: nowrap; }
 .cal-day .short { display: none; }

@@ -483,7 +483,7 @@ function renderCalendar(body) {
     const o = per[d];
     // Sfondo: verde se il saldo del giorno è positivo, rosso se negativo; più è grande, più è scuro
     const sal = Math.round((o.tin - o.tout) * 100) / 100;
-    const heat = sal ? (0.1 + 0.5 * Math.sqrt(Math.abs(sal) / max)).toFixed(3) : 0;
+    const heat = sal ? (0.08 + 0.3 * Math.sqrt(Math.abs(sal) / max)).toFixed(3) : 0;
     cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}" style="--heat:${heat};--tint:var(${sal > 0 ? '--in' : '--out'})">
       <span class="cal-n">${d}</span>
       ${o.tout ? `<span class="cal-out">${calAmt('−', o.tout)}</span>` : ''}
