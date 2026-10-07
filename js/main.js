@@ -136,10 +136,16 @@ async function boot() {
         const w = reg.installing;
         w?.addEventListener('statechange', () => {
           if (w.state === 'installed' && navigator.serviceWorker.controller) {
-            toast('È disponibile una nuova versione dell\'app', { action: 'Aggiorna', onAction: () => location.reload(), ms: 15000 });
+            toast('È disponibile una nuova versione dell\'app', { action: 'Aggiorna', onAction: () => location.reload(), ms: 60000 });
           }
         });
       });
+      // Il browser cerca un service worker nuovo solo quando si apre la pagina (o ogni tanto, a caso):
+      // con l'app lasciata aperta bisogna chiederlo noi, altrimenti l'avviso non arriva senza riaprirla.
+      const cercaAggiornamento = () => { if (navigator.onLine) reg.update().catch(() => {}); };
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) cercaAggiornamento(); });
+      addEventListener('online', cercaAggiornamento);
+      setInterval(() => { if (!document.hidden) cercaAggiornamento(); }, 30 * 60 * 1000);
     }).catch(() => {});
   }
 }
