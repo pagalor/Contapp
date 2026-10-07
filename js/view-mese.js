@@ -7,6 +7,7 @@ import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ri
 
 let state = { y: 0, m: 0, q: '' };
 let root = null;
+let searchList = null; // movimenti trovati dalla ricerca (o con il tag) mostrata, per il dettaglio delle categorie
 
 const daysIn = (y, m) => new Date(y, m, 0).getDate();
 const today = () => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }; };
@@ -186,7 +187,7 @@ function rowHTML(r, { nodate = false, open = false } = {}) {
       ${nodate ? '' : `<span class="c-day">${d.d ?? '–'}</span>`}
       <span class="c-amt"${d.espr ? ` title="${esc(d.espr)}"` : ''}>${fmt(d.val)}</span>
       <span class="c-desc${d.desc ? '' : ' empty'}">${esc(d.desc || 'Senza descrizione')}</span>
-      <span class="c-cat"><i></i><span class="c-lbl">${esc(cat ? M.catLabel(cat) : '(categoria eliminata)')}</span></span>
+      <span class="c-cat"><i></i><span class="c-lbl">${esc(cat ? M.catLabel(cat) : '(categoria eliminata)')}${M.subOf(r) ? `<small class="c-sub"> · ${esc(M.subOf(r).data.nome)}</small>` : ''}</span></span>
       <span class="c-acc"><span class="c-lbl">${esc(fondo)}</span></span>
       <button class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
       <div class="tagline">${tagLine(d)}</div>
@@ -283,7 +284,7 @@ const rec = (row) => store.get(row.dataset.id);
 function bindBody(body) {
   body.addEventListener('click', async (e) => {
     const cb = e.target.closest('.catbar');
-    if (cb) { toggleCat(cb, M.movsOf(state.y, state.m)); return; }
+    if (cb) { toggleCat(cb, cb.closest('.search-res') ? searchList : M.movsOf(state.y, state.m)); return; }
     const add = e.target.closest('[data-add]');
     if (add) { addRow(add.dataset.add); return; }
     if (e.target.closest('[data-addtr]')) {
@@ -423,15 +424,24 @@ function renderSearch(body) {
     const d = r.data;
     const tags = (d.tags || []).map((t) => t.toLowerCase());
     if (isTag) return tags.includes(q);
-    const cat = M.catById(d.cat)?.data.nome || '';
+    const cat = (M.catById(d.cat)?.data.nome || '') + ' ' + (M.subOf(r)?.data.nome || '');
     return (d.desc || '').toLowerCase().includes(q) || (d.note || '').toLowerCase().includes(q) ||
       cat.toLowerCase().includes(q) || tags.some((t) => t.includes(q)) ||
       M.contiLabel(r).toLowerCase().includes(q) || (d.val != null && String(d.val).includes(qNum));
   }).sort((a, b) => b.data.y - a.data.y || b.data.m - a.data.m || (b.data.d ?? 0) - (a.data.d ?? 0));
+  searchList = res;
   const s = M.sums(res);
   let html = `<div class="search-res"><div class="search-sum"><p>${res.length} ${res.length === 1 ? 'movimento' : 'movimenti'}`;
   if (res.length) html += `: uscite <b class="out">${fmtEur(s.tout)}</b>, entrate <b class="in">${fmtEur(s.tin)}</b>`;
   html += `</p>${res.length ? '<button class="btn ghost small" data-bulktag>Aggiungi un tag a tutti</button>' : ''}</div>`;
+  // Con un tag: come si ripartiscono le spese e le entrate tra le categorie
+  if (isTag && res.length) {
+    for (const [t, titolo] of [['out', 'Uscite'], ['in', 'Entrate']]) {
+      if (res.some((r) => r.data.tipo === t && !r.data.escl && typeof r.data.val === 'number')) {
+        html += `<section class="card"><h2>${titolo} per categoria</h2>${catBars(res, t)}</section>`;
+      }
+    }
+  }
   let lastKey = '';
   for (const r of res.slice(0, 400)) {
     const d = r.data;
@@ -441,7 +451,7 @@ function renderSearch(body) {
     html += `<a class="res-row t-${d.tipo}${d.escl ? ' excluded' : ''}" href="#mese/${ymHash(d.y, d.m)}/${r.id}">
       <span class="res-day">${d.d ?? ''}</span>
       <span class="res-desc">${esc(d.desc || '(senza descrizione)')}${d.note ? `<small>${esc(d.note)}</small>` : ''}</span>
-      <span class="res-meta">${esc(M.catLabel(cat))}${d.conti?.length ? ', ' + esc(M.contiLabel(r)) : ''}
+      <span class="res-meta">${esc(M.catLabel(cat))}${M.subOf(r) ? ' · ' + esc(M.subOf(r).data.nome) : ''}${d.conti?.length ? ', ' + esc(M.contiLabel(r)) : ''}
         ${(d.tags || []).map((t) => `<span class="tag">#${esc(t)}</span>`).join('')}</span>
       <span class="res-amt">${d.tipo === 'in' ? '+' : '−'}${fmt(d.val)}</span>
     </a>`;

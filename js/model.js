@@ -17,6 +17,11 @@ const DEFAULT_CATS = {
     ['vendite', 'Vendite', '#C2185B', '🏷️'], ['vincite', 'Vincite', '#8E44AD', '🍀'], ['rimborsi', 'Rimborsi', '#4C9A2A', '↩️'],
     ['altro-in', 'Altro', '#9E9E9E', '💶']],
 };
+// Sottocategorie di base (per ora solo Shopping): chiave della categoria -> nomi
+const DEFAULT_SUBS = {
+  shopping: [['elettronica', 'Elettronica'], ['abbigliamento', 'Abbigliamento'], ['scarpe', 'Scarpe'],
+    ['casa', 'Casa e arredamento'], ['sport', 'Sport'], ['altro', 'Altro']],
+};
 const DEFAULT_EMOJI = Object.fromEntries([...DEFAULT_CATS.out, ...DEFAULT_CATS.in].map(([k, , , e]) => ['cat-' + k, e]));
 
 // Crea le categorie di base se l'archivio non ne ha (primo avvio senza storico)
@@ -26,6 +31,17 @@ export function ensureCategories() {
     DEFAULT_CATS[tipo].forEach(([key, nome, colore, emoji], i) =>
       store.saveDefault('cat', 'cat-' + key, { nome, tipo, colore, emoji, ord: i }));
   }
+}
+
+// Crea le sottocategorie di base delle categorie che esistono ancora. Come saveMissing non ricrea mai quelle
+// già presenti, nemmeno se eliminate, e qualsiasi modifica fatta su un altro dispositivo vince.
+export function ensureSubcats() {
+  const list = [];
+  for (const [key, subs] of Object.entries(DEFAULT_SUBS)) {
+    if (!store.get('cat-' + key)) continue;
+    subs.forEach(([k, nome], i) => list.push({ kind: 'sub', id: `sub-${key}-${k}`, data: { nome, cat: 'cat-' + key, ord: i } }));
+  }
+  return store.saveMissing(list);
 }
 
 // Nome della categoria preceduto dall'emoji
@@ -42,6 +58,22 @@ export function fallbackCat(tipo) {
   const list = cats(tipo);
   return (list.find((c) => c.data.nome === 'Altro') || list[list.length - 1])?.id || null;
 }
+
+// --- Sottocategorie ---
+// sub: { nome, cat (id della categoria), ord }. Un movimento ne ha al massimo una (`sub`), valida solo se appartiene alla sua categoria.
+export function subs(catId) {
+  return store.all('sub').filter((s) => s.data.cat === catId)
+    .sort((a, b) => (a.data.ord ?? 0) - (b.data.ord ?? 0) || a.data.nome.localeCompare(b.data.nome));
+}
+
+// La sottocategoria del movimento, oppure null se manca, è stata eliminata o non è più della sua categoria
+export function subOf(r) {
+  const s = r.data.sub ? store.get(r.data.sub) : null;
+  return s && s.data.cat === r.data.cat ? s : null;
+}
+
+// Per sapere se una categoria ha sottocategorie senza dover leggere tutto l'archivio ogni volta
+export const hasSubs = (catId) => store.all('sub').some((s) => s.data.cat === catId);
 
 // --- Movimenti ---
 export const movs = () => store.all('mov');
@@ -95,6 +127,19 @@ export function byCategory(list, tipo) {
     .sort((a, b) => b.tot - a.tot);
 }
 
+// Dentro una categoria: totali per sottocategoria (id null = movimenti senza sottocategoria)
+export function bySub(list, catId, tipo) {
+  const map = new Map();
+  for (const r of list) {
+    if (r.data.cat !== catId || r.data.tipo !== tipo || !counts(r)) continue;
+    const s = subOf(r);
+    const o = map.get(s?.id ?? null) || { id: s?.id ?? null, sub: s, n: 0, tot: 0 };
+    o.n++; o.tot += r.data.val;
+    map.set(o.id, o);
+  }
+  return [...map.values()].map((o) => ({ ...o, tot: round2(o.tot) })).sort((a, b) => b.tot - a.tot);
+}
+
 // --- Suggerimento categoria dalla descrizione ---
 const RULES = {
   out: [
@@ -139,6 +184,34 @@ export function suggestCat(tipo, desc, excludeId) {
       const c = cats(tipo).find((x) => x.data.nome === nome);
       if (c) return c.id;
     }
+  }
+  return null;
+}
+
+// Regole di base per la sottocategoria (nome della sottocategoria -> parole della descrizione)
+const SUB_RULES = [
+  ['Elettronica', /mediaworld|unieuro|cuffie|auricolari|caricabatterie|\bcavo\b|mouse|tastiera|monitor|smartphone|tablet|powerbank|hard disk|\bssd\b|chiavetta/],
+  ['Scarpe', /scarp|sneaker|ciabatt|sandali|stivali/],
+  ['Abbigliamento', /zalando|h&m|maglia|magliett|pantalon|giacca|jeans|felpa|vestit|camicia|cappotto|calzin|intimo|cappello|sciarpa/],
+  ['Casa e arredamento', /ikea|lampada|cuscin|materasso|pentol|tenda|tappeto|scaffale|mobile|lenzuol|asciugaman/],
+  ['Sport', /decathlon|pallone|racchetta|palla|bici|zaino sport/],
+];
+
+// Sottocategoria da proporre per una categoria: prima la scelta più frequente per la stessa descrizione, poi le regole di base
+export function suggestSub(catId, desc, excludeId) {
+  const d = (desc || '').trim().toLowerCase();
+  if (!d || !hasSubs(catId)) return null;
+  const freq = new Map();
+  for (const r of movs()) {
+    if (r.id === excludeId || r.data.cat !== catId) continue;
+    if ((r.data.desc || '').trim().toLowerCase() === d && subOf(r)) freq.set(r.data.sub, (freq.get(r.data.sub) || 0) + 1);
+  }
+  if (freq.size) return [...freq.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const list = subs(catId);
+  for (const [nome, rx] of SUB_RULES) {
+    if (!rx.test(d)) continue;
+    const s = list.find((x) => x.data.nome === nome);
+    if (s) return s.id;
   }
   return null;
 }
@@ -238,7 +311,7 @@ export function generaRicorrenti() {
       const [y, m, g] = date.split('-').map(Number);
       nuovi.push({ kind: 'mov', id: `mov-r-${r.id}-${date}`, data: {
         y, m, d: g, tipo: d.tipo, val: d.val, espr: d.espr || null, desc: d.desc || '',
-        cat: d.cat || fallbackCat(d.tipo), catAuto: false, conti: d.conti || [], contoAuto: false,
+        cat: d.cat || fallbackCat(d.tipo), sub: d.sub || null, catAuto: false, conti: d.conti || [], contoAuto: false,
         tags: d.tags || [], note: d.note || null, escl: !!d.escl, ord: d.ord ?? 0, ricId: r.id,
       } });
     }
@@ -248,6 +321,7 @@ export function generaRicorrenti() {
 
 // Aggiornamenti una tantum dei dati salvati con versioni precedenti dell'app (idempotente)
 export function migrate() {
+  ensureSubcats();
   for (const c of store.all('cont')) {
     if (c.data.gruppo === 'conti') {
       const n = c.data.nome.toLowerCase();

@@ -29,7 +29,7 @@ js/model.js             logica di dominio: totali, categorie, fondi, saldi, targ
 js/expr.js              parser degli importi con espressioni e formattazione dei numeri (it-IT)
 js/sync.js              autenticazione Supabase, pull e push, gestione della frase segreta
 js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle chiavi
-js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio), usato da Mese e Riepilogo
+js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio con sottocategorie), riepilogo per categoria di un tag; usato da Mese e Riepilogo
 js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo (con selezione interattiva del punto), anello
 js/ui.js                toast, finestre (dialog), conferme, tooltip, download, debounce
 js/dialogs.js           finestre condivise: movimento (nuovo e modifica), ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente
@@ -49,7 +49,7 @@ supabase.sql            tabella, permessi, RLS e trigger da eseguire una volta s
 | --- | --- |
 | `#mese/AAAA-MM[/idDaEvidenziare]` | Mese |
 | `#cerca/<testo>` | Ricerca |
-| `#tag/<nome>` | Movimenti con un tag |
+| `#tag/<nome>` | Movimenti con un tag, con uscite ed entrate per categoria |
 | `#riepilogo/<anno or tutto>` | Riepilogo |
 | `#patrimonio` | Patrimonio |
 | `#conti` | Fondi (configurazione) |
@@ -70,15 +70,16 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 
 | kind | Contenuto di `data` |
 | --- | --- |
-| `mov` | Movimento. `y, m, d` (giorno, `null` se ignoto), `tipo` (`in` oppure `out`), `val` (numero), `espr` (espressione, per esempio `=68-17-17`, oppure `null`), `desc`, `cat` (id categoria), `catAuto`, `conti` (vedi sotto), `contoAuto`, `tags` (array), `note`, `escl` (escluso dai totali di entrate e uscite), `ord` |
+| `mov` | Movimento. `y, m, d` (giorno, `null` se ignoto), `tipo` (`in` oppure `out`), `val` (numero), `espr` (espressione, per esempio `=68-17-17`, oppure `null`), `desc`, `cat` (id categoria), `sub` (id sottocategoria, `null` se manca; vale solo se appartiene a `cat`), `catAuto`, `conti` (vedi sotto), `contoAuto`, `tags` (array), `note`, `escl` (escluso dai totali di entrate e uscite), `ord` |
 | `cat` | Categoria. `nome, tipo (in/out), colore, emoji, ord`. Le categorie predefinite hanno id stabili `cat-<chiave>` |
+| `sub` | Sottocategoria di una categoria. `nome, cat (id della categoria), ord`. Le predefinite (per ora solo quelle di Shopping: Elettronica, Abbigliamento, Scarpe, Casa e arredamento, Sport, Altro) hanno id stabili `sub-<chiaveCategoria>-<chiave>` e si creano in `M.ensureSubcats()` (da `M.migrate()`) con `saveMissing` |
 | `cont` | Fondo del patrimonio. `nome, gruppo, ord, archiviato, saldoIniziale, siEspr, obiettivo` (il target), `obEspr` |
 | `snap` | Rilevazione del portafoglio: storica (importata dall'Excel) o manuale. `date, vals: { idFondo: { val, espr } }, note, scelta` (assente = storica; `auto` = solo confronto; `manuale` = i saldi ripartono dai valori rilevati) |
 | `trasf` | Trasferimento tra fondi. `y, m, d, da, a, val, espr, note, ord` |
 | `rett` | Correzione del saldo di un fondo. `date, c, delta, note, snapId` (`snapId` presente se l'ha creata una rilevazione manuale) |
 | `debt` | Debito o credito. `tipo` (`credito` = mi devono, `debito` = devo), `persona, desc, val, espr, data, fondo, rimborsi: [{ data, val, espr, fondo }], note, ord` |
 | `butt` | Voce di "soldi buttati". `y, espr, val, desc, ord` |
-| `ric` | Movimento ricorrente. `tipo, desc, val, espr, cat, conti` (vuoto o un solo fondo), `tags, note, escl, inizio` (prima scadenza, `AAAA-MM-GG`), `freq` (`sett`, `mese`, `anno`), `ogni` (ogni quante unità), `fine` (ultima scadenza o `null`), `da` (se presente, si generano solo scadenze successive), `ord` |
+| `ric` | Movimento ricorrente. `tipo, desc, val, espr, cat, conti` (vuoto o un solo fondo), `sub` (facoltativa), `tags, note, escl, inizio` (prima scadenza, `AAAA-MM-GG`), `freq` (`sett`, `mese`, `anno`), `ogni` (ogni quante unità), `fine` (ultima scadenza o `null`), `da` (se presente, si generano solo scadenze successive), `ord` |
 | `cfg` | Record unico `cfg-patrimonio`. `inizio` (data di partenza del calcolo automatico, `AAAA-MM-GG`), `contoOut`, `contoIn` (fondi proposti) |
 
 **Gruppi dei fondi** (`M.GRUPPI`): `contanti`, `corrente`, `deposito`, `digitale` (PayPal e simili), `crypto`, `altro`.
@@ -103,6 +104,8 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 
   I saldi iniziali valgono quindi "a fine giornata" della data di partenza. Un movimento senza giorno vale come se fosse il 1° del mese (`M.recDate`). Il calcolo è in `M.ledgerEntries()` e `M.balances(asOf)`.
 - **Rilevazione manuale** (Patrimonio → "Rilevazione manuale"): si scrive quanto c'è in ogni fondo a una data. Dalla data di partenza in poi l'app la confronta con il calcolo automatico a fine giornata (`M.confrontaRilevazione`) e l'utente sceglie: `auto` (la rilevazione resta solo un confronto) oppure `manuale` (`M.salvaRilevazione` registra una correzione `rett` con `snapId` per ogni fondo rilevato e diverso, così il saldo a quella data coincide con i valori scritti). I fondi lasciati vuoti non vengono rilevati né toccati. Riaprendo una rilevazione il confronto ignora le sue stesse correzioni (`senzaSnap`); modificarla o eliminarla ricrea o toglie le correzioni. Prima della data di partenza resta una fotografia storica.
+- **Sottocategorie**: ogni categoria può averne (si gestiscono in Altro → Categorie, dal pulsante ↳). Il movimento conserva `cat` e in più `sub`: totali, torte e suggerimenti per categoria non cambiano, e dentro il dettaglio di una categoria compare la ripartizione per sottocategoria (`M.bySub`). Se si cambia categoria la sottocategoria si azzera; se una sottocategoria viene eliminata, i suoi movimenti restano nella categoria senza sottocategoria. La sottocategoria è proposta (`M.suggestSub`) dalla scelta più frequente per la stessa descrizione, poi da regole testuali.
+- **Statistiche per tag**: la pagina di un tag (`#tag/<nome>`) mostra uscite ed entrate per categoria, con lo stesso dettaglio di Mese; nel Riepilogo toccando un tag si apre il riepilogo per categoria del periodo.
 - **Target**: un fondo è "sotto il target" se `obiettivo − saldo > 0`. L'avviso compare in tre punti: un riquadro nella pagina Mese, un pallino sulla voce Patrimonio, un toast quando il fondo scende sotto la soglia.
 - **Movimenti senza fondo** con data successiva alla partenza: vengono segnalati e non entrano nei saldi.
 - **Suggerimenti automatici**: categoria e fondo sono proposti dalla scelta più frequente fatta per la stessa descrizione. Per la categoria, se non c'è uno storico, si usano delle regole testuali. Il suggerimento si ferma quando l'utente sceglie a mano (`catAuto` o `contoAuto` diventano `false`).

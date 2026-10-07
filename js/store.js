@@ -1,6 +1,6 @@
 // Archivio locale: tutti i record vivono in IndexedDB e in memoria.
 // Ogni record: { id, kind, data, updated_at, deleted, dirty }
-// kind: 'mov' (movimento), 'cat' (categoria), 'cont' (contenitore patrimonio),
+// kind: 'mov' (movimento), 'cat' (categoria), 'sub' (sottocategoria), 'cont' (contenitore patrimonio),
 //       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente)
 
 const DB_NAME = 'contabilita';

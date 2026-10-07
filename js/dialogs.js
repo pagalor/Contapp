@@ -108,6 +108,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
   const ymVal = (yy, mm) => `${yy}-${String(mm).padStart(2, '0')}`;
   const daysIn = (yy, mm) => new Date(yy, mm, 0).getDate();
   let catAuto = rec ? rec.data.catAuto !== false : !seed, contoAuto = rec ? rec.data.contoAuto !== false : !seed;
+  let subManual = !!init?.sub; // la sottocategoria scelta a mano (o copiata) non viene più cambiata dai suggerimenti
   let tags = [...(init?.tags || [])];
   let split = init?.conti?.length > 1 ? init.conti.map((x) => ({ ...x })) : null; // ripartizione su più fondi, se scelta
   const catOpts = (t, sel) => M.cats(t).map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('');
@@ -130,6 +131,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
         <label class="field"><span>Giorno</span><input name="d" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="1–31" value="${d ?? ''}"></label>
         <label class="field"><span>Categoria</span><select name="cat"></select></label>
       </div>
+      <label class="field" data-subf hidden><span>Sottocategoria</span><select name="sub"></select></label>
       <label class="field"><span data-accl></span><select name="acc"></select></label>
       <h3 class="mov-more">Altre opzioni</h3>
       <div class="field"><span>Tag</span><div data-tags></div></div>
@@ -154,6 +156,14 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
     return { y: yy || y, m: mm || m };
   };
 
+  // Sottocategorie della categoria scelta; il campo compare solo se ce ne sono
+  function paintSub(sel) {
+    const list = M.subs(f.cat.value);
+    $('[data-subf]', f).hidden = !list.length;
+    f.sub.innerHTML = '<option value="">Nessuna</option>' +
+      list.map((x) => `<option value="${x.id}"${x.id === sel ? ' selected' : ''}>${esc(x.data.nome)}</option>`).join('');
+  }
+
   function paintTags(focus = false) {
     $('[data-tags]', f).innerHTML = tagEditorHTML(tags);
     if (focus) $('[data-tagin]', f).focus();
@@ -174,8 +184,8 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
     setTitle();
     $('[data-accl]', f).textContent = next === 'in' ? 'Ricevuto su' : 'Pagato con';
     f.desc.setAttribute('list', 'dl-' + next);
-    if (keep) { f.cat.innerHTML = catOpts(next, M.catById(init.cat) ? init.cat : M.fallbackCat(next)); return; }
-    catAuto = true; contoAuto = true;
+    if (keep) { f.cat.innerHTML = catOpts(next, M.catById(init.cat) ? init.cat : M.fallbackCat(next)); paintSub(init.sub); return; }
+    catAuto = true; contoAuto = true; subManual = false;
     f.cat.innerHTML = catOpts(next, M.fallbackCat(next));
     suggest();
   }
@@ -192,6 +202,11 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
     const desc = f.desc.value.trim();
     if (catAuto) { const s = M.suggestCat(t(), desc, rec?.id); if (s) f.cat.value = s; else if (!desc) f.cat.value = M.fallbackCat(t()); }
     if (contoAuto && !split) f.acc.innerHTML = accOpts(M.suggestConto(t(), desc, rec?.id));
+    suggestSub();
+  }
+  // Ridisegna la sottocategoria: propone quella giusta per la descrizione, a meno che non l'abbia scelta tu
+  function suggestSub() {
+    paintSub(subManual ? f.sub.value : M.suggestSub(f.cat.value, f.desc.value.trim(), rec?.id));
   }
   function preview() {
     try {
@@ -221,7 +236,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
     }
     return {
       y: mm.y, m: mm.m, d: giorno, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
-      cat: f.cat.value || M.fallbackCat(t()), catAuto, conti, contoAuto,
+      cat: f.cat.value || M.fallbackCat(t()), sub: f.sub.value || null, catAuto, conti, contoAuto,
       tags: [...tags], note: f.note.value.trim() || null, escl: f.escl.checked,
     };
   }
@@ -301,7 +316,8 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
   f.amt.addEventListener('input', preview);
   f.amt.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); f.desc.focus(); } });
   f.desc.addEventListener('change', suggest);
-  f.cat.addEventListener('change', () => { catAuto = false; });
+  f.cat.addEventListener('change', () => { catAuto = false; subManual = false; suggestSub(); });
+  f.sub.addEventListener('change', () => { subManual = true; });
   f.acc.addEventListener('change', () => {
     contoAuto = false;
     if (f.acc.value === '__split') return;
@@ -461,7 +477,7 @@ export function ricSeedFromMov(r) {
   const d = r.data;
   const rec = { data: { inizio: M.recDate(r), freq: 'mese', ogni: 1 } };
   return {
-    tipo: d.tipo, desc: d.desc || '', val: d.val ?? null, espr: d.espr || null, cat: d.cat, conti: (d.conti || []).length === 1 ? [{ c: d.conti[0].c }] : [],
+    tipo: d.tipo, desc: d.desc || '', val: d.val ?? null, espr: d.espr || null, cat: d.cat, sub: d.sub || null, conti: (d.conti || []).length === 1 ? [{ c: d.conti[0].c }] : [],
     note: d.note || null, tags: d.tags || [], escl: !!d.escl, inizio: M.ricDate(rec, 1), freq: 'mese', ogni: 1, fine: null, ord: Date.now(),
   };
 }

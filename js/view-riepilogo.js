@@ -3,7 +3,7 @@ import * as M from './model.js';
 import * as C from './charts.js';
 import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, saldoCls, plain, round2 } from './expr.js';
 import { esc, $, toast } from './ui.js';
-import { catBars, toggleCat } from './catstats.js';
+import { catBars, toggleCat, tagCats } from './catstats.js';
 
 let root, sel; // sel: anno (numero) oppure 'tutto'
 let curList = []; // movimenti del periodo mostrato, per il dettaglio delle categorie
@@ -229,7 +229,8 @@ function topTable(list) {
 function tagCard(list) {
   const tags = M.tagStats(list);
   if (!tags.length) return '<p class="muted">Nessun tag in questo periodo. Aggiungili ai movimenti, dal pulsante ⋯ di ogni riga, per raggruppare per esempio tutte le spese di un viaggio.</p>';
-  return `<table class="tbl"><tbody>${tags.map((t) => `<tr>
+  // toccando un tag si apre il riepilogo per categoria dei suoi movimenti
+  return `<table class="tbl tag-tbl"><tbody>${tags.map((t) => `<tr class="tag-row" data-tagrow="${esc(t.tag)}" tabindex="0" aria-expanded="false">
     <td><a class="tag" href="#tag/${encodeURIComponent(t.tag)}">#${esc(t.tag)}</a></td>
     <td class="num muted">${t.n} mov.</td>
     <td class="num out">${fmt(t.tout)}</td></tr>`).join('')}</tbody></table>`;
@@ -256,7 +257,26 @@ function buttEditor(y) {
     <span>Totale <b class="butt">${fmtEur(M.buttTot(y))}</b></span></div>`;
 }
 
+// Apre o chiude, sotto la riga di un tag, le categorie dei suoi movimenti
+function toggleTagRow(tr) {
+  const next = tr.nextElementSibling;
+  const open = next?.classList.contains('tag-det');
+  if (open) next.remove();
+  else {
+    const tag = tr.dataset.tagrow.toLowerCase();
+    const det = document.createElement('tr');
+    det.className = 'tag-det';
+    det.innerHTML = `<td colspan="3">${tagCats(curList.filter((r) => (r.data.tags || []).some((x) => x.toLowerCase() === tag)))}</td>`;
+    tr.after(det);
+  }
+  tr.setAttribute('aria-expanded', String(!open));
+}
+
 function bind() {
+  root.querySelectorAll('.tag-row').forEach((tr) => {
+    tr.addEventListener('click', (e) => { if (!e.target.closest('a')) toggleTagRow(tr); });
+    tr.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); toggleTagRow(tr); } });
+  });
   root.querySelectorAll('.catbar').forEach((b) => b.addEventListener('click', () =>
     toggleCat(b, curList)));
   root.querySelectorAll('tr[data-href]').forEach((tr) => tr.addEventListener('click', (e) => {

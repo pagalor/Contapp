@@ -278,6 +278,22 @@ function exportPatCSV() {
 }
 
 // --- Categorie ---
+const subsOpen = new Set(); // categorie con l'elenco delle sottocategorie aperto
+
+function subsPanel(c) {
+  const list = M.subs(c.id);
+  const uso = new Map();
+  for (const m of M.movs()) if (m.data.cat === c.id && m.data.sub) uso.set(m.data.sub, (uso.get(m.data.sub) || 0) + 1);
+  return `<div class="sub-panel" data-cat="${c.id}">
+    ${list.map((s) => `<div class="sub-row" data-id="${s.id}">
+      <input value="${esc(s.data.nome)}" data-sf="nome" aria-label="Nome sottocategoria">
+      <span class="muted">${uso.get(s.id) || 0}</span>
+      <button class="icon-btn small" data-delsub aria-label="Elimina sottocategoria">×</button>
+    </div>`).join('')}
+    <button class="add-row" data-addsub="${c.id}">+ Nuova sottocategoria</button>
+  </div>`;
+}
+
 function renderCats() {
   for (const tipo of ['out', 'in']) {
     const uso = new Map();
@@ -288,8 +304,9 @@ function renderCats() {
         <input class="emoji-in" value="${esc(c.data.emoji || '')}" data-cf="emoji" maxlength="8" aria-label="Emoji" placeholder="🙂">
         <input value="${esc(c.data.nome)}" data-cf="nome" aria-label="Nome categoria">
         <span class="muted">${uso.get(c.id) || 0}</span>
+        <button class="icon-btn small subs-btn" data-togsubs aria-label="Sottocategorie" aria-expanded="${subsOpen.has(c.id)}" title="Sottocategorie">↳${M.subs(c.id).length || ''}</button>
         <button class="icon-btn small" data-delcat aria-label="Elimina categoria">×</button>
-      </div>`).join('');
+      </div>${subsOpen.has(c.id) ? subsPanel(c) : ''}`).join('');
   }
 }
 
@@ -311,6 +328,32 @@ function bind() {
       const rows = $$(`#cats-${addcat} .cat-row input[data-cf="nome"]`, root);
       rows[rows.length - 1]?.select();
     }
+    if (e.target.closest('[data-togsubs]')) {
+      const id = e.target.closest('.cat-row').dataset.id;
+      if (!subsOpen.delete(id)) subsOpen.add(id);
+      renderCats();
+      return;
+    }
+    const addsub = e.target.closest('[data-addsub]')?.dataset.addsub;
+    if (addsub) {
+      store.save('sub', store.newId(), { nome: 'Nuova sottocategoria', cat: addsub, ord: M.subs(addsub).length });
+      renderCats();
+      const rows = $$(`.sub-panel[data-cat="${addsub}"] input`, root);
+      rows[rows.length - 1]?.select();
+      return;
+    }
+    if (e.target.closest('[data-delsub]')) {
+      const s = store.get(e.target.closest('.sub-row').dataset.id);
+      const used = M.movs().filter((m) => m.data.sub === s.id);
+      const ok = await confirmBox(used.length
+        ? `Eliminare "${s.data.nome}"? I suoi ${used.length} movimenti restano nella categoria, senza sottocategoria.`
+        : `Eliminare "${s.data.nome}"?`, { ok: 'Elimina', danger: true });
+      if (!ok) return;
+      for (const m of used) store.patch(m.id, { sub: null });
+      store.remove(s.id);
+      renderCats();
+      return;
+    }
     if (e.target.closest('[data-delcat]')) {
       const row = e.target.closest('.cat-row');
       const c = store.get(row.dataset.id);
@@ -321,12 +364,19 @@ function bind() {
         ? `Eliminare "${c.data.nome}"? I suoi ${used.length} movimenti passeranno in "${dest.data.nome}".`
         : `Eliminare "${c.data.nome}"?`, { ok: 'Elimina', danger: true });
       if (!ok) return;
-      for (const m of used) store.patch(m.id, { cat: dest.id });
+      for (const m of used) store.patch(m.id, { cat: dest.id, sub: null });
+      for (const s of M.subs(c.id)) store.remove(s.id);
       store.remove(c.id);
       renderCats();
     }
   });
   sec.addEventListener('change', (e) => {
+    if (e.target.dataset.sf) {
+      const id = e.target.closest('.sub-row').dataset.id;
+      const v = e.target.value.trim();
+      if (!v) e.target.value = store.get(id).data.nome; else store.patch(id, { nome: v });
+      return;
+    }
     const cf = e.target.dataset.cf;
     if (cf) {
       const id = e.target.closest('.cat-row').dataset.id;
