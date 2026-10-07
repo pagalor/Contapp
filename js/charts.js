@@ -22,7 +22,7 @@ const shortNum = (v) => {
   return v.toLocaleString('it-IT', { maximumFractionDigits: 0 });
 };
 
-// Barre raggruppate. series: [{ name, cls, values[] }], labels[], tips: (i, s) => string
+// Barre raggruppate. series: [{ name, cls, values[], clsOf? }], labels[]; clsOf(valore) sceglie la classe di ogni barra (es. saldo positivo o negativo)
 export function bars({ width, height = 220, labels, series, onClick }) {
   const padL = 40, padR = 8, padT = 10, padB = 24;
   const W = Math.max(width, 280), H = height;
@@ -44,7 +44,7 @@ export function bars({ width, height = 220, labels, series, onClick }) {
     series.forEach((s, k) => {
       const v = s.values[i] || 0;
       const y = sy(Math.max(v, 0)), h = Math.abs(sy(v) - sy(0));
-      g += `<rect class="bar ${s.cls}" x="${gx + k * barW}" y="${y}" width="${barW - 1}" height="${Math.max(h, v ? 1 : 0)}" rx="1.5"
+      g += `<rect class="bar ${s.clsOf ? s.clsOf(v) : s.cls}" x="${gx + k * barW}" y="${y}" width="${barW - 1}" height="${Math.max(h, v ? 1 : 0)}" rx="1.5"
         data-tip="${esc(lab + ': ' + s.name + ' ' + fmtEur(v))}"${onClick ? ` data-idx="${i}"` : ''}/>`;
     });
     if (i % every === 0) g += `<text class="axis" x="${gx + (groupW - gap) / 2}" y="${H - 6}" text-anchor="middle">${esc(lab)}</text>`;
