@@ -139,7 +139,7 @@ function draw() {
 
     <section class="card">
       <h2>${tutto ? 'Entrate e uscite per anno' : 'Entrate e uscite per mese'}</h2>
-      <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span><span class="lg saldo">Saldo</span></div>
+      <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span><span class="lg sal-bar">Saldo</span></div>
       <div class="chart-box" id="ch-bars"></div>
     </section>
 
@@ -182,7 +182,7 @@ function draw() {
 
   $('#ch-bars', root).innerHTML = C.bars({
     width: width('#ch-bars'), labels,
-    series: [{ name: 'Entrate', cls: 'in', values: vin }, { name: 'Uscite', cls: 'out', values: vout }, { name: 'Saldo', cls: 'saldo', values: vsal }],
+    series: [{ name: 'Entrate', cls: 'in', values: vin }, { name: 'Uscite', cls: 'out', values: vout }, { name: 'Saldo', values: vsal, clsOf: saldoCls }],
   });
   const lineBox = $('#ch-line', root), lineInfo = $('#ch-line-info', root);
   lineBox.innerHTML = C.line({ width: width('#ch-line'), points: cum, cls: 'line-saldo' });
