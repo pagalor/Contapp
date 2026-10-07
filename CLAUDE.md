@@ -30,12 +30,12 @@ js/expr.js              parser degli importi con espressioni e formattazione dei
 js/sync.js              autenticazione Supabase, pull e push, gestione della frase segreta
 js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle chiavi
 js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio), usato da Mese e Riepilogo
-js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo, anello
+js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo (con selezione interattiva del punto), anello
 js/ui.js                toast, finestre (dialog), conferme, tooltip, download, debounce
 js/dialogs.js           finestre condivise: movimento (nuovo e modifica), ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente
 js/view-mese.js         pagina Mese: elenco e calendario, ricerca, trasferimenti, avvisi, categorie in fondo. I movimenti sono di sola lettura: toccandone uno (elenco o calendario) si aprono le voci extra (tag, nota, duplica…), e solo la matita apre la finestra di modifica (`movDialog`), la stessa del "+ Aggiungi"
 js/view-riepilogo.js    pagina Riepilogo: statistiche, grafici, torte per categoria, tag, soldi buttati
-js/view-patrimonio.js   pagina Patrimonio: saldi per fondo, andamento, rilevazioni storiche
+js/view-patrimonio.js   pagina Patrimonio: saldi per fondo, andamento (interattivo, con intervallo di date personalizzabile), rilevazioni storiche
 js/view-conti.js        pagina Fondi (configurazione) e dettaglio di un fondo (route #conti, #conto/<id>)
 js/view-debiti.js       pagina Debiti e crediti
 js/view-ricorrenti.js   pagina Movimenti ricorrenti (elenco; la finestra di modifica è in dialogs.js)

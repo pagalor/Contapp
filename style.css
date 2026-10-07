@@ -325,6 +325,7 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .rie-range .field input { flex: 1; }
 .rie-range .chip { font: inherit; font-weight: 550; font-size: .9rem; cursor: pointer; color: var(--ink); }
 .rie-range .chip[hidden] { display: none; }
+.card > .rie-range { margin-bottom: .6rem; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 1.1rem 1.2rem; margin-bottom: 1rem; min-width: 0; overflow-x: auto; }
 .card > h2 { margin-bottom: .7rem; }
 .card > p.muted { margin: -.3rem 0 .9rem; max-width: 72ch; font-size: .92rem; }
@@ -386,6 +387,12 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .chart .marker { stroke: var(--muted); stroke-dasharray: 4 3; }
 .chart .marker-label { fill: var(--muted); }
 .chart [data-tip] { cursor: pointer; }
+.chart.interactive { touch-action: pan-y; cursor: crosshair; outline: none; -webkit-tap-highlight-color: transparent; }
+.chart.interactive:focus-visible { outline: 2px solid var(--saldo); outline-offset: 2px; border-radius: 4px; }
+.chart .cross { stroke: var(--muted); stroke-width: 1; }
+.chart .cross[hidden], .chart .dot[hidden] { display: none; }
+.chart-info { font-size: .92rem; margin: .2rem 0 .5rem; min-height: 1.4em; font-variant-numeric: tabular-nums; }
+.legend b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .legend { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .82rem; color: var(--muted); margin: -.3rem 0 .6rem; }
 .lg::before, .sw { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .4rem; vertical-align: 0; }
 .lg.in::before { background: var(--in); }
