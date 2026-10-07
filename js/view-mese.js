@@ -246,7 +246,8 @@ function transfers(list) {
 }
 
 function updateSums() {
-  const s = M.sums(M.movsOf(state.y, state.m));
+  const list = M.movsOf(state.y, state.m);
+  const s = M.sums(list);
   const el = $('#sums', root);
   if (el) {
     el.innerHTML = `
@@ -256,7 +257,10 @@ function updateSums() {
   }
   for (const t of ['in', 'out']) {
     const e = root.querySelector(`[data-tot="${t}"]`);
-    if (e) e.textContent = fmtEur(t === 'in' ? s.tin : s.tout);
+    if (!e) continue;
+    // I totali sono già in alto: qui si conta quanti movimenti ci sono
+    const n = list.filter((r) => r.data.tipo === t).length;
+    e.textContent = n === 1 ? '1 movimento' : `${n} movimenti`;
   }
   updateCats();
 }
