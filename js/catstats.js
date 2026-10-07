@@ -53,16 +53,12 @@ function subTable(list, catId, tipo) {
     <h4 class="sub-h">Voci principali</h4>`;
 }
 
-// Riepilogo per categoria dei movimenti di un tag: uscite ed entrate, una riga per categoria
-export function tagCats(list) {
+// Torte per categoria dei movimenti di un tag (uscite ed entrate), come in Mese e Riepilogo
+export function tagPies(list) {
   let html = '';
   for (const [tipo, titolo] of [['out', 'Uscite'], ['in', 'Entrate']]) {
-    const rows = M.byCategory(list, tipo);
-    if (!rows.length) continue;
-    const tot = rows.reduce((a, r) => a + r.tot, 0);
-    html += `<table class="mini tag-cats"><thead><tr><th>${titolo}</th><th class="num">${fmtEur(tot)}</th></tr></thead><tbody>${rows.map((r) => `<tr>
-      <td>${esc(M.catLabel(r.cat))}</td>
-      <td class="num ${tipo}">${fmtEur(r.tot)} <small class="muted">${(tot ? (r.tot / tot) * 100 : 0).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></td></tr>`).join('')}</tbody></table>`;
+    if (!M.byCategory(list, tipo).length) continue;
+    html += `<h4 class="sub-h">${titolo} per categoria</h4>${catBars(list, tipo)}`;
   }
   return html || '<p class="muted">Nessun importo.</p>';
 }

@@ -417,13 +417,11 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .cb-detail { padding: .2rem 0 .6rem 1.4rem; }
 .sub-h { margin: .7rem 0 .1rem; font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 .mini.subs { margin-bottom: .2rem; }
-.mini.tag-cats { margin-bottom: .5rem; }
-.mini.tag-cats td.num { white-space: nowrap; }
-.mini.tag-cats th { text-align: left; font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: .35rem .3rem; border-bottom: 1px solid var(--line); }
-.mini.tag-cats th.num { text-align: right; }
 .tag-row { cursor: pointer; }
 .tag-row:hover { background: var(--hover); }
-.tag-det > td { padding: .2rem 0 .6rem 1.4rem; }
+.tag-det > td { padding: .2rem .3rem 1rem; }
+.tag-det .sub-h { margin-top: .9rem; }
+.tag-det .btn { margin-top: .4rem; }
 .c-sub { color: var(--muted); font-weight: 400; }
 
 .tbl, .mini { width: 100%; border-collapse: collapse; }

@@ -3,7 +3,7 @@ import * as M from './model.js';
 import * as C from './charts.js';
 import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, saldoCls, plain, round2 } from './expr.js';
 import { esc, $, toast } from './ui.js';
-import { catBars, toggleCat, tagCats } from './catstats.js';
+import { catBars, toggleCat, tagPies } from './catstats.js';
 
 let root, sel; // sel: anno (numero) oppure 'tutto'
 let curList = []; // movimenti del periodo mostrato, per il dettaglio delle categorie
@@ -231,7 +231,7 @@ function tagCard(list) {
   if (!tags.length) return '<p class="muted">Nessun tag in questo periodo. Aggiungili ai movimenti, dal pulsante ⋯ di ogni riga, per raggruppare per esempio tutte le spese di un viaggio.</p>';
   // toccando un tag si apre il riepilogo per categoria dei suoi movimenti
   return `<table class="tbl tag-tbl"><tbody>${tags.map((t) => `<tr class="tag-row" data-tagrow="${esc(t.tag)}" tabindex="0" aria-expanded="false">
-    <td><a class="tag" href="#tag/${encodeURIComponent(t.tag)}">#${esc(t.tag)}</a></td>
+    <td><span class="tag">#${esc(t.tag)}</span></td>
     <td class="num muted">${t.n} mov.</td>
     <td class="num out">${fmt(t.tout)}</td></tr>`).join('')}</tbody></table>`;
 }
@@ -257,17 +257,20 @@ function buttEditor(y) {
     <span>Totale <b class="butt">${fmtEur(M.buttTot(y))}</b></span></div>`;
 }
 
-// Apre o chiude, sotto la riga di un tag, le categorie dei suoi movimenti
+// Apre o chiude, sotto la riga di un tag, le torte per categoria dei suoi movimenti
 function toggleTagRow(tr) {
   const next = tr.nextElementSibling;
   const open = next?.classList.contains('tag-det');
   if (open) next.remove();
   else {
     const tag = tr.dataset.tagrow.toLowerCase();
+    const list = curList.filter((r) => (r.data.tags || []).some((x) => x.toLowerCase() === tag));
     const det = document.createElement('tr');
     det.className = 'tag-det';
-    det.innerHTML = `<td colspan="3">${tagCats(curList.filter((r) => (r.data.tags || []).some((x) => x.toLowerCase() === tag)))}</td>`;
+    det.innerHTML = `<td colspan="3">${tagPies(list)}
+      <a class="btn ghost small" href="#tag/${encodeURIComponent(tr.dataset.tagrow)}">Vedi i movimenti</a></td>`;
     tr.after(det);
+    det.querySelectorAll('.catbar').forEach((b) => b.addEventListener('click', () => toggleCat(b, list)));
   }
   tr.setAttribute('aria-expanded', String(!open));
 }
