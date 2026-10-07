@@ -103,21 +103,26 @@ export function renderBody(highlight) {
   const list = M.movsOf(state.y, state.m);
   const ins = list.filter((r) => r.data.tipo === 'in');
   const outs = list.filter((r) => r.data.tipo === 'out');
-  const trs = M.trasfOf(state.y, state.m);
   body.innerHTML = `
     ${store.isEmpty() ? `<div class="empty-hint">
         <p>Non ci sono ancora movimenti. Puoi iniziare a scriverli qui sotto, oppure importare il tuo storico.</p>
         <a class="btn primary" href="#altro">Importa lo storico</a></div>` : ''}
     ${ledger('in', 'Entrate', ins)}
     ${ledger('out', 'Uscite', outs)}
-    ${M.autoAttivo() || trs.length ? transfers(trs) : ''}
-    <section class="card"><h2>Uscite per categoria</h2><div id="mese-cat-out"></div></section>
-    <section class="card"><h2>Entrate per categoria</h2><div id="mese-cat-in"></div></section>`;
+    ${footerHTML()}`;
   updateSums();
   if (highlight) {
     const row = body.querySelector(`[data-id="${CSS.escape(highlight)}"]`);
     if (row) { row.scrollIntoView({ block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1800); }
   }
+}
+
+// In fondo sia all'elenco sia al calendario: trasferimenti e categorie del mese
+function footerHTML() {
+  const trs = M.trasfOf(state.y, state.m);
+  return `${M.autoAttivo() || trs.length ? transfers(trs) : ''}
+    <section class="card"><h2>Uscite per categoria</h2><div id="mese-cat-out"></div></section>
+    <section class="card"><h2>Entrate per categoria</h2><div id="mese-cat-in"></div></section>`;
 }
 
 function renderAlerts() {
@@ -493,7 +498,8 @@ function renderCalendar(body) {
     ${senza.length ? `<section class="cal-panel">
       <h2>Senza giorno <span class="muted">${senza.length}</span></h2>
       ${senza.map(calItem).join('')}
-    </section>` : ''}`;
+    </section>` : ''}
+    ${footerHTML()}`;
   paintDay(per);
   body.querySelector('.cal-grid').addEventListener('click', (e) => {
     const b = e.target.closest('[data-day]');
