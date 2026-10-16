@@ -236,12 +236,16 @@ function transfers(list) {
   return `
     <section class="ledger trasf">
       <h2><span>Trasferimenti tra fondi</span><span class="ledger-hint">non contano come entrate o uscite</span></h2>
+      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Da</span><span>A</span><span></span></div>
       <div class="rows">${list.map((r) => `
-        <button class="trow" data-trasf="${r.id}">
+        <div class="trow" data-trasf="${r.id}" role="button" tabindex="0" style="--cat:var(--saldo)">
           <span class="c-day">${r.data.d ?? '–'}</span>
-          <span class="t-amt">${fmt(r.data.val)}</span>
-          <span class="t-path">${esc(M.accName(r.data.da))} <span class="muted">verso</span> ${esc(M.accName(r.data.a))}${r.data.note ? `<small>${esc(r.data.note)}</small>` : ''}</span>
-        </button>`).join('')}</div>
+          <span class="c-amt"${r.data.espr ? ` title="${esc(r.data.espr)}"` : ''}>${fmt(r.data.val)}</span>
+          <span class="c-desc${r.data.note ? '' : ' empty'}">${esc(r.data.note || 'Trasferimento')}</span>
+          <span class="c-cat"><i></i><span class="c-lbl">${esc(M.accName(r.data.da))}</span></span>
+          <span class="c-acc"><span class="c-lbl">→ ${esc(M.accName(r.data.a))}</span></span>
+          <span class="c-more" aria-hidden="true">${PENCIL}</span>
+        </div>`).join('')}</div>
       <button class="add-row" data-addtr>+ Aggiungi trasferimento</button>
     </section>`;
 }
@@ -387,6 +391,7 @@ function bindBody(body) {
     }
     // Da tastiera la riga si apre con Invio o Spazio
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.row')) { e.preventDefault(); toggleDetails(e.target); }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.trow')) { e.preventDefault(); e.target.click(); }
   });
 }
 
