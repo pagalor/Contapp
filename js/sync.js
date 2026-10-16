@@ -46,7 +46,11 @@ async function authCall(path, body) {
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(translateAuthError(json));
+  if (!res.ok) {
+    const err = new Error(translateAuthError(json));
+    err.status = res.status; // serve a distinguere un rifiuto del server da un problema di rete
+    throw err;
+  }
   return json;
 }
 
@@ -114,16 +118,27 @@ export function forgetConfig() {
   refreshState();
 }
 
-async function refreshToken() {
-  const ses = session();
-  if (!ses?.refresh_token) throw new Error('Sessione scaduta: accedi di nuovo.');
-  try {
-    const j = await authCall('token?grant_type=refresh_token', { refresh_token: ses.refresh_token });
-    saveSession(j);
-  } catch (e) {
-    if (navigator.onLine) { write(LS_SES, null); refreshState(); }
-    throw new Error('Sessione scaduta: accedi di nuovo.');
-  }
+let refreshing = null;
+
+// Rinnova il token. La sessione si elimina solo se il server rifiuta davvero il token:
+// se manca la connessione (o il server non risponde) resta salvata e si riprova più tardi.
+function refreshToken() {
+  if (refreshing) return refreshing; // un solo rinnovo alla volta: il token di rinnovo si può usare una volta sola
+  refreshing = (async () => {
+    const ses = session();
+    if (!ses?.refresh_token) throw new Error('Sessione scaduta: accedi di nuovo.');
+    try {
+      const j = await authCall('token?grant_type=refresh_token', { refresh_token: ses.refresh_token });
+      saveSession(j);
+    } catch (e) {
+      if (e.status === 400 || e.status === 401 || e.status === 403) {
+        write(LS_SES, null); refreshState();
+        throw new Error('Sessione scaduta: accedi di nuovo.');
+      }
+      throw new Error('Connessione non disponibile: riprovo più tardi.');
+    }
+  })().finally(() => { refreshing = null; });
+  return refreshing;
 }
 
 async function api(path, opts = {}, retry = true) {
