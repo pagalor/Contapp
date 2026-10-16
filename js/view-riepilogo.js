@@ -150,6 +150,8 @@ function draw() {
       <div class="chart-box" id="ch-line"></div>
     </section>
 
+    ${tutto ? '' : proiezioneCard() + confrontoCard()}
+
     <section class="card">
       <h2>Uscite per categoria</h2>
       <div id="cat-out"></div>
@@ -194,6 +196,52 @@ function draw() {
   $('#cat-out', root).innerHTML = catBars(list, 'out');
   $('#cat-in', root).innerHTML = catBars(list, 'in');
   bind();
+}
+
+// --- Confronti nel tempo ---
+const pctFmt = (v) => v.toLocaleString('it-IT', { maximumFractionDigits: 1, signDisplay: 'exceptZero' }) + '%';
+// Variazione in percentuale: per le uscite salire è un male (rosso), per le entrate un bene (verde)
+function varCell(v, tipo) {
+  if (v === null) return '<td class="num muted">–</td>';
+  if (Math.abs(v) < 0.05) return '<td class="num muted">0%</td>';
+  const bene = tipo === 'in' ? v > 0 : v < 0;
+  return `<td class="num ${bene ? 'pos' : 'neg'}">${pctFmt(v)}</td>`;
+}
+
+// Uscite stimate a fine anno, continuando al ritmo attuale (solo per l'anno in corso)
+function proiezioneCard() {
+  if (sel !== new Date().getFullYear()) return '';
+  const p = M.proiezioneUscite();
+  const head = '<h2>Proiezione a fine anno</h2>';
+  if (p.stima === null) return `<section class="card">${head}<p class="muted">Troppo presto per una stima: serve almeno un mese di dati.</p></section>`;
+  const conPrev = p.prev > 0 && p.var !== null
+    ? `<p class="muted">Nel ${p.y - 1} hai speso ${fmtEur(p.prev)}: a questo ritmo la spesa sarebbe <b class="${p.var > 0 ? 'neg' : 'pos'}">${pctFmt(p.var)}</b>.</p>` : '';
+  return `<section class="card">${head}
+    <p class="muted">Stima delle uscite dell'intero anno, se continui a spendere come dall'inizio dell'anno a oggi.</p>
+    <dl class="stats">
+      <div><dt>Uscite finora</dt><dd class="out">${fmtEur(p.speso)}</dd></div>
+      <div><dt>Ritmo al mese</dt><dd class="out">${fmtEur(p.ritmo)}</dd></div>
+      <div><dt>Stima a fine ${p.y}</dt><dd class="out">${fmtEur(p.stima)}</dd></div>
+    </dl>${conPrev}</section>`;
+}
+
+// Entrate, uscite e categorie rispetto all'anno prima. Per l'anno in corso si confronta lo stesso periodo.
+function confrontoCard() {
+  const now = new Date();
+  const fino = sel === now.getFullYear() ? now.getMonth() + 1 : 12;
+  const c = M.confrontoAnno(sel, fino);
+  if (!c) return '';
+  const periodo = (y) => fino === 12 ? String(y) : `${fino === 1 ? M.MESI[0] : M.MESI[0] + '–' + M.MESI[fino - 1].toLowerCase()} ${y}`;
+  const riga = (nome, o, tipo) => `<tr><td>${nome}</td><td class="num muted">${fmt(o.prev)}</td><td class="num ${tipo}">${fmt(o.cur)}</td>${varCell(o.var, tipo)}</tr>`;
+  const tab = (titolo, righe, tipo) => righe.length ? `<h4 class="sub-h">${titolo}</h4>
+    <table class="tbl cmp-tbl"><tbody>${righe.map((o) => riga(esc(M.catLabel(o.cat)), o, tipo)).join('')}</tbody></table>` : '';
+  return `<section class="card">
+    <h2>Rispetto al ${sel - 1}</h2>
+    <p class="muted">${periodo(sel)} confrontato con ${periodo(sel - 1).toLowerCase()}.${fino < 12 ? ' L\'ultimo mese è ancora in corso.' : ''}</p>
+    <table class="tbl cmp-tbl"><thead><tr><th></th><th class="num">${sel - 1}</th><th class="num">${sel}</th><th class="num">Variazione</th></tr></thead>
+      <tbody>${riga('Entrate', c.tin, 'in')}${riga('Uscite', c.tout, 'out')}</tbody></table>
+    ${tab('Uscite per categoria', c.out, 'out')}${tab('Entrate per categoria', c.in, 'in')}
+  </section>`;
 }
 
 function monthTable(y) {

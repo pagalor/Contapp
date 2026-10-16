@@ -140,6 +140,46 @@ export function bySub(list, catId, tipo) {
   return [...map.values()].map((o) => ({ ...o, tot: round2(o.tot) })).sort((a, b) => b.tot - a.tot);
 }
 
+// --- Confronti nel tempo ---
+// Variazione percentuale; null se il periodo di confronto è vuoto (non si può dividere per zero)
+export const variazione = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
+
+// Anno y contro l'anno prima, entrambi dal gennaio fino al mese `fino` (1–12) incluso.
+// Per l'anno in corso `fino` è il mese attuale, così si confronta lo stesso periodo.
+// Restituisce null se l'anno prima non ha movimenti nel periodo.
+export function confrontoAnno(y, fino = 12) {
+  const dentro = (anno) => movs().filter((r) => r.data.y === anno && r.data.m <= fino);
+  const cur = dentro(y), prev = dentro(y - 1);
+  if (!prev.some(counts)) return null;
+  const sc = sums(cur), sp = sums(prev);
+  const righe = (tipo) => {
+    const a = new Map(byCategory(cur, tipo).map((o) => [o.id, o]));
+    const b = new Map(byCategory(prev, tipo).map((o) => [o.id, o]));
+    return [...new Set([...a.keys(), ...b.keys()])].map((id) => {
+      const c = a.get(id)?.tot ?? 0, p = b.get(id)?.tot ?? 0;
+      return { id, cat: catById(id), cur: c, prev: p, var: variazione(c, p) };
+    }).sort((x, z) => z.cur - x.cur || z.prev - x.prev);
+  };
+  return {
+    tin: { cur: sc.tin, prev: sp.tin, var: variazione(sc.tin, sp.tin) },
+    tout: { cur: sc.tout, prev: sp.tout, var: variazione(sc.tout, sp.tout) },
+    out: righe('out'), in: righe('in'),
+  };
+}
+
+// Uscite stimate a fine anno, se si continua al ritmo di oggi (solo per l'anno in corso).
+// I mesi trascorsi si contano a giorni; sotto il mese intero di dati la stima non è affidabile (null).
+export function proiezioneUscite(oggi = new Date()) {
+  const y = oggi.getFullYear();
+  const giorniMese = new Date(y, oggi.getMonth() + 1, 0).getDate();
+  const mesi = oggi.getMonth() + oggi.getDate() / giorniMese;
+  const speso = sums(movs().filter((r) => r.data.y === y)).tout;
+  const prev = sums(movs().filter((r) => r.data.y === y - 1)).tout;
+  if (mesi < 1) return { y, mesi, speso, prev, ritmo: null, stima: null, var: null };
+  const ritmo = round2(speso / mesi), stima = round2(ritmo * 12);
+  return { y, mesi, speso, prev, ritmo, stima, var: variazione(stima, prev) };
+}
+
 // --- Suggerimento categoria dalla descrizione ---
 const RULES = {
   out: [
