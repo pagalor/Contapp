@@ -753,6 +753,19 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .sticky-actions .btn { flex: 1; justify-content: center; min-height: 3.2rem; font-size: 1.02rem; }
 .sticky-actions .btn.primary { flex: 2; }
 
+/* Trasferimento tra fondi */
+.trf-route { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.trf-arrow { display: none; }
+.trf-dlg .field input, .trf-dlg .field select { width: 100%; min-width: 0; box-sizing: border-box; }
+.trf-dlg .field input[type="date"] { -webkit-appearance: none; appearance: none; text-align: left; display: block; line-height: 1.2; }
+.trf-dlg .field input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.trf-dlg .field input.trf-amt { font-size: 1.6rem; font-weight: 700; min-height: 3.6rem; letter-spacing: -0.02em; }
+.trf-dlg .sticky-actions .btn.danger { flex: 0 0 auto; }
+@media (min-width: 520px) {
+  .trf-route { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0 .6rem; align-items: end; }
+  .trf-arrow { display: block; color: var(--muted); font-size: 1.2rem; line-height: 3.2rem; padding-bottom: .55rem; }
+}
+
 /* Bersagli più grandi per le dita */
 @media (pointer: coarse) {
   .add-row { min-height: 3.2rem; padding-top: 1rem; padding-bottom: 1rem; font-size: 1rem; }
