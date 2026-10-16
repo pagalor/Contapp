@@ -64,6 +64,7 @@ function autoHTML() {
       </dl>
       ${dt.crediti || dt.debiti ? `<p class="hero-debt"><a href="#debiti">Contando anche ${[dt.crediti ? `i crediti (+${fmtEur(dt.crediti)})` : '', dt.debiti ? `i debiti (−${fmtEur(dt.debiti)})` : ''].filter(Boolean).join(' e ')}</a>:
         <b>${fmtEur(round2(tot.tot + dt.netto))}</b></p>` : ''}
+      ${autonomiaHTML(round2(tot.tot + dt.netto))}
     </div>
     ${senza.length ? `<details class="alert"><summary>${senza.length === 1 ? 'Un movimento non ha' : senza.length + ' movimenti non hanno'} il fondo indicato:
       finché non lo scegli, non entrano nei saldi.</summary>
@@ -75,6 +76,17 @@ function autoHTML() {
         <h2><i class="sw ${g}"></i>${M.gruppoNome(g)}<span>${fmtEur(tot.gruppi[g] || 0)}</span></h2>
         <div class="acc-list">${accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0)).map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>
       </section>`).join('')}`;
+}
+
+// Mesi di autonomia: patrimonio netto / uscite medie mensili (ultimi 12 mesi conclusi).
+function autonomiaHTML(netto) {
+  const a = M.autonomia(netto);
+  if (!a) return '';
+  const mesi = a.mesi.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const anni = a.mesi >= 24 ? ` (circa ${(a.mesi / 12).toLocaleString('it-IT', { maximumFractionDigits: 1 })} anni)` : '';
+  return `<p class="hero-auto" title="Patrimonio netto diviso per le uscite medie mensili">
+    <span>Mesi di autonomia</span> <b>${mesi}</b>${anni}<br>
+    <small>Senza entrate, con uscite medie di ${fmtEur(a.media)} al mese (ultimi ${a.mesiMedia} ${a.mesiMedia === 1 ? 'mese concluso' : 'mesi conclusi'}).</small></p>`;
 }
 
 function accCard(c, v) {

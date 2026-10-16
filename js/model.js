@@ -617,6 +617,35 @@ export function debtTotals() {
   }
   return { crediti: round2(crediti), debiti: round2(debiti), netto: round2(crediti - debiti) };
 }
+// Uscite medie al mese sugli ultimi `n` mesi conclusi (il mese in corso è incompleto e non conta).
+// Si contano solo i mesi in cui c'è almeno un movimento. Restituisce { media, mesi }.
+export function usciteMedie(n = 12) {
+  const t = new Date();
+  const perMese = new Map();
+  for (const r of movs()) {
+    const k = r.data.y * 12 + r.data.m - 1;
+    const o = perMese.get(k) || { n: 0, out: 0 };
+    o.n++;
+    if (counts(r) && r.data.tipo === 'out') o.out += r.data.val;
+    perMese.set(k, o);
+  }
+  const corrente = t.getFullYear() * 12 + t.getMonth();
+  let tot = 0, mesi = 0;
+  for (let k = corrente - n; k < corrente; k++) {
+    const o = perMese.get(k);
+    if (!o) continue;
+    tot += o.out; mesi++;
+  }
+  return { media: mesi ? round2(tot / mesi) : 0, mesi };
+}
+
+// Patrimonio netto (fondi + crediti − debiti) diviso per le uscite medie mensili: per quanti mesi si potrebbe andare avanti senza entrate.
+export function autonomia(patrimonioNetto) {
+  const { media, mesi } = usciteMedie();
+  if (!(media > 0)) return null;
+  return { mesi: Math.max(0, patrimonioNetto) / media, media, mesiMedia: mesi };
+}
+
 export function persone() {
   return [...new Set(debts().map((r) => r.data.persona).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
