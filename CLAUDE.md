@@ -40,6 +40,7 @@ js/view-conti.js        pagina Fondi (configurazione) e dettaglio di un fondo (r
 js/view-debiti.js       pagina Debiti e crediti
 js/view-ricorrenti.js   pagina Movimenti ricorrenti (elenco; la finestra di modifica è in dialogs.js)
 js/view-altro.js        pagina Altro: sincronizzazione e cifratura, import/export, categorie, tema
+js/demo.js              modalità demo: attivazione con ?demo, avviso in cima, dati di esempio generati da codice
 supabase.sql            tabella, permessi, RLS e trigger da eseguire una volta su Supabase
 ```
 
@@ -161,6 +162,17 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 | `ready` | Le chiavi sono disponibili | Si sincronizza |
 
 Con "Frase dimenticata", `resetCloud` cancella le righe sul server e le ricarica dal dispositivo con una nuova frase. Senza chiavi la sincronizzazione non parte.
+
+## Modalità demo (`demo.js`)
+
+Serve a far provare l'app ad altre persone senza toccare i dati veri.
+
+- **Attivazione**: si apre l'app con `?demo` nell'indirizzo (per esempio `https://…/?demo`). La scelta resta sul dispositivo (`localStorage`, chiave `contabilita.demo`), così anche l'app installata dalla pagina demo riparte in demo. Il link normale resta invariato. `demo.attiva` dice se la demo è attiva.
+- **Isolamento**: in demo `store.init()` apre il database `contabilita-demo` al posto di `contabilita`. Il database vero e `contabilita-keys` non vengono mai aperti.
+- **Niente sincronizzazione**: `main.js` non chiama `sync.start()`, e in `sync.js` `config()` e `session()` restituiscono `null`, le chiamate di rete lanciano un errore e le funzioni che scrivono le impostazioni non fanno nulla. In Altro, al posto di sincronizzazione e cifratura, c'è un breve messaggio.
+- **Dati di esempio**: al primo avvio (archivio della demo vuoto) `demo.prepara()` carica i record di `demo.genera(oggi)` con `store.importRecords`. Sono inventati, deterministici (numeri pseudo-casuali con seme fisso) e con date relative a oggi: 18 mesi di movimenti con giorno e fondo, 5 fondi con saldi iniziali e data di partenza, un target (sul conto deposito, poco sopra il saldo di oggi), trasferimenti, il tag "Vacanza a Lisbona", tre debiti e crediti con rimborsi, due movimenti ricorrenti (i loro movimenti li crea `M.generaRicorrenti()`), una rilevazione manuale (con `M.salvaRilevazione`), due rilevazioni storiche e alcune voci di soldi buttati. Categorie e sottocategorie in più hanno id `cat-demo-…` e `sub-demo-…`. Poi `main.js` esegue `M.migrate()` come sempre.
+- **Avviso**: una barra sempre visibile in cima ("Versione demo: i dati sono di esempio") con "Ricomincia" (con conferma: chiude e cancella `contabilita-demo` e ricarica, così i dati di esempio ripartono da capo) ed "Esci dalla demo" (toglie la scelta e `?demo` dall'indirizzo e ricarica l'app normale; l'archivio della demo resta sul dispositivo).
+- Se cambi il modello dei dati, aggiorna anche `demo.genera()` e prova la demo da zero (Ricomincia).
 
 ## Interfaccia
 

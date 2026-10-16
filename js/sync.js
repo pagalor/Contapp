@@ -3,6 +3,7 @@
 // In caso di conflitto vince la modifica più recente (controllato anche lato server).
 import * as store from './store.js';
 import * as K from './crypto.js';
+import { attiva as DEMO } from './demo.js';
 
 const LS_CFG = 'contabilita.sync.cfg';
 const LS_SES = 'contabilita.sync.session';
@@ -25,11 +26,14 @@ function setStatus(state, msg = '') {
 }
 export const getStatus = () => status;
 
-export const config = () => read(LS_CFG);
-export const session = () => read(LS_SES);
+// In demo la sincronizzazione non esiste: niente configurazione né sessione, quindi nessuna chiamata a Supabase
+// e nessun accesso alle chiavi (contabilita-keys) o alle impostazioni dell'app vera.
+export const config = () => (DEMO ? null : read(LS_CFG));
+export const session = () => (DEMO ? null : read(LS_SES));
 export const lastOk = () => read(LS_LAST);
 
 export function setConfig(url, key) {
+  if (DEMO) return;
   url = (url || '').trim().replace(/\/+$/, '');
   key = (key || '').trim();
   if (!/^https:\/\/.+/.test(url)) throw new Error("L'URL del progetto deve iniziare con https://");
@@ -39,6 +43,7 @@ export function setConfig(url, key) {
 }
 
 async function authCall(path, body) {
+  if (DEMO) throw new Error('Nella demo la sincronizzazione non è disponibile.');
   const cfg = config();
   const res = await fetch(cfg.url + '/auth/v1/' + path, {
     method: 'POST',
@@ -103,6 +108,7 @@ async function onNewUser(uid) {
 }
 
 export async function signOut() {
+  if (DEMO) return;
   write(LS_SES, null);
   keys = null; cryptoState = 'unknown';
   await K.clearKeys();
@@ -110,6 +116,7 @@ export async function signOut() {
 }
 
 export function forgetConfig() {
+  if (DEMO) return;
   keys = null; cryptoState = 'unknown';
   K.clearKeys();
   write(LS_SES, null);
@@ -142,6 +149,7 @@ function refreshToken() {
 }
 
 async function api(path, opts = {}, retry = true) {
+  if (DEMO) throw new Error('Nella demo la sincronizzazione non è disponibile.');
   const cfg = config();
   let ses = session();
   if (!ses) throw new Error('Non hai effettuato l’accesso.');
@@ -335,6 +343,7 @@ function refreshState() {
 }
 
 export function start() {
+  if (DEMO) return;
   refreshState();
   store.subscribe((info) => {
     if (info.local && config() && session()) {
