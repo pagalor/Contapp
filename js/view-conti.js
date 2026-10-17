@@ -159,6 +159,23 @@ function bindConfig(last) {
   });
 }
 
+// Data a sinistra: giorno e mese in evidenza, anno piccolo
+function alDate(iso) {
+  const t = fmtDateShort(iso);
+  const i = t.lastIndexOf(' ');
+  return `<span class="al-date"><b>${esc(t.slice(0, i))}</b> <small>${esc(t.slice(i + 1))}</small></span>`;
+}
+
+// Descrizione di una riga: i trasferimenti mostrano la nota e, sotto, "Da" o "A" con l'altro fondo
+function alDesc(x) {
+  if (x.kind === 'trasf') {
+    const t = store.get(x.id)?.data;
+    const altro = x.val >= 0 ? t?.da : t?.a;
+    return `${esc(t?.note || 'Trasferimento')}<small><b>${x.val >= 0 ? 'Da' : 'A'}</b> ${esc(M.accName(altro))}</small>`;
+  }
+  return esc(x.desc) + (x.kind === 'mov' ? '' : `<small>${x.kind === 'debt' ? 'Debiti e crediti' : 'Correzione'}</small>`);
+}
+
 // =============================================================== dettaglio conto
 export function renderConto(el, id) {
   root = el;
@@ -197,10 +214,10 @@ export function renderConto(el, id) {
         <h2>Movimenti</h2>
         ${rows.length ? `<div class="acc-ledger">${rows.map((x) => `
           <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : x.kind === 'debt' ? '#debiti' : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
-            <span class="al-date">${fmtDateShort(x.date)}</span>
-            <span class="al-desc">${esc(x.desc)}${x.kind === 'mov' ? '' : `<small>${x.kind === 'trasf' ? 'Trasferimento' : x.kind === 'debt' ? 'Debiti e crediti' : 'Correzione'}</small>`}</span>
+            ${alDate(x.date)}
+            <span class="al-desc">${alDesc(x)}</span>
             <span class="al-val ${x.val >= 0 ? 'in' : 'out'}">${fmtSigned(x.val)}</span>
-            <span class="al-run">${fmt(x.run)}</span>
+            <span class="al-run"><small>Saldo</small> ${fmt(x.run)}</span>
           </a>`).join('')}</div>` : '<p class="muted">Ancora nessun movimento su questo fondo dopo la data di partenza.</p>'}
         <p class="al-start">Saldo iniziale al ${fmtDateShort(inizio)}: <b>${fmtEur(c.data.saldoIniziale || 0)}</b></p>
       </section>` : `<div class="card intro"><p>Il calcolo automatico dei saldi non è attivo.</p><a class="btn primary" href="#conti">Configura i fondi</a></div>`}
