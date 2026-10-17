@@ -7,6 +7,7 @@ import { catBars, toggleCat, tagPies } from './catstats.js';
 
 let root, sel; // sel: anno (numero) oppure 'tutto'
 let curList = []; // movimenti del periodo mostrato, per il dettaglio delle categorie
+let espanso = false; // tabella "Mese per mese" aperta sotto il grafico delle entrate e uscite
 
 // Intervallo di mesi per "Tutti gli anni" ('AAAA-MM' oppure '' se senza limite). Si ricorda su questo dispositivo.
 const RANGE_KEY = 'contabilita.riepilogo-periodo';
@@ -138,19 +139,24 @@ function draw() {
     </dl>
 
     <section class="card">
-      <h2>${tutto ? 'Entrate e uscite per anno' : 'Entrate e uscite per mese'}</h2>
-      <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span><span class="lg sal-bar">Saldo</span></div>
-      <div class="chart-box" id="ch-bars"></div>
-    </section>
-
-    <section class="card">
       <h2>Saldo accumulato</h2>
       <p class="muted">Quanto hai messo da parte sommando i saldi mese dopo mese${tutto ? (filtrato ? ', nel periodo scelto' : ', dal primo mese registrato') : ` nel ${sel}`}.</p>
       <p class="chart-info" id="ch-line-info"></p>
       <div class="chart-box" id="ch-line"></div>
     </section>
 
-    ${tutto ? '' : proiezioneCard() + confrontoCard()}
+    <section class="card">
+      <h2>${tutto ? 'Entrate e uscite per anno' : 'Entrate e uscite per mese'}</h2>
+      <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span><span class="lg sal-bar">Saldo</span></div>
+      <div class="chart-box" id="ch-bars"></div>
+      <button class="btn ghost small" id="det-toggle" type="button" aria-expanded="${espanso}" aria-controls="det-body">${espanso ? 'Comprimi' : 'Espandi'}</button>
+      <div id="det-body"${espanso ? '' : ' hidden'}>
+        <h3 class="sub-h">${tutto ? 'Anno per anno' : 'Mese per mese'}</h3>
+        ${tutto ? yearTable(ys, list) : monthTable(sel)}
+      </div>
+    </section>
+
+    ${tutto ? '' : proiezioneCard()}
 
     <section class="card">
       <h2>Uscite per categoria</h2>
@@ -161,16 +167,12 @@ function draw() {
       <div id="cat-in"></div>
     </section>
 
-    <div class="two">
-      <section class="card">
-        <h2>${tutto ? 'Anno per anno' : 'Mese per mese'}</h2>
-        ${tutto ? yearTable(ys, list) : monthTable(sel)}
-      </section>
-      <section class="card">
-        <h2>Le spese più grandi</h2>
-        ${topTable(list)}
-      </section>
-    </div>
+    ${tutto ? '' : confrontoCard()}
+
+    <section class="card">
+      <h2>Le spese più grandi</h2>
+      ${topTable(list)}
+    </section>
 
     <section class="card">
       <h2>Tag</h2>
@@ -324,6 +326,13 @@ function toggleTagRow(tr) {
 }
 
 function bind() {
+  const tog = $('#det-toggle', root);
+  tog?.addEventListener('click', () => {
+    espanso = $('#det-body', root).hidden;
+    $('#det-body', root).hidden = !espanso;
+    tog.setAttribute('aria-expanded', String(espanso));
+    tog.textContent = espanso ? 'Comprimi' : 'Espandi';
+  });
   root.querySelectorAll('.tag-row').forEach((tr) => {
     tr.addEventListener('click', (e) => { if (!e.target.closest('a')) toggleTagRow(tr); });
     tr.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); toggleTagRow(tr); } });
