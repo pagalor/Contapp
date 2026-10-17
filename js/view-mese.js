@@ -238,12 +238,12 @@ function transfers(list) {
       <h2><span>Trasferimenti tra fondi</span><span class="ledger-hint">non contano come entrate o uscite</span></h2>
       <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Da</span><span>A</span><span></span></div>
       <div class="rows">${list.map((r) => `
-        <div class="trow" data-trasf="${r.id}" role="button" tabindex="0" style="--cat:var(--saldo)">
+        <div class="trow" data-trasf="${r.id}" role="button" tabindex="0">
           <span class="c-day">${r.data.d ?? '–'}</span>
           <span class="c-amt"${r.data.espr ? ` title="${esc(r.data.espr)}"` : ''}>${fmt(r.data.val)}</span>
           <span class="c-desc${r.data.note ? '' : ' empty'}">${esc(r.data.note || 'Trasferimento')}</span>
-          <span class="c-cat"><i></i><span class="c-lbl">${esc(M.accName(r.data.da))}</span></span>
-          <span class="c-acc"><span class="c-lbl">→ ${esc(M.accName(r.data.a))}</span></span>
+          <span class="c-cat"><span class="c-lbl"><b class="trf-k">Da</b> ${esc(M.accName(r.data.da))}</span></span>
+          <span class="c-acc"><span class="c-lbl"><b class="trf-k">A</b> ${esc(M.accName(r.data.a))}</span></span>
           <span class="c-more" aria-hidden="true">${PENCIL}</span>
         </div>`).join('')}</div>
       <button class="add-row" data-addtr>+ Aggiungi trasferimento</button>
