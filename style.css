@@ -441,6 +441,8 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .cmp-tbl th.num:last-child, .cmp-tbl td.num:last-child { width: 5rem; }
 .cmp-tbl td:first-child { overflow-wrap: anywhere; }
 .card > .cmp-tbl + .sub-h { margin-top: 1.1rem; }
+#det-toggle { margin-top: .6rem; }
+#det-body { margin-top: .4rem; }
 .tbl a:hover, .mini a:hover { color: var(--focus); }
 .tbl tr[data-href], .tbl.clickable tbody tr { cursor: pointer; }
 .tbl tr[data-href]:hover, .tbl.clickable tbody tr:hover { background: var(--hover); }
