@@ -1,8 +1,10 @@
-# Contabilità: documento di progetto
+# Rationes: documento di progetto
 
-App personale di contabilità che sostituisce un file Excel. Tiene traccia di entrate e uscite mese per mese e del patrimonio, diviso tra più "fondi" (contanti, conti, crypto…). Funziona su Windows e Android come PWA installabile, offline, con sincronizzazione cifrata end-to-end tra i dispositivi.
+**Rationes** (in latino «i conti») è un'app personale di contabilità che sostituisce un file Excel. Tiene traccia di entrate e uscite mese per mese e del patrimonio, diviso tra più "fondi" (contanti, conti, crypto…). Funziona su Windows e Android come PWA installabile, offline, con sincronizzazione cifrata end-to-end tra i dispositivi.
 
 Questo documento descrive com'è fatta l'app e le regole da rispettare quando la si modifica. Va letto prima di ogni intervento.
+
+**Nome e nomi interni**: l'app si chiamava "Contabilità". Il nuovo nome compare solo nei testi visibili (titolo, manifest, intestazioni, pagina Altro, messaggi, nomi dei file esportati). I nomi interni restano `contabilita` e **non vanno cambiati**, altrimenti l'app installata perde i dati locali o viene vista come un'app diversa: i database IndexedDB `contabilita` e `contabilita-keys`, le chiavi `contabilita.*` di `localStorage`, il prefisso `contabilita-vN` di `VERSION`, il formato dei backup `contabilita-v1`, il valore di controllo `contabilita-ok` della cifratura, la tabella e la configurazione Supabase, `start_url` e `scope` del manifest.
 
 ## Architettura in breve
 
@@ -21,25 +23,32 @@ Questo documento descrive com'è fatta l'app e le regole da rispettare quando la
 index.html              struttura della pagina e barra di navigazione
 style.css               tutto lo stile (temi chiaro e scuro, telefono e desktop)
 sw.js                   service worker: cache dei file, numero di VERSION
-manifest.webmanifest    dati per l'installazione come app
-icons/                  icone 192, 512 e maskable 512
-js/main.js              avvio, router (hash), avvisi sui target, registrazione del service worker
+manifest.webmanifest    dati per l'installazione come app (nome, colori #17181c del fondo del logo, icone)
+icons/                  logo di Rationes:
+  icon-192.png            icona "any" 192 px, anche apple-touch-icon e logo nella barra laterale
+  icon-512.png            icona "any" 512 px
+  icon-maskable-512.png   icona "maskable" (Android ritaglia il bordo)
+  icon-monochrome-512.png icona "monochrome" (sagoma bianca su trasparente)
+  favicon.svg             favicon vettoriale
+  favicon-32.png          favicon 32 px
+  favicon-16.png          favicon 16 px
+js/main.js              avvio, router (hash), avvisi sui target, registrazione del service worker e controllo degli aggiornamenti (avviso "Aggiorna" anche con l'app aperta)
 js/store.js             archivio locale (IndexedDB e memoria) e stato "dirty" per la sincronizzazione
 js/model.js             logica di dominio: totali, categorie, fondi, saldi, target, tag, debiti, migrazioni
 js/expr.js              parser degli importi con espressioni e formattazione dei numeri (it-IT)
-js/sync.js              autenticazione Supabase, pull e push, gestione della frase segreta
+js/sync.js              autenticazione Supabase, pull e push, gestione della frase segreta; senza connessione la sessione resta salvata
 js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle chiavi
 js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio con sottocategorie), torte per categoria di un tag; usato da Mese e Riepilogo. Si vede solo la torta: toccando il centro (`.donut-hit`, un solo ascolto sul documento) si apre l'elenco delle voci
 js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo (con selezione interattiva del punto), anello (si anima quando compare scorrendo la pagina)
 js/ui.js                toast, finestre (dialog), conferme, tooltip, download, debounce
 js/dialogs.js           finestre condivise: movimento (nuovo e modifica), ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente
-js/view-mese.js         pagina Mese: elenco e calendario, ricerca, trasferimenti, avvisi, categorie in fondo. I movimenti sono di sola lettura: toccandone uno (elenco o calendario) si aprono le voci extra (tag, nota, duplica…), e solo la matita apre la finestra di modifica (`movDialog`), la stessa del "+ Aggiungi"
-js/view-riepilogo.js    pagina Riepilogo: statistiche, grafici, confronti con l'anno prima e proiezione a fine anno, torte per categoria, tag, soldi buttati
-js/view-patrimonio.js   pagina Patrimonio: saldi per fondo, andamento (interattivo, con intervallo di date personalizzabile), rilevazioni storiche
-js/view-conti.js        pagina Fondi (configurazione) e dettaglio di un fondo (route #conti, #conto/<id>)
+js/view-mese.js         pagina Mese: elenco e calendario (caselle colorate in base al saldo del giorno), ricerca, trasferimenti (righe con la stessa grafica dei movimenti, Da e A espliciti), avvisi, categorie in fondo. I movimenti sono di sola lettura: toccandone uno (elenco o calendario) si aprono le voci extra (tag, nota, duplica…), e solo la matita apre la finestra di modifica (`movDialog`), la stessa del "+ Aggiungi"
+js/view-riepilogo.js    pagina Riepilogo: statistiche (medie al mese, risparmio), saldo accumulato interattivo, barre con tabella mensile o annuale espandibile, proiezione a fine anno, torte per categoria, confronto con l'anno prima (categorie a scomparsa), spese più grandi, tag, soldi buttati
+js/view-patrimonio.js   pagina Patrimonio: saldi per fondo (in ordine decrescente), mesi di autonomia, andamento (interattivo, con intervallo di date personalizzabile), rilevazioni manuali e storiche
+js/view-conti.js        pagina Fondi (configurazione) e dettaglio di un fondo con i suoi movimenti, trasferimenti e correzioni (route #conti, #conto/<id>)
 js/view-debiti.js       pagina Debiti e crediti
 js/view-ricorrenti.js   pagina Movimenti ricorrenti (elenco; la finestra di modifica è in dialogs.js)
-js/view-altro.js        pagina Altro: sincronizzazione e cifratura, import/export, categorie, tema
+js/view-altro.js        pagina Altro: sincronizzazione e cifratura, import/export (backup JSON, CSV di movimenti e patrimonio), categorie e sottocategorie, tema, installazione come app, versione
 supabase.sql            tabella, permessi, RLS e trigger da eseguire una volta su Supabase
 ```
 
@@ -112,6 +121,7 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 - **Suggerimenti automatici**: categoria e fondo sono proposti dalla scelta più frequente fatta per la stessa descrizione. Per la categoria, se non c'è uno storico, si usano delle regole testuali. Il suggerimento si ferma quando l'utente sceglie a mano (`catAuto` o `contoAuto` diventano `false`).
 - **Movimenti ricorrenti**: a ogni scadenza `M.generaRicorrenti()` crea un normale movimento (`mov`) con id fisso `mov-r-<idRicorrenza>-<AAAA-MM-GG>` e il campo `ricId`. Parte all'avvio, dopo ogni pull, quando la pagina torna visibile e ogni 10 minuti; recupera anche le scadenze perse ad app chiusa (un'app web non può scrivere in background). Il giorno 29–31 diventa l'ultimo giorno dei mesi più corti. I movimenti si creano con `store.saveMissing` (`updated_at = 1`, come `saveDefault`): se esistono già, anche eliminati, non vengono ricreati, e qualsiasi modifica fatta su un altro dispositivo vince. Modificare o eliminare una ricorrenza non tocca i movimenti già generati; cambiando `inizio`, `freq` o `ogni` si imposta `da` (ieri) per non rigenerare il passato a date diverse.
 - **Patrimonio con debiti**: il patrimonio "netto" è il totale dei fondi + i crediti residui − i debiti residui.
+- **Mesi di autonomia** (Patrimonio): patrimonio netto ÷ uscite medie mensili (`M.autonomia`). La media (`M.usciteMedie`) usa gli ultimi 12 mesi conclusi, contando solo quelli con almeno un movimento; il mese in corso non conta. Senza uscite il dato non compare; da 24 mesi in su si indicano anche gli anni.
 
 ## Sincronizzazione (`sync.js`)
 
@@ -132,6 +142,8 @@ Per modificare i dati si passa sempre da `store.save`, `store.patch` e `store.re
 - quando torna la connessione;
 - ogni 60 secondi;
 - 1,5 secondi dopo una modifica locale.
+
+**Senza connessione**: lo stato diventa "offline" e le modifiche restano sul dispositivo. Il token si rinnova una volta sola alla volta e la sessione si elimina solo se il server rifiuta davvero il token (400, 401, 403): un errore di rete non chiede di accedere di nuovo.
 
 **Dopo un pull**: `main.js` aggiorna la vista, ma non mentre l'utente sta scrivendo in una riga, poi esegue `M.migrate()`.
 
@@ -165,13 +177,14 @@ Con "Frase dimenticata", `resetCloud` cancella le righe sul server e le ricarica
 
 ## Interfaccia
 
-**Stile minimale e monocromatico**. Il colore ha sempre un significato: verde per le entrate (`--in`), rosso per le uscite (`--out`), ambra per gli avvisi (`--warn`), blu per il saldo (`--saldo`), viola per i soldi buttati (`--butt`). I gruppi dei fondi hanno i loro colori (`--g-<gruppo>`).
+**Stile minimale e monocromatico**. Il colore ha sempre un significato: verde per le entrate (`--in`), rosso per le uscite (`--out`), ambra per gli avvisi (`--warn`), blu per il saldo dei fondi (`--saldo`), viola per i soldi buttati (`--butt`). Il saldo di un periodo ha un colore dinamico (`saldoCls` in `expr.js`): verde se positivo (`--sal-pos`), un rosso diverso da quello delle uscite se negativo (`--sal-neg`), neutro se zero. I gruppi dei fondi hanno i loro colori (`--g-<gruppo>`).
 
 **Layout e temi**:
 - Le variabili CSS sono definite in `:root`, con il tema scuro tramite `prefers-color-scheme` oppure `data-theme`.
 - Desktop: barra laterale sopra i 900 px. Telefono: barra in basso.
 - Le righe dei movimenti cambiano disposizione con una container query sulla larghezza del riquadro (`container: ledger`), non dello schermo.
 - Font di sistema e numeri tabellari (`tabular-nums`).
+- Il colore della barra del browser (`meta theme-color`) segue il tema scelto (`applyTheme` in `view-altro.js`); `theme_color` e `background_color` del manifest (`#17181c`, il fondo del logo) valgono solo per la schermata di avvio dell'app installata.
 
 **Testi**: nell'interfaccia si parla di **fondi**, non di "conti". Nelle righe la colonna si chiama "Pagato con" per le uscite e "Ricevuto su" per le entrate. Nel codice id e route restano `conto`, `conti`, `cont`.
 
@@ -189,6 +202,7 @@ Con "Frase dimenticata", `resetCloud` cancella le righe sul server e le ricarica
 7. **Testi in italiano**, chiari e senza gergo tecnico. Pulsanti e messaggi brevi.
 8. **Prova su telefono e desktop**: almeno 390 px e 1360 px di larghezza, e il tema scuro se tocchi lo stile.
 9. **Mai dati personali nel repository**: è pubblico. Niente storico, backup, file Excel o chiavi.
+10. **Non rinominare i nomi interni** `contabilita` (database, chiavi di `localStorage`, `VERSION`, formato dei backup, `start_url`, `scope`): vedi "Nome e nomi interni" in alto.
 
 ## Provare in locale
 
@@ -213,6 +227,5 @@ Per provare la sincronizzazione senza toccare i dati veri, serve un secondo prog
 
 - PIN o sblocco con impronta all'apertura.
 - Cambio della frase segreta senza dover reimpostare il cloud.
-- Movimenti ricorrenti, come gli abbonamenti mensili.
 - Export in `.xlsx` vero, al posto del CSV.
 - Budget mensili per categoria.

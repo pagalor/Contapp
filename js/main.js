@@ -38,7 +38,7 @@ function route() {
   else if (current === 'debiti') vDebiti.render(view());
   else if (current === 'ricorrenti') vRic.render(view());
   else if (current === 'altro') vAltro.render(view());
-  document.title = TITLES[current] + ' · Contabilità';
+  document.title = TITLES[current] + ' · Rationes';
   paintTargetDot();
 }
 
