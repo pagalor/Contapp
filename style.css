@@ -331,6 +331,14 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .rie-range { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; }
 .rie-range .field { margin: 0; flex: 1 1 9.5rem; max-width: 15rem; }
 .rie-range .field input { flex: 1; }
+/* Telefono: pulsanti della testata di Patrimonio su una riga, campi "Dal" e "Al" in colonna e della stessa larghezza */
+@media (max-width: 560px) {
+  .patrimonio > .page-head .btn-row { flex-wrap: nowrap; width: 100%; gap: .4rem; }
+  .patrimonio > .page-head .btn-row .btn { flex: 1 1 auto; justify-content: center; padding: .55rem .5rem; font-size: .85rem; }
+  .rie-range .field { flex: 1 1 100%; max-width: none; }
+  .rie-range .field > span { width: 2.2rem; flex: none; }
+}
+
 .rie-range .chip { font: inherit; font-weight: 550; font-size: .9rem; cursor: pointer; color: var(--ink); }
 .rie-range .chip[hidden] { display: none; }
 .card > .rie-range { margin-bottom: .6rem; }
