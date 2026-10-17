@@ -7,6 +7,7 @@ import { catBars, toggleCat, tagPies } from './catstats.js';
 
 let root, sel; // sel: anno (numero) oppure 'tutto'
 let curList = []; // movimenti del periodo mostrato, per il dettaglio delle categorie
+const aperti = { out: false, in: false }; // categorie del confronto con l'anno prima mostrate per intero
 let espanso = false; // tabella "Mese per mese" aperta sotto il grafico delle entrate e uscite
 
 // Intervallo di mesi per "Tutti gli anni" ('AAAA-MM' oppure '' se senza limite). Si ricorda su questo dispositivo.
@@ -149,9 +150,8 @@ function draw() {
       <h2>${tutto ? 'Entrate e uscite per anno' : 'Entrate e uscite per mese'}</h2>
       <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span><span class="lg sal-bar">Saldo</span></div>
       <div class="chart-box" id="ch-bars"></div>
-      <button class="btn ghost small" id="det-toggle" type="button" aria-expanded="${espanso}" aria-controls="det-body">${espanso ? 'Comprimi' : 'Espandi'}</button>
+      <button class="btn ghost small" id="det-toggle" type="button" aria-expanded="${espanso}" aria-controls="det-body">${espanso ? 'Comprimi ▴' : 'Espandi ▾'}</button>
       <div id="det-body"${espanso ? '' : ' hidden'}>
-        <h3 class="sub-h">${tutto ? 'Anno per anno' : 'Mese per mese'}</h3>
         ${tutto ? yearTable(ys, list) : monthTable(sel)}
       </div>
     </section>
@@ -169,20 +169,20 @@ function draw() {
 
     ${tutto ? '' : confrontoCard()}
 
-    <section class="card">
-      <h2>Le spese più grandi</h2>
-      ${topTable(list)}
-    </section>
-
-    <section class="card">
-      <h2>Tag</h2>
-      ${tagCard(list)}
-    </section>
-
-    <section class="card" id="butt-card">
-      <h2>Soldi buttati</h2>
-      ${tutto ? buttYears(ysButt) : buttEditor(sel)}
-    </section>`;
+    <div class="three">
+      <section class="card">
+        <h2>Le spese più grandi</h2>
+        ${topTable(list)}
+      </section>
+      <section class="card">
+        <h2>Tag</h2>
+        ${tagCard(list)}
+      </section>
+      <section class="card" id="butt-card">
+        <h2>Soldi buttati</h2>
+        ${tutto ? buttYears(ysButt) : buttEditor(sel)}
+      </section>
+    </div>`;
 
   $('#ch-bars', root).innerHTML = C.bars({
     width: width('#ch-bars'), labels,
@@ -235,8 +235,8 @@ function confrontoCard() {
   if (!c) return '';
   const periodo = (y) => fino === 12 ? String(y) : `${fino === 1 ? M.MESI[0] : M.MESI[0] + '–' + M.MESI[fino - 1].toLowerCase()} ${y}`;
   const riga = (nome, o, tipo) => `<tr><td>${nome}</td><td class="num muted">${fmt(o.prev)}</td><td class="num ${tipo}">${fmt(o.cur)}</td>${varCell(o.var, tipo)}</tr>`;
-  const tab = (titolo, righe, tipo) => righe.length ? `<h4 class="sub-h">${titolo}</h4>
-    <table class="tbl cmp-tbl"><tbody>${righe.map((o) => riga(esc(M.catLabel(o.cat)), o, tipo)).join('')}</tbody></table>` : '';
+  const tab = (titolo, righe, tipo) => righe.length ? `<h4 class="sub-h"><button class="cmp-toggle" type="button" data-cmp="${tipo}" aria-expanded="${aperti[tipo]}">${titolo} <span aria-hidden="true">${aperti[tipo] ? '▴' : '▾'}</span></button></h4>
+    <table class="tbl cmp-tbl"${aperti[tipo] ? '' : ' hidden'}><tbody>${righe.map((o) => riga(esc(M.catLabel(o.cat)), o, tipo)).join('')}</tbody></table>` : '';
   return `<section class="card">
     <h2>Rispetto al ${sel - 1}</h2>
     <p class="muted">${periodo(sel)} confrontato con ${periodo(sel - 1).toLowerCase()}.${fino < 12 ? ' L\'ultimo mese è ancora in corso.' : ''}</p>
@@ -326,12 +326,19 @@ function toggleTagRow(tr) {
 }
 
 function bind() {
+  root.querySelectorAll('.cmp-toggle').forEach((b) => b.addEventListener('click', () => {
+    const tipo = b.dataset.cmp, tab = b.closest('.sub-h').nextElementSibling;
+    aperti[tipo] = tab.hidden;
+    tab.hidden = !aperti[tipo];
+    b.setAttribute('aria-expanded', String(aperti[tipo]));
+    b.lastElementChild.textContent = aperti[tipo] ? '▴' : '▾';
+  }));
   const tog = $('#det-toggle', root);
   tog?.addEventListener('click', () => {
     espanso = $('#det-body', root).hidden;
     $('#det-body', root).hidden = !espanso;
     tog.setAttribute('aria-expanded', String(espanso));
-    tog.textContent = espanso ? 'Comprimi' : 'Espandi';
+    tog.textContent = espanso ? 'Comprimi ▴' : 'Espandi ▾';
   });
   root.querySelectorAll('.tag-row').forEach((tr) => {
     tr.addEventListener('click', (e) => { if (!e.target.closest('a')) toggleTagRow(tr); });
