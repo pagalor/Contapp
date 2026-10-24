@@ -105,6 +105,13 @@ export async function prepara() {
   // target del conto deposito poco sopra il saldo di oggi, così si vede l'avviso
   const dep = M.balances().get(F.dep) || 0;
   store.patch(F.dep, { obiettivo: Math.ceil(dep / 1000) * 1000 + 1000, obEspr: null });
+  // e quello del conto corrente qualche centinaio di euro sotto il saldo, così si vede anche l'avviso «oltre il target»
+  const cor = M.balances().get(F.conto) || 0;
+  if (cor > 400) store.patch(F.conto, { obiettivo: Math.floor((cor - 300) / 100) * 100, obEspr: null });
+  // il monitor viene reso due mesi fa: rimborso di quanto pagato fino ad allora (le rate dopo il reso spariscono)
+  const t0 = new Date(), reso = isoD(new Date(t0.getFullYear(), t0.getMonth() - 2, 20));
+  const monitor = store.get(RATA_RESO);
+  if (monitor) M.resoPiano(RATA_RESO, { data: reso, val: M.pagatoAl(monitor, reso), fondo: F.conto });
   // rilevazione manuale di qualche settimana fa: contanti un po' sotto il calcolo, crypto rivalutate
   const t = new Date(); t.setDate(t.getDate() - 40);
   const date = isoD(t);
@@ -144,6 +151,15 @@ function preparaBudget() {
   salva('budg-demo-ristoranti', 1, { su: 'cat', rif: C.rist, periodo: 'mese', da }, rist, oraRist >= 5 ? { da: questo, val: oraRist } : null);
   salva('budg-demo-spesa', 2, { su: 'cat', rif: C.spesa, periodo: 'mese', riporto: true, da }, arrotonda(media(C.spesa) * 1.1 || 300, 10));
   salva('budg-demo-viaggi', 3, { su: 'cat', rif: C.viaggi, periodo: 'anno', da: `${y - 1}-01` }, 1200);
+  // Trasporti «vicino al limite»: l'importo è poco sopra quanto speso finora questo mese
+  const trasp = speso(C.trasp);
+  if (trasp > 0) salva('budg-demo-trasporti', 4, { su: 'cat', rif: C.trasp, periodo: 'mese', da }, Math.ceil(trasp / 0.88));
+  // Tutte le uscite con «ritmo troppo veloce»: la quota usata supera di 25 punti quella del mese trascorso (possibile se il mese è a meno di metà)
+  const giorni = new Date(y, m, 0).getDate(), tempo = t.getDate() / giorni;
+  const totSpeso = M.budgetMovs({ data: { su: 'tot', rif: null, periodo: 'mese' } }, y, m).reduce((n, r) => n + M.valBudget(r), 0);
+  if (totSpeso > 0) salva('budg-demo-tot', 5, { su: 'tot', rif: null, periodo: 'mese', da: questo }, Math.ceil(totSpeso / Math.min(0.75, Math.max(0.3, tempo + 0.25))));
+  // Svago che parte il mese prossimo: nella pagina Budget compare «Parte da…»
+  salva('budg-demo-svago', 6, { su: 'cat', rif: C.svago, periodo: 'mese', da: ym(new Date(y, m, 1)) }, arrotonda(media(C.svago) * 1.1 || 60, 5));
 }
 
 // --- Generatore dei dati di esempio (tutto inventato) ---
@@ -201,6 +217,7 @@ const SHOPPING = [
   ['sub-shopping-altro', ['Cover del telefono', 'Zaino'], 9, 35],
 ];
 const TAG = 'Vacanza a Lisbona';
+const RATA_RESO = 'rate-demo-monitor'; // piano annullato per reso da `prepara()`
 const STIPENDIO = 1750;
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -236,6 +253,8 @@ export function genera(oggi) {
   FONDI.forEach(([id, nome, gruppo, si], i) => add('cont', id,
     { nome, gruppo, ord: i, archiviato: false, saldoIniziale: si, siEspr: null, obiettivo: null, obEspr: null }));
   add('cfg', 'cfg-patrimonio', { inizio: isoD(partenza), contoOut: F.conto, contoIn: F.conto });
+  // un fondo archiviato (senza saldo): non compare tra i fondi selezionabili, ma si vede in Fondi
+  add('cont', 'cont-demo-vecchio', { nome: 'Vecchia carta prepagata', gruppo: 'digitale', ord: FONDI.length, archiviato: true, saldoIniziale: 0, siEspr: null, obiettivo: null, obEspr: null });
   add('cat', C.casa, { nome: 'Casa e bollette', tipo: 'out', colore: '#6B7F99', emoji: '🏠', ord: 1.5 });
   add('cat', C.stip, { nome: 'Stipendio', tipo: 'in', colore: '#12805C', emoji: '💼', ord: -1 });
   SUBS.forEach(([id, nome, cat], i) => add('sub', id, { nome, cat, ord: i % 3 }));
@@ -254,13 +273,14 @@ export function genera(oggi) {
     if (f === F.web) trasf(t, F.conto, F.web, Math.max(50, Math.ceil((val - bal[f] + 20) / 50) * 50), 'Ricarica');
   };
   // conti: id di un fondo oppure ripartizione [{ c, val }]
-  const mov = (t, tipo, desc, val, cat, { sub = null, conti = F.conto, espr = null, tags = [], note = null, escl = false } = {}) => {
+  // conti: [] = nessun fondo indicato; senzaGiorno: il giorno non è noto (come lo storico importato)
+  const mov = (t, tipo, desc, val, cat, { sub = null, conti = F.conto, espr = null, tags = [], note = null, escl = false, senzaGiorno = false } = {}) => {
     const parts = Array.isArray(conti) ? conti : [{ c: conti, val }];
     for (const p of parts) {
       if (tipo === 'out') { copri(t, p.c, p.val); bal[p.c] = round2(bal[p.c] - p.val); } else bal[p.c] = round2(bal[p.c] + p.val);
     }
     add('mov', `mov-demo-${++nMov}`, {
-      y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate(), tipo, val, espr, desc, cat, sub, catAuto: false,
+      y: t.getFullYear(), m: t.getMonth() + 1, d: senzaGiorno ? null : t.getDate(), tipo, val, espr, desc, cat, sub, catAuto: false,
       conti: parts.length === 1 ? [{ c: parts[0].c }] : parts.map((p) => ({ c: p.c, val: p.val, espr: null })), contoAuto: false,
       tags, note, escl, ord: ord++,
     });
@@ -337,6 +357,12 @@ export function genera(oggi) {
     }
     if (indietro === 1 && g === 3) rimborso(t, 'debt-demo-sara', 42, F.cont);
 
+    // Questo mese: due movimenti senza fondo (segnalati) e uno senza giorno (nel calendario sta in «Senza giorno»).
+    // Non consumano numeri casuali: gli altri dati restano uguali.
+    if (indietro === 0 && g === Math.min(5, fine.getDate())) mov(t, 'out', 'Parcheggio', 4.5, C.trasp, { sub: S.citta, conti: [] });
+    if (indietro === 0 && g === Math.min(9, fine.getDate())) mov(t, 'out', 'Fotocopie', 3.2, C.tasse, { conti: [] });
+    if (indietro === 0 && g === 1) mov(t, 'out', 'Piccole spese del mese', 12.5, C.altro, { senzaGiorno: true });
+
     // Spese di tutti i giorni
     for (const [descs, cat, sub, imp, alMese, fondo] of CASUALI) {
       if (r() < alMese / 30) mov(t, 'out', pick(descs), importo(imp), cat, { sub, conti: fondo });
@@ -359,6 +385,11 @@ export function genera(oggi) {
   add('ric', 'ric-demo-musica', { tipo: 'out', desc: 'Abbonamento musica', val: 10.99, espr: null, cat: C.abb, sub: null, conti: [{ c: F.web }],
     tags: [], note: null, escl: false, inizio: M.isoOf(y0, m0, 15), freq: 'mese', ogni: 1, fine: null, ord: 10002 });
 
+  // Una ricorrenza terminata: l'ultima scadenza è già passata
+  const palestra = new Date(fine.getFullYear(), fine.getMonth() - 9, 8), fineP = new Date(fine.getFullYear(), fine.getMonth() - 2, 8);
+  add('ric', 'ric-demo-piscina', { tipo: 'out', desc: 'Abbonamento piscina', val: 29.9, espr: null, cat: C.svago, sub: null, conti: [{ c: F.conto }],
+    tags: [], note: null, escl: false, inizio: isoD(palestra), freq: 'mese', ogni: 1, fine: isoD(fineP), ord: 10005 });
+
   // Pagamenti a rate: le rate scadute le genera l'app al primo avvio.
   // Uno con interessi, contato all'acquisto (anticipo e 10 rate: il costo del finanziamento va in "Interessi e commissioni")…
   const acq1 = new Date(fine.getFullYear(), fine.getMonth() - 4, 12);
@@ -371,6 +402,17 @@ export function genera(oggi) {
   add('rate', 'rate-demo-telefono', { desc: 'Smartphone', cat: C.shop, sub: 'sub-shopping-elettronica', tags: [], prezzo: 299.99, prEspr: null,
     anticipo: null, nRate: 3, importoRata: 100, irEspr: null, ultimaRata: 99.99, urEspr: null, fondo: F.conto, creditore: 'PayPal',
     dataAcquisto: isoD(acq2), primaScadenza: isoD(acq2), freq: 'mese', ogni: 1, modalita: 'rate', chiuso: false, chiusura: null, gen: 1, note: null, ord: 10004 });
+
+  // Due piani già conclusi: delle cuffie sono state pagate tutte le rate; il monitor è stato reso (lo chiude `prepara()`)
+  const acq3 = new Date(fine.getFullYear(), fine.getMonth() - 5, 8);
+  add('rate', 'rate-demo-cuffie', { desc: 'Cuffie', cat: C.shop, sub: 'sub-shopping-elettronica', tags: [], prezzo: 120, prEspr: null,
+    anticipo: null, nRate: 3, importoRata: 40, irEspr: null, ultimaRata: null, urEspr: null, fondo: F.conto, creditore: 'PayPal',
+    dataAcquisto: isoD(acq3), primaScadenza: isoD(acq3), freq: 'mese', ogni: 1, modalita: 'rate', chiuso: false, chiusura: null, gen: 1, note: null, ord: 10006 });
+  const acq4 = new Date(fine.getFullYear(), fine.getMonth() - 4, 10);
+  add('rate', RATA_RESO, { desc: 'Monitor', cat: C.shop, sub: 'sub-shopping-elettronica', tags: [], prezzo: 240, prEspr: null,
+    anticipo: null, nRate: 4, importoRata: 60, irEspr: null, ultimaRata: null, urEspr: null, fondo: F.conto, creditore: 'Klarna',
+    dataAcquisto: isoD(acq4), primaScadenza: isoD(new Date(acq4.getFullYear(), acq4.getMonth() + 1, 10)), freq: 'mese', ogni: 1, modalita: 'acquisto',
+    chiuso: false, chiusura: null, gen: 1, note: null, ord: 10007 });
 
   // Rilevazioni storiche, precedenti alla data di partenza (per il grafico del patrimonio)
   [[6, [90, 1900, 5800, 40, 300]], [3, [130, 2150, 6200, 25, 350]]].forEach(([mesi, vals], i) => {
