@@ -139,6 +139,8 @@ function draw() {
       <div><dt>Soldi buttati</dt><dd class="butt">${fmtEur(butt)}</dd></div>
     </dl>
 
+    ${tutto ? '' : proiezioneCard()}
+
     <section class="card">
       <h2>Saldo accumulato</h2>
       <p class="muted">Quanto hai messo da parte sommando i saldi mese dopo mese${tutto ? (filtrato ? ', nel periodo scelto' : ', dal primo mese registrato') : ` nel ${sel}`}.</p>
@@ -155,8 +157,6 @@ function draw() {
         ${tutto ? yearTable(ys, list) : monthTable(sel)}
       </div>
     </section>
-
-    ${tutto ? '' : proiezioneCard()}
 
     <section class="card">
       <h2>Uscite per categoria</h2>
