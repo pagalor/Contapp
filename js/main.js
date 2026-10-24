@@ -98,7 +98,10 @@ function runRicorrenti(avvisa = true) {
 async function boot() {
   vAltro.applyTheme();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', vAltro.applyTheme);
-  if (demo.attiva) demo.mostraAvviso();
+  if (demo.attiva) {
+    demo.mostraAvviso();
+    await demo.controllaVersione().catch(() => {});
+  }
   try {
     // in demo un archivio separato: i dati veri non vengono né letti né modificati
     await store.init(demo.attiva ? demo.DB : undefined);

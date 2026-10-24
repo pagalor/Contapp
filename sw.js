@@ -19,6 +19,11 @@ self.addEventListener('activate', (e) => {
     Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
+// La pagina chiede la versione dei file in uso: la demo la usa per rigenerare i dati di esempio dopo un aggiornamento
+self.addEventListener('message', (e) => {
+  if (e.data === 'versione') e.ports[0]?.postMessage(VERSION);
+});
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;

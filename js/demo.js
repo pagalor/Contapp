@@ -2,13 +2,19 @@
 // - Si attiva aprendo l'app con ?demo; la scelta resta sul dispositivo (anche nell'app installata) finché non si esce.
 // - Usa un archivio separato (DB) e non sincronizza mai: sync.js resta spento, contabilita-keys non viene aperto.
 // - Al primo avvio carica dati inventati, generati qui in modo deterministico con date relative a oggi.
+// - Il codice è lo stesso dell'app normale: ogni aggiornamento vale anche per la demo. In più, quando cambia la versione
+//   dell'app (VERSION di sw.js) i dati di esempio vengono rigenerati, così mostrano subito anche le novità.
 import * as store from './store.js';
 import * as M from './model.js';
 import { round2 } from './expr.js';
 import { confirmBox, toast } from './ui.js';
 
 const LS = 'contabilita.demo';
+const LS_DATI = 'contabilita.demo.dati'; // versione dell'app con cui sono stati generati i dati di esempio
+const SENZA_VERSIONE = '?';              // generati quando la versione non era nota (primo avvio, service worker non ancora attivo)
 export const DB = 'contabilita-demo';
+let versione = null;   // versione dei file in uso, se il service worker la comunica
+let rinnovati = false; // dati rigenerati per un aggiornamento dell'app
 
 function leggiScelta() {
   const chiesta = new URLSearchParams(location.search).has('demo');
@@ -46,15 +52,45 @@ export function esci() {
   location.reload();
 }
 
-// Cancella solo l'archivio della demo e ricarica: al nuovo avvio i dati di esempio ripartono da capo
-export async function ricomincia() {
-  store.close();
-  await new Promise((resolve) => {
+// Cancella solo l'archivio della demo
+function cancellaArchivio() {
+  return new Promise((resolve) => {
     const req = indexedDB.deleteDatabase(DB);
     req.onsuccess = req.onerror = resolve;
-    req.onblocked = () => toast('Chiudi le altre finestre della demo per ricominciare.', { ms: 6000 });
+    req.onblocked = () => toast('Chiudi le altre finestre della demo per ricaricare i dati di esempio.', { ms: 6000 });
   });
+}
+
+// Ricarica l'app con l'archivio della demo vuoto: i dati di esempio ripartono da capo
+export async function ricomincia() {
+  store.close();
+  await cancellaArchivio();
   location.reload();
+}
+
+// Versione dei file che stanno girando: la chiede al service worker che ha servito la pagina (null se non risponde)
+function versioneApp() {
+  const sw = navigator.serviceWorker?.controller;
+  if (!sw) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const ch = new MessageChannel();
+    ch.port1.onmessage = (e) => resolve(typeof e.data === 'string' ? e.data : null);
+    sw.postMessage('versione', [ch.port2]);
+    setTimeout(() => resolve(null), 800);
+  });
+}
+
+// Da chiamare prima di aprire l'archivio: se l'app è stata aggiornata da quando sono stati generati i dati di esempio,
+// l'archivio della demo si svuota e prepara() li rigenera con il codice nuovo (le modifiche fatte nella demo si perdono)
+export async function controllaVersione() {
+  versione = await versioneApp();
+  if (!versione) return;
+  let prima;
+  try { prima = localStorage.getItem(LS_DATI); } catch { return; }
+  if (prima === versione) return;
+  if (prima === SENZA_VERSIONE) { localStorage.setItem(LS_DATI, versione); return; } // generati proprio con questi file
+  await cancellaArchivio();
+  rinnovati = !!prima;
 }
 
 // Al primo avvio (archivio della demo vuoto) carica i dati di esempio
@@ -80,6 +116,8 @@ export async function prepara() {
     note: 'Contati i contanti e aggiornato il valore delle crypto',
     scelta: 'manuale',
   });
+  try { localStorage.setItem(LS_DATI, versione || SENZA_VERSIONE); } catch {}
+  if (rinnovati) toast('App aggiornata: i dati di esempio della demo sono stati rigenerati.', { ms: 5000 });
 }
 
 // --- Generatore dei dati di esempio (tutto inventato) ---
@@ -163,7 +201,8 @@ export function genera(oggi) {
   let nMov = 0, nTrasf = 0;
 
   const fine = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate());
-  const inizioMesi = new Date(fine.getFullYear(), fine.getMonth() - 17, 1); // 18 mesi, compreso quello in corso
+  // da gennaio dell'anno scorso (13-24 mesi): così il confronto con l'anno prima e la proiezione hanno un anno intero
+  const inizioMesi = new Date(fine.getFullYear() - 1, 0, 1);
   const partenza = new Date(inizioMesi); partenza.setDate(0); // fine del mese precedente
   const meseOggi = fine.getFullYear() * 12 + fine.getMonth();
 
@@ -287,11 +326,12 @@ export function genera(oggi) {
   for (const [id, d] of Object.entries(debiti)) add('debt', id, d);
 
   // Movimenti ricorrenti: i movimenti delle scadenze passate li genera l'app al primo avvio
+  // (ord alto: nello stesso giorno vengono dopo un'eventuale ricarica del portafoglio)
   const y0 = inizioMesi.getFullYear(), m0 = inizioMesi.getMonth() + 1;
   add('ric', 'ric-demo-stipendio', { tipo: 'in', desc: 'Stipendio', val: STIPENDIO, espr: null, cat: C.stip, sub: null, conti: [{ c: F.conto }],
-    tags: [], note: null, escl: false, inizio: M.isoOf(y0, m0, 27), freq: 'mese', ogni: 1, fine: null, ord: 1 });
+    tags: [], note: null, escl: false, inizio: M.isoOf(y0, m0, 27), freq: 'mese', ogni: 1, fine: null, ord: 10001 });
   add('ric', 'ric-demo-musica', { tipo: 'out', desc: 'Abbonamento musica', val: 10.99, espr: null, cat: C.abb, sub: null, conti: [{ c: F.web }],
-    tags: [], note: null, escl: false, inizio: M.isoOf(y0, m0, 15), freq: 'mese', ogni: 1, fine: null, ord: 2 });
+    tags: [], note: null, escl: false, inizio: M.isoOf(y0, m0, 15), freq: 'mese', ogni: 1, fine: null, ord: 10002 });
 
   // Rilevazioni storiche, precedenti alla data di partenza (per il grafico del patrimonio)
   [[6, [90, 1900, 5800, 40, 300]], [3, [130, 2150, 6200, 25, 350]]].forEach(([mesi, vals], i) => {
