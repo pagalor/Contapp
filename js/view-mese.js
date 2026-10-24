@@ -3,6 +3,7 @@ import * as M from './model.js';
 import { fmt, fmtEur, fmtSigned, saldoCls } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
 import { catBars, toggleCat, setPieOpen } from './catstats.js';
+import * as B from './budgetui.js';
 import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov, movDialog } from './dialogs.js';
 
 let state = { y: 0, m: 0, q: '' };
@@ -17,6 +18,7 @@ const mode = () => { try { return localStorage.getItem(MODE_KEY) === 'cal' ? 'ca
 const setMode = (m) => { try { localStorage.setItem(MODE_KEY, m); } catch {} };
 let selDay = null;
 const openCal = new Set(); // movimenti del calendario con le voci extra aperte
+const budOpen = new Set(); // budget con l'elenco dei movimenti aperto
 const ROW = '.row'; // una riga dei movimenti, nell'elenco o nel calendario (qui senza il giorno, classe `nodate`)
 
 export function render(el, { y, m, q = '', highlight } = {}) {
@@ -25,6 +27,7 @@ export function render(el, { y, m, q = '', highlight } = {}) {
   state = { y: y || t.y, m: m || t.m, q };
   selDay = state.y === t.y && state.m === t.m ? t.d : null;
   openCal.clear();
+  budOpen.clear();
   if (highlight && mode() === 'cal') setMode('lista');
   const isNow = state.y === t.y && state.m === t.m;
   el.innerHTML = `
@@ -50,12 +53,14 @@ export function render(el, { y, m, q = '', highlight } = {}) {
         </div>
       </div>
       <div id="alerts"></div>
+      <div id="budget-box"></div>
       <div id="mese-body"></div>
     </section>
     <datalist id="dl-in">${M.frequentDescs('in').map((d) => `<option value="${esc(d)}">`).join('')}</datalist>
     <datalist id="dl-out">${M.frequentDescs('out').map((d) => `<option value="${esc(d)}">`).join('')}</datalist>
     ${tagsDatalist()}`;
   bindHead();
+  bindBudgets($('#budget-box', root));
   bindBody($('#mese-body', root)); // una sola volta per pagina: renderBody cambia solo il contenuto
   renderBody(highlight);
 }
@@ -250,7 +255,37 @@ function transfers(list) {
     </section>`;
 }
 
+// Riquadro dei budget: una barra per ognuno; toccandolo si apre l'elenco dei movimenti che lo compongono
+function renderBudgets() {
+  const box = $('#budget-box', root);
+  if (!box) return;
+  const list = state.q.length >= 2 ? [] : M.budgetsStato(state.y, state.m);
+  if (!list.length) { box.innerHTML = ''; return; }
+  const aperto = (s) => budOpen.has(s.b.id);
+  box.innerHTML = `<section class="card bud-card">
+    <h2><span>Budget</span><a class="link-btn" href="#budget">Gestisci</a></h2>
+    <div class="bud-list">${list.map((s) => B.rowHTML(s, { open: aperto(s), movs: aperto(s) ? M.budgetMovs(s.b, state.y, state.m) : [] })).join('')}</div>
+    ${list.some((s) => s.inCorso) ? '<p class="bud-legend muted">Il segno sulla barra indica a che punto è il periodo.</p>' : ''}
+  </section>`;
+}
+
+function bindBudgets(box) {
+  box.addEventListener('click', (e) => {
+    const head = e.target.closest('.bud-head');
+    if (!head) return;
+    const row = head.closest('.bud');
+    const open = !budOpen.has(row.dataset.id);
+    if (open) budOpen.add(row.dataset.id); else budOpen.delete(row.dataset.id);
+    const b = store.get(row.dataset.id);
+    const det = $('.bud-det', row);
+    det.innerHTML = open && b ? B.movListHTML(M.budgetMovs(b, state.y, state.m)) : '';
+    det.hidden = !open;
+    head.setAttribute('aria-expanded', String(open));
+  });
+}
+
 function updateSums() {
+  renderBudgets();
   const list = M.movsOf(state.y, state.m);
   const s = M.sums(list);
   const el = $('#sums', root);

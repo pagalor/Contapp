@@ -359,6 +359,201 @@ export function generaRicorrenti() {
   return store.saveMissing(nuovi);
 }
 
+// --- Budget di spesa ---
+// budg: { su: 'cat' | 'sub' | 'tag' | 'tot', rif (id categoria o sottocategoria, nome del tag; null per 'tot'), val, espr,
+//         periodo: 'mese' | 'anno', riporto, valori: [{ da: 'AAAA-MM', val, espr }], ord }
+// `valori` conserva ogni modifica dell'importo: ognuna vale da quel mese in poi, i mesi prima restano valutati con
+// l'importo di allora. `val` ed `espr` sono sempre quelli dell'ultimo valore. Senza `valori` (o con `da` vuoto) vale da sempre.
+// Contano le uscite come nei totali (`counts`). 'tot' è il budget complessivo su tutte le uscite.
+export const BUDGET_SOGLIA = 0.8; // da qui in poi il budget è "vicino al limite"
+const BUDGET_RITMO = 0.15; // quanto la % di budget usata può superare la % di periodo trascorsa
+const BUDGET_RITMO_MIN = 0.25; // sotto questa % usata non si segnala il ritmo (un acquisto a inizio mese non è un allarme)
+const MESE_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const mKey = (y, m) => y * 12 + m - 1; // numero progressivo del mese
+const keyIso = (k) => `${Math.floor(k / 12)}-${pad((k % 12) + 1)}`;
+
+const bSu = (b) => (['cat', 'sub', 'tag', 'tot'].includes(b.data.su) ? b.data.su : 'cat');
+const bPer = (b) => (b.data.periodo === 'anno' ? 'anno' : 'mese');
+export const budgetSu = bSu;
+export const budgetPeriodo = bPer;
+
+// Importi nel tempo, in ordine di data. Un budget con il solo `val` vale da sempre.
+export function budgetValori(b) {
+  const v = Array.isArray(b.data.valori) ? b.data.valori.filter((x) => typeof x?.val === 'number') : [];
+  const list = v.length ? v : typeof b.data.val === 'number' ? [{ da: '', val: b.data.val, espr: b.data.espr }] : [];
+  return list.map((x) => ({ da: MESE_RE.test(x.da) ? x.da : '', val: x.val, espr: x.espr || null }))
+    .sort((a, z) => a.da.localeCompare(z.da));
+}
+
+// Nuovo importo da un mese in poi: restituisce i campi da salvare (`valori`, `val`, `espr`)
+export function budgetConValore(b, da, { val, espr }) {
+  const valori = budgetValori(b).filter((x) => x.da !== da);
+  valori.push({ da, val, espr: espr || null });
+  valori.sort((a, z) => a.da.localeCompare(z.da));
+  const last = valori[valori.length - 1];
+  return { valori, val: last.val, espr: last.espr };
+}
+
+// La categoria, la sottocategoria o l'importo del budget esistono ancora?
+export function budgetValido(b) {
+  const { rif } = b.data, su = bSu(b);
+  if (!budgetValori(b).length) return false;
+  if (su === 'tot') return true;
+  if (su === 'tag') return !!rif;
+  const r = rif ? store.get(rif) : null;
+  return !!r && r.kind === (su === 'sub' ? 'sub' : 'cat');
+}
+
+// Il budget complessivo per primo, poi nell'ordine scelto
+export function budgets({ tutti = false } = {}) {
+  return store.all('budg').filter((b) => tutti || budgetValido(b))
+    .sort((a, b) => (bSu(a) === 'tot' ? 0 : 1) - (bSu(b) === 'tot' ? 0 : 1) || (a.data.ord ?? 0) - (b.data.ord ?? 0));
+}
+
+export function budgetLabel(b) {
+  const su = bSu(b), r = b.data.rif ? store.get(b.data.rif) : null;
+  if (su === 'tot') return 'Tutte le uscite';
+  if (su === 'tag') return '#' + (b.data.rif || '');
+  if (su === 'sub') return r ? `${r.data.nome} · ${catById(r.data.cat)?.data.nome || ''}`.replace(/ · $/, '') : '(sottocategoria eliminata)';
+  return r ? catLabel(r) : '(categoria eliminata)';
+}
+
+// Funzione che dice se un movimento rientra nel budget. Un budget su una categoria include le sue sottocategorie.
+function budgetMatch(su, rif) {
+  const tag = (rif || '').toLowerCase();
+  return (r) => {
+    if (r.data.tipo !== 'out' || !counts(r)) return false;
+    if (su === 'cat') return r.data.cat === rif;
+    if (su === 'sub') return r.data.sub === rif && !!subOf(r);
+    if (su === 'tag') return (r.data.tags || []).some((t) => t.toLowerCase() === tag);
+    return true;
+  };
+}
+
+// Numero del periodo che contiene un mese: il mese stesso, oppure l'anno
+const periodIdx = (per, y, m) => (per === 'anno' ? y : mKey(y, m));
+
+// Speso per periodo (un movimento senza giorno vale per il suo mese)
+function speseBudget(su, rif, per) {
+  const ok = budgetMatch(su, rif), map = new Map();
+  for (const r of movs()) {
+    if (!ok(r)) continue;
+    const k = periodIdx(per, r.data.y, r.data.m);
+    map.set(k, (map.get(k) || 0) + r.data.val);
+  }
+  return map;
+}
+
+const mesiConDati = () => new Set(movs().map((r) => mKey(r.data.y, r.data.m)));
+
+// Primo periodo del budget: quello della prima data; senza data, quello del primo movimento
+function budgetStart(b) {
+  const per = bPer(b), first = budgetValori(b)[0]?.da;
+  if (first) { const [y, m] = first.split('-').map(Number); return periodIdx(per, y, m); }
+  let min = Infinity;
+  for (const r of movs()) min = Math.min(min, periodIdx(per, r.data.y, r.data.m));
+  const t = new Date();
+  return isFinite(min) ? min : periodIdx(per, t.getFullYear(), t.getMonth() + 1);
+}
+
+// Importo del periodo i: per l'anno conta quello in vigore a dicembre (la modifica vale per l'anno intero)
+function importoDi(valori, per, i) {
+  const ym = per === 'anno' ? `${i}-12` : keyIso(i);
+  let out = null;
+  for (const x of valori) { if (x.da <= ym) out = x; else break; }
+  return out ? out.val : null;
+}
+
+// Periodo per periodo, dall'inizio fino ad `a`: importo, riporto in entrata, disponibile e speso.
+// Con il riporto l'avanzo (o lo sforamento) di un periodo si somma al disponibile del successivo.
+function budgetSerie(b, spese, a) {
+  const per = bPer(b), valori = budgetValori(b), rip = !!b.data.riporto;
+  const out = new Map();
+  let carry = 0;
+  for (let i = Math.max(budgetStart(b), a - 1200); i <= a; i++) {
+    const val = importoDi(valori, per, i) ?? 0;
+    const riporto = rip ? carry : 0;
+    const disp = round2(val + riporto), speso = round2(spese.get(i) || 0);
+    out.set(i, { val, riporto: round2(riporto), disp, speso });
+    carry = disp - speso;
+  }
+  return out;
+}
+
+// Quanta parte del periodo è passata (0–1) oggi: a giorni, il giorno di oggi conta come trascorso
+function tempoTrascorso(per, oggi) {
+  const y = oggi.getFullYear(), mo = oggi.getMonth(), d = oggi.getDate();
+  if (per === 'mese') return d / new Date(y, mo + 1, 0).getDate();
+  const giorno = (Date.UTC(y, mo, d) - Date.UTC(y, 0, 1)) / 864e5 + 1;
+  return giorno / ((Date.UTC(y + 1, 0, 1) - Date.UTC(y, 0, 1)) / 864e5);
+}
+
+// Stato di un budget nel periodo che contiene il mese (y, m); null se il budget non è ancora iniziato.
+// stato: 'sforato' | 'vicino' (da 80% in su) | 'ritmo' (la spesa va più veloce del tempo) | 'ok'.
+// Ritmo e "vicino" valgono solo per il periodo in corso; per quelli conclusi si dice solo se è stato rispettato.
+export function budgetStato(b, y, m, oggi = new Date(), spese = null) {
+  const per = bPer(b), idx = periodIdx(per, y, m);
+  if (idx < budgetStart(b)) return null;
+  const s = budgetSerie(b, spese || speseBudget(bSu(b), b.data.rif, per), idx).get(idx);
+  if (!s) return null;
+  const cur = periodIdx(per, oggi.getFullYear(), oggi.getMonth() + 1);
+  const inCorso = idx === cur;
+  const tempo = idx < cur ? 1 : idx > cur ? 0 : tempoTrascorso(per, oggi);
+  const pct = s.disp > 0 ? s.speso / s.disp : s.speso > 0 ? Infinity : 0;
+  let stato = 'ok';
+  if (s.speso > s.disp) stato = 'sforato';
+  else if (inCorso && pct >= BUDGET_SOGLIA) stato = 'vicino';
+  else if (inCorso && pct >= BUDGET_RITMO_MIN && pct - tempo > BUDGET_RITMO) stato = 'ritmo';
+  return {
+    b, y, m, anno: per === 'anno', ...s, resta: round2(s.disp - s.speso), ecc: round2(Math.max(0, s.speso - s.disp)),
+    pct, tempo, inCorso, inLinea: round2(s.disp * tempo), stato,
+  };
+}
+
+export function budgetsStato(y, m, oggi = new Date()) {
+  return budgets().map((b) => budgetStato(b, y, m, oggi)).filter(Boolean);
+}
+
+// Movimenti che compongono il budget nel periodo che contiene il mese (y, m)
+export function budgetMovs(b, y, m) {
+  const ok = budgetMatch(bSu(b), b.data.rif), anno = bPer(b) === 'anno';
+  return movs().filter((r) => r.data.y === y && (anno || r.data.m === m) && ok(r))
+    .sort((a, z) => a.data.m - z.data.m || (a.data.d ?? 0) - (z.data.d ?? 0) || (a.data.ord ?? 0) - (z.data.ord ?? 0));
+}
+
+// Quanti periodi conclusi tra `lo` e `hi` (numero di mese: anno × 12 + mese 0–11) sono rispettati e di quanto si scosta in media
+// la spesa dal disponibile (positivo = oltre). Contano solo i periodi con almeno un movimento. Null se non ce n'è nessuno.
+export function budgetRiepilogo(b, lo = -Infinity, hi = Infinity) {
+  const per = bPer(b), anno = per === 'anno', t = new Date();
+  const cur = periodIdx(per, t.getFullYear(), t.getMonth() + 1);
+  const dati = mesiConDati();
+  const serie = budgetSerie(b, speseBudget(bSu(b), b.data.rif, per), cur - 1);
+  let n = 0, ok = 0, somma = 0;
+  for (const [i, v] of serie) {
+    const dentro = anno ? i * 12 >= lo && i * 12 + 11 <= hi : i >= lo && i <= hi;
+    if (!dentro) continue;
+    const conDati = anno ? Array.from({ length: 12 }, (_, k) => i * 12 + k).some((k) => dati.has(k)) : dati.has(i);
+    if (!conDati) continue;
+    n++;
+    if (v.speso <= v.disp) ok++;
+    somma += v.speso - v.disp;
+  }
+  return n ? { unita: anno ? 'anni' : 'mesi', n, ok, scost: round2(somma / n) } : null;
+}
+
+// Spesa mensile mediana (in euro interi) negli ultimi `n` mesi conclusi con movimenti: la cifra proposta per un nuovo budget
+export function medianaMensile(su, rif, n = 12) {
+  if (su !== 'tot' && !rif) return null;
+  const spese = speseBudget(su, rif, 'mese'), dati = mesiConDati();
+  const t = new Date(), cur = mKey(t.getFullYear(), t.getMonth() + 1);
+  const v = [];
+  for (let k = cur - n; k < cur; k++) if (dati.has(k)) v.push(spese.get(k) || 0);
+  if (!v.length) return null;
+  v.sort((a, z) => a - z);
+  const mid = v.length >> 1;
+  return Math.round(v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2);
+}
+
 // Aggiornamenti una tantum dei dati salvati con versioni precedenti dell'app (idempotente)
 export function migrate() {
   ensureSubcats();

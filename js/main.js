@@ -8,17 +8,18 @@ import * as vAltro from './view-altro.js';
 import * as vConti from './view-conti.js';
 import * as vDebiti from './view-debiti.js';
 import * as vRic from './view-ricorrenti.js';
+import * as vBudget from './view-budget.js';
 import { $, $$, setupTooltips, debounce, toast } from './ui.js';
 import { fmtEur } from './expr.js';
 
-const checkTargetsSoon = debounce(() => checkTargets(), 400);
+const checkTargetsSoon = debounce(() => { checkTargets(); checkBudgets(); }, 400);
 
 const view = () => $('#view');
 let current = '';
 let pendingRemote = false;
 
-const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', ricorrenti: 'altro', altro: 'altro' };
-const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', ricorrenti: 'Movimenti ricorrenti', altro: 'Altro' };
+const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', ricorrenti: 'altro', budget: 'altro', altro: 'altro' };
+const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', ricorrenti: 'Movimenti ricorrenti', budget: 'Budget', altro: 'Altro' };
 
 function route() {
   const h = location.hash.replace(/^#/, '');
@@ -37,6 +38,7 @@ function route() {
   else if (current === 'conto') vConti.renderConto(view(), a);
   else if (current === 'debiti') vDebiti.render(view());
   else if (current === 'ricorrenti') vRic.render(view());
+  else if (current === 'budget') vBudget.render(view());
   else if (current === 'altro') vAltro.render(view());
   document.title = TITLES[current] + ' · Rationes';
   paintTargetDot();
@@ -61,6 +63,26 @@ function checkTargets() {
   lastBelow = now;
 }
 
+// Avvisi sui budget del periodo in corso: un toast quando uno arriva all'80% o viene sforato.
+// Come per i target, al primo controllo si prende solo nota dello stato.
+const BUDGET_RANGO = { ok: 0, ritmo: 1, vicino: 2, sforato: 3 };
+let lastBudget = null;
+function checkBudgets() {
+  const t = new Date();
+  const now = new Map(M.budgetsStato(t.getFullYear(), t.getMonth() + 1, t).map((s) => [s.b.id, s]));
+  if (lastBudget) {
+    for (const [id, s] of now) {
+      const prima = BUDGET_RANGO[lastBudget.get(id)?.stato ?? 'ok'];
+      if (BUDGET_RANGO[s.stato] < 2 || BUDGET_RANGO[s.stato] <= prima) continue;
+      const nome = M.budgetLabel(s.b);
+      const msg = s.stato === 'sforato' ? `Budget sforato: ${nome}, oltre di ${fmtEur(s.ecc)}`
+        : `Budget quasi esaurito: ${nome}, usato il ${Math.floor(s.pct * 100)}%`;
+      toast(msg, { action: 'Vedi', onAction: () => { location.hash = '#mese'; }, ms: 6000 });
+    }
+  }
+  lastBudget = now;
+}
+
 // Aggiorna la vista quando arrivano dati da un altro dispositivo, senza disturbare chi sta scrivendo
 function refreshAfterRemote() {
   const ae = document.activeElement;
@@ -74,6 +96,7 @@ function refreshAfterRemote() {
   else if (current === 'conto') route();
   else if (current === 'debiti') vDebiti.redraw();
   else if (current === 'ricorrenti') vRic.redraw();
+  else if (current === 'budget') vBudget.redraw();
 }
 
 function paintSyncDot(st) {
@@ -125,6 +148,7 @@ async function boot() {
   }, 200));
   route();
   checkTargets();
+  checkBudgets();
   if (ricAvvio) toast(ricAvvio === 1 ? 'Aggiunto 1 movimento ricorrente' : `Aggiunti ${ricAvvio} movimenti ricorrenti`);
   // le scadenze arrivano anche con l'app aperta (cambio di giorno) o ripresa dopo ore in secondo piano
   document.addEventListener('visibilitychange', () => { if (!document.hidden) runRicorrenti(); });
