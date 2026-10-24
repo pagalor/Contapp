@@ -249,7 +249,7 @@ details.alert summary { cursor: pointer; }
 .c-more { grid-area: more; background: none; border: 0; color: var(--faint); cursor: pointer; position: relative; height: 34px; border-radius: 8px; }
 .c-more svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .c-more:hover { color: var(--ink); }
-.row.has-note .c-more::after { content: ""; position: absolute; top: 6px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--g-conti); }
+.row.has-note .c-more::after { content: ""; position: absolute; top: 6px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--g-corrente); }
 .row.excluded .c-amt, .row.excluded .c-desc { text-decoration: line-through; opacity: .55; }
 .row.flash { animation: flash 1.6s ease-out; }
 @keyframes flash { from { background: color-mix(in srgb, var(--focus) 16%, transparent); } }
