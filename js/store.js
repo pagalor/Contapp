@@ -1,7 +1,8 @@
 // Archivio locale: tutti i record vivono in IndexedDB e in memoria.
 // Ogni record: { id, kind, data, updated_at, deleted, dirty }
 // kind: 'mov' (movimento), 'cat' (categoria), 'sub' (sottocategoria), 'cont' (contenitore patrimonio),
-//       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente), 'rate' (piano rateale)
+//       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente), 'budg' (budget di spesa),
+//       'rate' (piano rateale)
 
 const DB_NAME = 'contabilita'; // in demo si usa un altro database (vedi demo.js)
 let db;

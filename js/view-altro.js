@@ -40,6 +40,11 @@ export function render(el) {
         <a class="btn ghost" href="#rate">Gestisci i pagamenti a rate${M.piani().length ? ` (${M.piani().length})` : ''}</a>
       </section>
       <section class="card">
+        <h2>Budget</h2>
+        <p class="muted">Imposta quanto vuoi spendere al massimo per una categoria, una sottocategoria, un tag o per tutte le uscite.</p>
+        <a class="btn ghost" href="#budget">Gestisci i budget${M.budgets({ tutti: true }).length ? ` (${M.budgets({ tutti: true }).length})` : ''}</a>
+      </section>
+      <section class="card">
         <h2>Categorie</h2>
         <div class="two tight">
           <div><h3>Uscite</h3><div id="cats-out"></div><button class="add-row" data-addcat="out">+ Nuova categoria di uscita</button></div>

@@ -20,6 +20,9 @@
   --sal-pos: #5A9A00;
   --sal-neg: #B3123F;
   --butt: #9B4DCA;
+  --bud-ok: #8A8D96;
+  --bud-warn: #E3A32B;
+  --bud-over: #C75F00;
   --g-contanti: #D29A2C;
   --g-corrente: #3B6FE0;
   --g-deposito: #0E9384;
@@ -36,14 +39,14 @@
   :root:not([data-theme="light"]) {
     --bg: #0F1012; --surface: #17181B; --line: #25272C; --line-2: #34373D; --ink: #ECEDEF; --muted: #9A9DA5; --faint: #686B73;
     --in: #3CCB8E; --out: #FF6B66; --sal-pos: #A6E22E; --sal-neg: #FF4D78; --pos: #3CCB8E; --neg: #FF6B66; --warn: #F2A93B; --warn-bg: #2A2214;
-    --hover: #1F2125; --focus: #7AA2FF; --saldo: #7AA2FF; --butt: #C59BEA; --g-contanti: #E8B44F; --g-corrente: #7AA2FF; --g-deposito: #3CC8B4; --g-digitale: #A894FF; --g-crypto: #FF8A5C; --g-altro: #9AA0AA;
+    --hover: #1F2125; --focus: #7AA2FF; --saldo: #7AA2FF; --butt: #C59BEA; --bud-ok: #7C808A; --bud-warn: #F2A93B; --bud-over: #FF8A1F; --g-contanti: #E8B44F; --g-corrente: #7AA2FF; --g-deposito: #3CC8B4; --g-digitale: #A894FF; --g-crypto: #FF8A5C; --g-altro: #9AA0AA;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0F1012; --surface: #17181B; --line: #25272C; --line-2: #34373D; --ink: #ECEDEF; --muted: #9A9DA5; --faint: #686B73;
   --in: #3CCB8E; --out: #FF6B66; --sal-pos: #A6E22E; --sal-neg: #FF4D78; --pos: #3CCB8E; --neg: #FF6B66; --warn: #F2A93B; --warn-bg: #2A2214;
-  --hover: #1F2125; --focus: #7AA2FF; --saldo: #7AA2FF; --butt: #C59BEA; --g-contanti: #E8B44F; --g-corrente: #7AA2FF; --g-deposito: #3CC8B4; --g-digitale: #A894FF; --g-crypto: #FF8A5C; --g-altro: #9AA0AA;
+  --hover: #1F2125; --focus: #7AA2FF; --saldo: #7AA2FF; --butt: #C59BEA; --bud-ok: #7C808A; --bud-warn: #F2A93B; --bud-over: #FF8A1F; --g-contanti: #E8B44F; --g-corrente: #7AA2FF; --g-deposito: #3CC8B4; --g-digitale: #A894FF; --g-crypto: #FF8A5C; --g-altro: #9AA0AA;
   color-scheme: dark;
 }
 
@@ -898,3 +901,43 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .rate-stato.chiuso { color: var(--muted); }
 .rate-dlg .seg button:disabled { cursor: default; opacity: .6; }
 .rate-dlg .detail-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+
+/* ---------- Budget ---------- */
+/* Ambra, mai rosso (il rosso è delle uscite): chiaro per il ritmo veloce o il limite vicino, più intenso per lo sforamento */
+.bud-list { display: grid; }
+.bud-list.card { gap: 0; padding: .3rem 1.2rem; }
+.bud { padding: .15rem 0; }
+.bud-list.card .bud { padding: .8rem 0; border-top: 1px solid var(--line); cursor: pointer; }
+.bud-list.card .bud:first-child { border-top: 0; }
+.bud-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; width: 100%;
+  font: inherit; color: var(--ink); background: none; border: 0; padding: .2rem 0; text-align: left; cursor: pointer;
+}
+.bud-name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.bud-name small, .bud-fig small { display: block; color: var(--muted); font-weight: 400; font-size: .78rem; }
+.bud-fig { text-align: right; flex: none; }
+.bud-fig b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.bud-bar { position: relative; height: 10px; border-radius: 999px; background: var(--hover); border: 1px solid var(--line); margin: .45rem 0 .35rem; overflow: visible; }
+.bud-fill, .bud-extra { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 999px; background: var(--bud-ok); }
+.bud[data-stato="ritmo"] .bud-fill, .bud[data-stato="vicino"] .bud-fill { background: var(--bud-warn); }
+.bud[data-stato="sforato"] .bud-fill { background: var(--bud-over); border-radius: 999px 0 0 999px; }
+.bud-extra {
+  border-radius: 0 999px 999px 0; background: repeating-linear-gradient(135deg, var(--bud-over) 0 4px, color-mix(in srgb, var(--bud-over) 55%, var(--surface)) 4px 8px);
+}
+.bud-limit { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
+.bud-mark { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; background: var(--ink); border-radius: 2px; box-shadow: 0 0 0 2px var(--surface); }
+.bud-line { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .1rem .8rem; font-size: .82rem; margin: 0; }
+.bud-st { font-weight: 600; }
+.bud[data-stato="ritmo"] .bud-st, .bud[data-stato="vicino"] .bud-st { color: var(--warn); }
+.bud[data-stato="sforato"] .bud-st { color: var(--bud-over); font-weight: 750; }
+.bud[data-stato="vuoto"] .bud-head { padding: .2rem 0; }
+.bud-det { margin-top: .5rem; max-height: 18rem; overflow-y: auto; }
+.bud-det .mini-list { margin-top: .2rem; }
+.bud-movs a { grid-template-columns: 4.5rem minmax(0, 1fr) auto; }
+.bud-movs .num { font-variant-numeric: tabular-nums; }
+.bud-legend { font-size: .78rem; margin: .8rem 0 0; }
+.bud-card > h2 { display: flex; justify-content: space-between; align-items: baseline; }
+.bud-card .bud { padding: .55rem 0; border-top: 1px solid var(--line); }
+.bud-card .bud:first-child { border-top: 0; padding-top: 0; }
+.bud-over-txt { color: var(--bud-over); font-weight: 650; }
+.bud-hint { min-height: 1.2em; margin: .2rem 0 .6rem; font-size: .88rem; }
