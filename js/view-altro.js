@@ -1,6 +1,7 @@
 import * as store from './store.js';
 import * as M from './model.js';
 import * as sync from './sync.js';
+import * as demo from './demo.js';
 import { parseAmount, fmt, plain } from './expr.js';
 import { esc, $, $$, toast, confirmBox, download } from './ui.js';
 
@@ -72,6 +73,13 @@ async function showVersion() {
 // --- Sincronizzazione ---
 function renderSync() {
   const box = $('#sync-card', root);
+  if (demo.attiva) {
+    box.innerHTML = `
+      <h2>Sincronizzazione</h2>
+      <p class="muted">Nella versione demo sincronizzazione e cifratura non sono disponibili: i dati di esempio restano
+      solo in questo browser, separati da quelli veri.</p>`;
+    return;
+  }
   const cfg = sync.config();
   const ses = sync.session();
   if (!cfg) {

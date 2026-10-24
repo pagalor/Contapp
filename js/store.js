@@ -3,14 +3,14 @@
 // kind: 'mov' (movimento), 'cat' (categoria), 'sub' (sottocategoria), 'cont' (contenitore patrimonio),
 //       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente), 'budg' (budget di spesa)
 
-const DB_NAME = 'contabilita';
+const DB_NAME = 'contabilita'; // in demo si usa un altro database (vedi demo.js)
 let db;
 const recs = new Map();
 const listeners = new Set();
 
-function idb() {
+function idb(name) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(name, 1);
     req.onupgradeneeded = () => req.result.createObjectStore('records', { keyPath: 'id' });
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -27,8 +27,9 @@ function persist(list) {
   });
 }
 
-export async function init() {
-  db = await idb();
+// name: nome del database (la modalità demo usa un archivio separato)
+export async function init(name = DB_NAME) {
+  db = await idb(name);
   const all = await new Promise((resolve, reject) => {
     const req = db.transaction('records').objectStore('records').getAll();
     req.onsuccess = () => resolve(req.result);
@@ -36,6 +37,9 @@ export async function init() {
   });
   for (const r of all) recs.set(r.id, r);
 }
+
+// Chiude l'archivio (serve prima di cancellare il database della demo)
+export function close() { db?.close(); }
 
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 function emit(info) { for (const fn of listeners) fn(info); }

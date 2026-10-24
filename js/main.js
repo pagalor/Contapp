@@ -9,6 +9,7 @@ import * as vConti from './view-conti.js';
 import * as vDebiti from './view-debiti.js';
 import * as vRic from './view-ricorrenti.js';
 import * as vBudget from './view-budget.js';
+import * as demo from './demo.js';
 import { $, $$, setupTooltips, debounce, toast } from './ui.js';
 import { fmtEur } from './expr.js';
 
@@ -40,7 +41,7 @@ function route() {
   else if (current === 'ricorrenti') vRic.render(view());
   else if (current === 'budget') vBudget.render(view());
   else if (current === 'altro') vAltro.render(view());
-  document.title = TITLES[current] + ' · Rationes';
+  document.title = TITLES[current] + ' · Rationes' + (demo.attiva ? ' (demo)' : '');
   paintTargetDot();
 }
 
@@ -120,13 +121,19 @@ function runRicorrenti(avvisa = true) {
 async function boot() {
   vAltro.applyTheme();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', vAltro.applyTheme);
+  if (demo.attiva) {
+    demo.mostraAvviso();
+    await demo.controllaVersione().catch(() => {});
+  }
   try {
-    await store.init();
+    // in demo un archivio separato: i dati veri non vengono né letti né modificati
+    await store.init(demo.attiva ? demo.DB : undefined);
   } catch (e) {
     view().innerHTML = `<div class="empty-hint"><p>Impossibile aprire l'archivio locale del browser (${e.message}).
       Se stai usando la navigazione privata, aprila in una finestra normale.</p></div>`;
     return;
   }
+  if (demo.attiva) await demo.prepara().catch((e) => console.error('Dati di esempio non caricati', e));
   M.ensureCategories();
   M.migrate();
   const ricAvvio = runRicorrenti(false);
@@ -137,7 +144,7 @@ async function boot() {
     if (pendingRemote) setTimeout(() => { if (!view().contains(document.activeElement)) refreshAfterRemote(); }, 50);
   });
   sync.onStatus(paintSyncDot);
-  sync.start();
+  if (!demo.attiva) sync.start();
   addEventListener('hashchange', route);
   let lastW = innerWidth;
   addEventListener('resize', debounce(() => {
