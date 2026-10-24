@@ -169,6 +169,8 @@ function draw() {
 
     ${tutto ? '' : confrontoCard()}
 
+    ${budgetCard()}
+
     <div class="three">
       <section class="card">
         <h2>Le spese più grandi</h2>
@@ -243,6 +245,21 @@ function confrontoCard() {
     <table class="tbl cmp-tbl"><thead><tr><th></th><th class="num">${sel - 1}</th><th class="num">${sel}</th><th class="num">Variazione</th></tr></thead>
       <tbody>${riga('Entrate', c.tin, 'in')}${riga('Uscite', c.tout, 'out')}</tbody></table>
     ${tab('Uscite per categoria', c.out, 'out')}${tab('Entrate per categoria', c.in, 'in')}
+  </section>`;
+}
+
+// Per ogni budget: in quanti periodi conclusi è stato rispettato e di quanto si è scostata in media la spesa
+function budgetCard() {
+  const [lo, hi] = sel === 'tutto' ? rangeKeys() : [sel * 12, sel * 12 + 11];
+  const righe = M.budgets().map((b) => ({ b, r: M.budgetRiepilogo(b, lo, hi) })).filter((x) => x.r);
+  if (!righe.length) return '';
+  const scost = (n) => (Math.abs(n) < 0.005 ? 'In pari' : `${fmtEur(Math.abs(n))} ${n < 0 ? 'sotto' : 'oltre'}`);
+  return `<section class="card">
+    <h2>Budget</h2>
+    <p class="muted">Solo i periodi conclusi. Lo scostamento medio è la differenza tra speso e disponibile.</p>
+    <table class="tbl"><thead><tr><th>Budget</th><th class="num">Rispettato</th><th class="num">Scostamento medio</th></tr></thead>
+      <tbody>${righe.map(({ b, r }) => `<tr><td>${esc(M.budgetLabel(b))}<small class="muted">${b.data.periodo === 'anno' ? 'Annuale' : 'Mensile'}</small></td>
+        <td class="num">${r.ok} su ${r.n} ${r.unita}</td><td class="num${r.scost > 0 ? ' bud-over-txt' : ''}">${scost(r.scost)}</td></tr>`).join('')}</tbody></table>
   </section>`;
 }
 

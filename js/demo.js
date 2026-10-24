@@ -116,8 +116,33 @@ export async function prepara() {
     note: 'Contati i contanti e aggiornato il valore delle crypto',
     scelta: 'manuale',
   });
+  preparaBudget();
   try { localStorage.setItem(LS_DATI, versione || SENZA_VERSIONE); } catch {}
   if (rinnovati) toast('App aggiornata: i dati di esempio della demo sono stati rigenerati.', { ms: 5000 });
+}
+
+// Tre budget calcolati sui dati di oggi: Ristoranti (sforato questo mese: da questo mese l'importo scende sotto la spesa fatta),
+// Spesa (con riporto, così si vede l'avanzo del mese prima) e Viaggi (annuale)
+function preparaBudget() {
+  const t = new Date(), y = t.getFullYear(), m = t.getMonth() + 1;
+  const ym = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const da = ym(new Date(y, m - 7, 1)), questo = ym(t);
+  const spesoIn = (rif, anno, mese) => M.budgetMovs({ data: { su: 'cat', rif, periodo: 'mese' } }, anno, mese).reduce((n, r) => n + r.data.val, 0);
+  const speso = (rif) => spesoIn(rif, y, m);
+  // spesa media dei 6 mesi conclusi: un importo un po' sopra, così alcuni mesi avanzano e altri no
+  const media = (rif) => Array.from({ length: 6 }, (_, k) => { const d = new Date(y, m - 2 - k, 1); return spesoIn(rif, d.getFullYear(), d.getMonth() + 1); }).reduce((n, v) => n + v, 0) / 6;
+  const arrotonda = (n, passo) => Math.max(passo, Math.round(n / passo) * passo);
+  const salva = (id, ord, data, val, extra = null) => {
+    let b = { data: {} }, campi = M.budgetConValore(b, data.da, { val });
+    if (extra) { b = { data: campi }; campi = M.budgetConValore(b, extra.da, { val: extra.val }); }
+    const { da: _, ...resto } = data;
+    store.save('budg', id, { riporto: false, ord, ...resto, ...campi });
+  };
+  const rist = arrotonda(media(C.rist) * 1.1 || 120, 5);
+  const oraRist = Math.floor(speso(C.rist) * 0.8);
+  salva('budg-demo-ristoranti', 1, { su: 'cat', rif: C.rist, periodo: 'mese', da }, rist, oraRist >= 5 ? { da: questo, val: oraRist } : null);
+  salva('budg-demo-spesa', 2, { su: 'cat', rif: C.spesa, periodo: 'mese', riporto: true, da }, arrotonda(media(C.spesa) * 1.1 || 300, 10));
+  salva('budg-demo-viaggi', 3, { su: 'cat', rif: C.viaggi, periodo: 'anno', da: `${y - 1}-01` }, 1200);
 }
 
 // --- Generatore dei dati di esempio (tutto inventato) ---

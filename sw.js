@@ -1,10 +1,10 @@
 // Service worker: rende l'app utilizzabile offline.
 // Quando pubblichi una nuova versione dei file, aumenta il numero di VERSION.
-const VERSION = 'contabilita-v48';
+const VERSION = 'contabilita-v49';
 const SHELL = [
   './', './index.html', './style.css', './manifest.webmanifest',
   './js/main.js', './js/store.js', './js/model.js', './js/sync.js', './js/expr.js', './js/charts.js', './js/catstats.js', './js/ui.js',
-  './js/view-mese.js', './js/view-riepilogo.js', './js/view-patrimonio.js', './js/view-altro.js', './js/view-conti.js', './js/dialogs.js', './js/crypto.js', './js/view-debiti.js', './js/view-ricorrenti.js', './js/demo.js',
+  './js/view-mese.js', './js/view-riepilogo.js', './js/view-patrimonio.js', './js/view-altro.js', './js/view-conti.js', './js/dialogs.js', './js/crypto.js', './js/view-debiti.js', './js/view-ricorrenti.js', './js/demo.js', './js/view-budget.js', './js/budgetui.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/icon-monochrome-512.png',
   './icons/favicon.svg', './icons/favicon-32.png', './icons/favicon-16.png',
 ];
