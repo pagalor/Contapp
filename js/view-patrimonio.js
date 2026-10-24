@@ -54,6 +54,8 @@ function autoHTML() {
   const groups = groupsIn(new Set(accs.map((c) => c.id))).sort((a, b) => (tot.gruppi[b] || 0) - (tot.gruppi[a] || 0));
   const senza = M.senzaConto();
   const dt = M.debtTotals();
+  const rt = M.rateTotali();
+  const netto = round2(tot.tot + dt.netto - rt.residuo); // patrimonio netto: fondi + crediti − debiti − rate da pagare
   return `
     <div class="hero">
       <p class="hero-label">Patrimonio oggi</p>
@@ -62,9 +64,10 @@ function autoHTML() {
       <dl class="hero-split">
         ${groups.map((g) => `<div><dt><i class="sw ${g}"></i>${M.gruppoNome(g)}</dt><dd>${fmtEur(tot.gruppi[g] || 0)}</dd></div>`).join('')}
       </dl>
-      ${dt.crediti || dt.debiti ? `<p class="hero-debt"><a href="#debiti">Contando anche ${[dt.crediti ? `i crediti (+${fmtEur(dt.crediti)})` : '', dt.debiti ? `i debiti (−${fmtEur(dt.debiti)})` : ''].filter(Boolean).join(' e ')}</a>:
-        <b>${fmtEur(round2(tot.tot + dt.netto))}</b></p>` : ''}
-      ${autonomiaHTML(round2(tot.tot + dt.netto))}
+      ${dt.crediti || dt.debiti || rt.residuo ? `<p class="hero-debt"><a href="#debiti">Contando anche ${elenco([dt.crediti ? `i crediti (+${fmtEur(dt.crediti)})` : '',
+        dt.debiti ? `i debiti (−${fmtEur(dt.debiti)})` : '', rt.residuo ? `le rate da pagare (−${fmtEur(rt.residuo)})` : ''])}</a>:
+        <b>${fmtEur(netto)}</b></p>` : ''}
+      ${autonomiaHTML(netto)}
     </div>
     ${senza.length ? `<details class="alert"><summary>${senza.length === 1 ? 'Un movimento non ha' : senza.length + ' movimenti non hanno'} il fondo indicato:
       finché non lo scegli, non entrano nei saldi.</summary>
@@ -77,6 +80,9 @@ function autoHTML() {
         <div class="acc-list">${accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0)).map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>
       </section>`).join('')}`;
 }
+
+// "a, b e c"
+const elenco = (parti) => { const l = parti.filter(Boolean); return l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l.at(-1) : l[0] || ''; };
 
 // Mesi di autonomia: patrimonio netto / uscite medie mensili (ultimi 12 mesi conclusi).
 function autonomiaHTML(netto) {

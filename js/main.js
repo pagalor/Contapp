@@ -8,6 +8,7 @@ import * as vAltro from './view-altro.js';
 import * as vConti from './view-conti.js';
 import * as vDebiti from './view-debiti.js';
 import * as vRic from './view-ricorrenti.js';
+import * as vRate from './view-rate.js';
 import * as demo from './demo.js';
 import { $, $$, setupTooltips, debounce, toast } from './ui.js';
 import { fmtEur } from './expr.js';
@@ -18,8 +19,8 @@ const view = () => $('#view');
 let current = '';
 let pendingRemote = false;
 
-const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', ricorrenti: 'altro', altro: 'altro' };
-const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', ricorrenti: 'Movimenti ricorrenti', altro: 'Altro' };
+const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', rate: 'debiti', ricorrenti: 'altro', altro: 'altro' };
+const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', rate: 'Pagamenti a rate', ricorrenti: 'Movimenti ricorrenti', altro: 'Altro' };
 
 function route() {
   const h = location.hash.replace(/^#/, '');
@@ -38,6 +39,7 @@ function route() {
   else if (current === 'conto') vConti.renderConto(view(), a);
   else if (current === 'debiti') vDebiti.render(view());
   else if (current === 'ricorrenti') vRic.render(view());
+  else if (current === 'rate') vRate.render(view());
   else if (current === 'altro') vAltro.render(view());
   document.title = TITLES[current] + ' · Rationes' + (demo.attiva ? ' (demo)' : '');
   paintTargetDot();
@@ -75,6 +77,7 @@ function refreshAfterRemote() {
   else if (current === 'conto') route();
   else if (current === 'debiti') vDebiti.redraw();
   else if (current === 'ricorrenti') vRic.redraw();
+  else if (current === 'rate') vRate.redraw();
 }
 
 function paintSyncDot(st) {
@@ -85,14 +88,21 @@ function paintSyncDot(st) {
   dot.setAttribute('aria-label', 'Sincronizzazione: ' + (st.msg || st.state));
 }
 
-// Aggiunge i movimenti ricorrenti arrivati a scadenza. Dopo l'avvio avvisa e aggiorna la vista.
-function runRicorrenti(avvisa = true) {
+// Aggiunge i movimenti ricorrenti e le rate arrivati a scadenza. Dopo l'avvio avvisa e aggiorna la vista.
+function runScadenze(avvisa = true) {
   const n = M.generaRicorrenti();
-  if (n && avvisa) {
-    toast(n === 1 ? 'Aggiunto 1 movimento ricorrente' : `Aggiunti ${n} movimenti ricorrenti`);
+  const r = M.generaRate();
+  if ((n || r.tot) && avvisa) {
+    if (n || r.rate) toast(avvisoScadenze(n, r.rate));
     refreshAfterRemote();
   }
-  return n;
+  return { n, r };
+}
+function avvisoScadenze(n, rate) {
+  const parti = [];
+  if (n) parti.push(n === 1 ? '1 movimento ricorrente' : `${n} movimenti ricorrenti`);
+  if (rate) parti.push(rate === 1 ? '1 rata' : `${rate} rate`);
+  return (n + rate === 1 ? (n ? 'Aggiunto ' : 'Aggiunta ') : n ? 'Aggiunti ' : 'Aggiunte ') + parti.join(' e ');
 }
 
 async function boot() {
@@ -113,10 +123,10 @@ async function boot() {
   if (demo.attiva) await demo.prepara().catch((e) => console.error('Dati di esempio non caricati', e));
   M.ensureCategories();
   M.migrate();
-  const ricAvvio = runRicorrenti(false);
+  const avvio = runScadenze(false);
   if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
   setupTooltips();
-  store.subscribe((info) => { if (info.remote) { M.migrate(); if (!runRicorrenti()) refreshAfterRemote(); } checkTargetsSoon(); });
+  store.subscribe((info) => { if (info.remote) { M.migrate(); const g = runScadenze(); if (!g.n && !g.r.tot) refreshAfterRemote(); } checkTargetsSoon(); });
   document.addEventListener('focusout', () => {
     if (pendingRemote) setTimeout(() => { if (!view().contains(document.activeElement)) refreshAfterRemote(); }, 50);
   });
@@ -132,10 +142,10 @@ async function boot() {
   }, 200));
   route();
   checkTargets();
-  if (ricAvvio) toast(ricAvvio === 1 ? 'Aggiunto 1 movimento ricorrente' : `Aggiunti ${ricAvvio} movimenti ricorrenti`);
+  if (avvio.n || avvio.r.rate) toast(avvisoScadenze(avvio.n, avvio.r.rate));
   // le scadenze arrivano anche con l'app aperta (cambio di giorno) o ripresa dopo ore in secondo piano
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) runRicorrenti(); });
-  setInterval(() => { if (!document.hidden) runRicorrenti(); }, 10 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) runScadenze(); });
+  setInterval(() => { if (!document.hidden) runScadenze(); }, 10 * 60 * 1000);
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('./sw.js').then((reg) => {

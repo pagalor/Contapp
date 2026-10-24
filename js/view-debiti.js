@@ -34,6 +34,7 @@ function draw() {
         <div><dt>Devi</dt><dd class="out">${fmtEur(t.debiti)}</dd></div>
         <div><dt>Saldo</dt><dd class="${saldoCls(t.netto)}">${t.netto >= 0 ? '+' : '−'}${fmtEur(Math.abs(t.netto))}</dd></div>
       </dl>
+      ${rateBox()}
       <nav class="chips" aria-label="Filtro">
         ${[['aperti', 'Da saldare'], ['saldati', 'Saldati'], ['tutti', 'Tutti']].map(([k, n]) =>
           `<button class="chip${k === f ? ' on' : ''}" data-filter="${k}">${n}</button>`).join('')}
@@ -43,6 +44,17 @@ function draw() {
           Per esempio: paghi una cena da 68 € per quattro, segni 17 € come tua uscita e un credito di 51 € verso gli altri.`}</p></div>`}
     </section>`;
   bind();
+}
+
+// Pagamenti a rate: il residuo è un debito calcolato dai piani (non ci sono voci qui)
+function rateBox() {
+  const t = M.rateTotali();
+  const prossima = M.rateInScadenza(31)[0];
+  if (!M.piani().length) return `<a class="rate-box empty" href="#rate"><span>Pagamenti a rate</span><small>Acquisti pagati a rate (PayPal, Klarna, finanziamenti…)</small></a>`;
+  return `<a class="rate-box" href="#rate">
+    <span>Rate ancora da pagare<small>${t.aperti ? `${t.aperti === 1 ? '1 pagamento a rate in corso' : `${t.aperti} pagamenti a rate in corso`}${prossima ? `, prossima rata il ${fmtD(prossima.date)}` : ''}` : 'Nessun pagamento a rate in corso'}</small></span>
+    <b class="${t.residuo > 0.005 ? 'out' : 'muted'}">${fmtEur(t.residuo)}</b>
+  </a>`;
 }
 
 function personBlock(p, items) {
