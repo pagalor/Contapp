@@ -372,18 +372,19 @@ export function transferDialog({ rec = null, da = '', a = '', val = null, date =
   const d0 = rec ? M.recDate(rec) : (date || M.todayIso());
   let amount = rec ? { val: rec.data.val, espr: rec.data.espr } : val != null ? { val, espr: null } : null;
   const dlg = modal(`
-    <form class="dlg" method="dialog">
+    <form class="dlg mov-dlg trf-dlg" method="dialog">
       <header class="dlg-head"><h2>${rec ? 'Trasferimento' : 'Nuovo trasferimento'}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
       <p class="muted">Spostare soldi tra i tuoi fondi non è né una spesa né un'entrata: cambia solo dove si trovano.</p>
-      <div class="form-grid">
+      <div class="trf-route">
         <label class="field"><span>Da</span><select name="da" required>${accOptions(rec?.data.da || da, { empty: 'Scegli' })}</select></label>
+        <span class="trf-arrow" aria-hidden="true">→</span>
         <label class="field"><span>A</span><select name="a" required>${accOptions(rec?.data.a || a, { empty: 'Scegli' })}</select></label>
-        <label class="field"><span>Importo</span><input name="val" class="amt" inputmode="decimal" value="${amount ? fmt(amount.val) : ''}" required></label>
-        <label class="field"><span>Data</span><input name="date" type="date" value="${d0}" required></label>
       </div>
+      <label class="field"><span>Importo (€)</span><input name="val" class="amt trf-amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${amount ? fmt(amount.val) : ''}" required></label>
+      <label class="field"><span>Data</span><input name="date" type="date" value="${d0}" required></label>
       <label class="field"><span>Nota</span><input name="note" value="${esc(rec?.data.note || '')}" autocomplete="off"></label>
-      <div class="actions">
-        ${rec ? '<button type="button" class="btn danger" data-del>Elimina</button><span class="spacer"></span>' : ''}
+      <div class="actions sticky-actions">
+        ${rec ? '<button type="button" class="btn ghost danger" data-del>Elimina</button>' : ''}
         <button type="button" class="btn ghost" data-x>Annulla</button><button class="btn primary" value="save">Salva</button>
       </div>
     </form>`);

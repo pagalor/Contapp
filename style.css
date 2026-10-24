@@ -1,4 +1,4 @@
-/* Contabilità: stile minimale. Interfaccia monocromatica, il colore è riservato ai soldi:
+/* Rationes: stile minimale. Interfaccia monocromatica, il colore è riservato ai soldi:
    verde per le entrate, rosso per le uscite, ambra per gli avvisi. */
 :root {
   --bg: #F4F5F7;
@@ -47,7 +47,7 @@
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
@@ -211,7 +211,7 @@ details.alert summary { cursor: pointer; }
 .mini-list a:hover { color: var(--focus); }
 
 .ledger { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); margin-bottom: 1rem; container: ledger / inline-size; overflow: hidden; }
-.ledger h2 { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 1rem 1.1rem .7rem; }
+.ledger h2 { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .1rem 1rem; padding: 1rem 1.1rem .7rem; }
 .ledger-hint { font-size: .82rem; font-weight: 500; color: var(--muted); }
 .cols { display: none; }
 
@@ -273,13 +273,18 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .card .add-row, .dlg .add-row { border-top: 0; padding-left: 0; }
 
 .trow {
-  display: grid; grid-template-columns: 2.4rem 6.8rem minmax(0, 1fr); align-items: center; gap: .2rem; width: 100%;
-  font: inherit; color: var(--ink); background: none; border: 0; border-top: 1px solid var(--line); padding: .6rem .25rem; text-align: left; cursor: pointer;
+  display: grid; position: relative; border-top: 1px solid var(--line); align-items: center; cursor: pointer; color: var(--ink);
+  grid-template-columns: 2.4rem minmax(0, 1.3fr) minmax(0, .2fr) 6.8rem 2.4rem;
+  grid-template-areas: "day desc desc amt more" "day cat acc acc more";
+  padding: .15rem .25rem;
 }
 .trow:hover { background: var(--hover); }
-.trow .c-day { padding: 0; }
-.t-amt { text-align: right; font-weight: 650; padding-right: .6rem; }
-.t-path small { display: block; color: var(--muted); }
+.trow:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.trow > .c-day, .trow > .c-amt, .trow > .c-desc { padding: .55rem .45rem; min-width: 0; }
+.trow .c-amt { color: var(--saldo); }
+.trow .c-cat .c-lbl, .trow .c-acc .c-lbl { padding-left: .45rem; }
+.trf-k { color: var(--ink); font-weight: 650; margin-right: .15rem; }
+.trow .c-more { display: grid; place-items: center; pointer-events: none; }
 
 @container ledger (min-width: 680px) {
   .row {
@@ -287,6 +292,12 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
     grid-template-areas: "day amt desc cat acc more" "tags tags tags tags tags tags" "det det det det det det";
     padding: .1rem .35rem;
   }
+  .trow {
+    grid-template-columns: 3rem 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem;
+    grid-template-areas: "day amt desc cat acc more";
+    padding: .1rem .35rem;
+  }
+  .trf-k { display: none; }
   .tagline { padding-left: 11.2rem; }
   .cols {
     display: grid; grid-template-columns: 3rem 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem; padding: 0 .35rem .35rem;
@@ -296,7 +307,7 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
   .cols span:nth-child(1) { text-align: center; }
   .cols span:nth-child(2) { text-align: right; }
   .cols span:nth-child(4) { padding-left: 1.4rem; }
-  .trow { grid-template-columns: 3rem 7.6rem minmax(0, 1fr); padding-left: .35rem; }
+  .trasf .cols span:nth-child(4) { padding-left: .45rem; }
 }
 
 .empty-hint { background: var(--surface); border: 1px dashed var(--line-2); border-radius: var(--r-lg); padding: 1.2rem; margin-bottom: 1rem; }
@@ -330,6 +341,14 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .rie-range { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .9rem; }
 .rie-range .field { margin: 0; flex: 1 1 9.5rem; max-width: 15rem; }
 .rie-range .field input { flex: 1; }
+/* Telefono: pulsanti della testata di Patrimonio su una riga, campi "Dal" e "Al" in colonna e della stessa larghezza */
+@media (max-width: 560px) {
+  .patrimonio > .page-head .btn-row { flex-wrap: nowrap; width: 100%; gap: .4rem; }
+  .patrimonio > .page-head .btn-row .btn { flex: 1 1 auto; justify-content: center; padding: .55rem .5rem; font-size: .85rem; }
+  .rie-range .field { flex: 1 1 100%; max-width: none; }
+  .rie-range .field > span { width: 2.2rem; flex: none; }
+}
+
 .rie-range .chip { font: inherit; font-weight: 550; font-size: .9rem; cursor: pointer; color: var(--ink); }
 .rie-range .chip[hidden] { display: none; }
 .card > .rie-range { margin-bottom: .6rem; }
@@ -439,6 +458,18 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .tbl tr:last-child td { border-bottom: 0; }
 .tbl thead th { font-size: .76rem; color: var(--muted); font-weight: 550; }
 .tbl td small { display: block; }
+.cmp-tbl { table-layout: fixed; }
+.cmp-tbl th.num, .cmp-tbl td.num { width: 6.2rem; }
+.cmp-tbl th.num:last-child, .cmp-tbl td.num:last-child { width: 5rem; }
+.cmp-tbl td:first-child { overflow-wrap: anywhere; }
+.card > .cmp-tbl + .sub-h { margin-top: 1.1rem; }
+.three { display: grid; gap: 1rem; margin-bottom: 1rem; align-items: start; }
+.three > .card { margin-bottom: 0; min-width: 0; }
+@media (min-width: 1200px) { .three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.cmp-toggle { all: unset; cursor: pointer; display: inline-flex; gap: .4rem; align-items: center; }
+.cmp-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+#det-toggle { margin-top: .6rem; }
+#det-body { margin-top: .4rem; }
 .tbl a:hover, .mini a:hover { color: var(--focus); }
 .tbl tr[data-href], .tbl.clickable tbody tr { cursor: pointer; }
 .tbl tr[data-href]:hover, .tbl.clickable tbody tr:hover { background: var(--hover); }
@@ -520,17 +551,25 @@ details.history[open] > summary { margin-bottom: .8rem; }
   .acc-row [data-act="menu"] { grid-row: 1; grid-column: 3; }
 }
 .acc-ledger { display: grid; }
-.al-row { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto 6.5rem; gap: .6rem; align-items: baseline; padding: .55rem .3rem; border-bottom: 1px solid var(--line); }
+.al-row { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) auto 9rem; gap: .6rem; align-items: baseline; padding: .55rem .3rem; border-bottom: 1px solid var(--line); }
 .al-row:hover { background: var(--hover); }
 .al-date { color: var(--muted); font-size: .88rem; }
+.al-date b { font-weight: 500; }
 .al-desc small { display: block; color: var(--muted); font-size: .78rem; }
+.al-desc small b { color: var(--ink); font-weight: 650; }
 .al-val { font-weight: 650; text-align: right; }
 .al-run { text-align: right; color: var(--muted); }
+.al-run small { font-size: .78rem; color: var(--faint); }
 .al-start { margin: .8rem 0 0; color: var(--muted); }
 @media (max-width: 560px) {
-  .al-row { grid-template-columns: minmax(0, 1fr) auto; }
-  .al-date { grid-column: 1 / -1; font-size: .78rem; }
-  .al-run { grid-column: 2; font-size: .8rem; }
+  .al-row { grid-template-columns: 3.1rem minmax(0, 1fr) auto; grid-template-areas: "date desc val" "date desc run"; gap: .1rem .6rem; padding: .65rem .3rem; align-items: start; }
+  .al-date { grid-area: date; text-align: center; font-size: .9rem; line-height: 1.25; }
+  .al-date b, .al-date small { display: block; }
+  .al-date small { font-size: .72rem; color: var(--faint); }
+  .al-desc { grid-area: desc; min-width: 0; overflow-wrap: anywhere; }
+  .al-val { grid-area: val; }
+  .al-run { grid-area: run; font-size: .78rem; }
+  .al-run small { font-size: inherit; color: inherit; }
 }
 
 /* ---------- Altro ---------- */
@@ -598,6 +637,8 @@ details.history[open] > summary { margin-bottom: .8rem; }
 @media (max-width: 520px) {
   .tbl th, .tbl td { padding: .45rem .25rem; font-size: .88rem; }
   .card { padding: 1rem .9rem; }
+  .cmp-tbl th.num, .cmp-tbl td.num { width: 5.3rem; padding-left: .1rem; padding-right: .3rem; }
+  .cmp-tbl th.num:last-child, .cmp-tbl td.num:last-child { width: 4.4rem; }
   .sums { gap: 1.1rem; }
   .sums dd { font-size: .98rem; }
   .sums .saldo dd { font-size: 1.15rem; }
@@ -756,6 +797,19 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .sticky-actions .btn { flex: 1; justify-content: center; min-height: 3.2rem; font-size: 1.02rem; }
 .sticky-actions .btn.primary { flex: 2; }
 
+/* Trasferimento tra fondi */
+.trf-route { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.trf-arrow { display: none; }
+.trf-dlg .field input, .trf-dlg .field select { width: 100%; min-width: 0; box-sizing: border-box; }
+.trf-dlg .field input[type="date"] { -webkit-appearance: none; appearance: none; text-align: left; display: block; line-height: 1.2; }
+.trf-dlg .field input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.trf-dlg .field input.trf-amt { font-size: 1.6rem; font-weight: 700; min-height: 3.6rem; letter-spacing: -0.02em; }
+.trf-dlg .sticky-actions .btn.danger { flex: 0 0 auto; }
+@media (min-width: 520px) {
+  .trf-route { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0 .6rem; align-items: end; }
+  .trf-arrow { display: block; color: var(--muted); font-size: 1.2rem; line-height: 3.2rem; padding-bottom: .55rem; }
+}
+
 /* Bersagli più grandi per le dita */
 @media (pointer: coarse) {
   .add-row { min-height: 3.2rem; padding-top: 1rem; padding-bottom: 1rem; font-size: 1rem; }
@@ -771,6 +825,15 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .mov-dlg .big-check input { width: 1.6rem; height: 1.6rem; flex: none; }
 .mov-dlg .big-actions { margin: .6rem 0 1rem; }
 .mov-dlg .big-actions .btn { flex: 1; justify-content: center; min-height: 3.2rem; font-size: .98rem; white-space: normal; text-align: center; }
+
+/* Riordino: tenendo premuto un movimento lo si trascina tra quelli dello stesso giorno */
+.row { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.row .details :is(input, textarea) { -webkit-user-select: text; user-select: text; }
+.row.dragging {
+  z-index: 6; cursor: grabbing; background: var(--surface); border-radius: 10px; will-change: transform;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .22), 0 0 0 1.5px var(--focus);
+}
+.is-dragging, .is-dragging * { cursor: grabbing; }
 
 /* Voci extra di un movimento (tag, nota, duplica…) e matita di modifica */
 .details { color: var(--ink); }

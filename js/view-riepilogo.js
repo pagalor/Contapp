@@ -7,6 +7,8 @@ import { catBars, toggleCat, tagPies } from './catstats.js';
 
 let root, sel; // sel: anno (numero) oppure 'tutto'
 let curList = []; // movimenti del periodo mostrato, per il dettaglio delle categorie
+const aperti = { out: false, in: false }; // categorie del confronto con l'anno prima mostrate per intero
+let espanso = false; // tabella "Mese per mese" aperta sotto il grafico delle entrate e uscite
 
 // Intervallo di mesi per "Tutti gli anni" ('AAAA-MM' oppure '' se senza limite). Si ricorda su questo dispositivo.
 const RANGE_KEY = 'contabilita.riepilogo-periodo';
@@ -137,17 +139,23 @@ function draw() {
       <div><dt>Soldi buttati</dt><dd class="butt">${fmtEur(butt)}</dd></div>
     </dl>
 
-    <section class="card">
-      <h2>${tutto ? 'Entrate e uscite per anno' : 'Entrate e uscite per mese'}</h2>
-      <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span><span class="lg sal-bar">Saldo</span></div>
-      <div class="chart-box" id="ch-bars"></div>
-    </section>
+    ${tutto ? '' : proiezioneCard()}
 
     <section class="card">
       <h2>Saldo accumulato</h2>
       <p class="muted">Quanto hai messo da parte sommando i saldi mese dopo mese${tutto ? (filtrato ? ', nel periodo scelto' : ', dal primo mese registrato') : ` nel ${sel}`}.</p>
       <p class="chart-info" id="ch-line-info"></p>
       <div class="chart-box" id="ch-line"></div>
+    </section>
+
+    <section class="card">
+      <h2>${tutto ? 'Entrate e uscite per anno' : 'Entrate e uscite per mese'}</h2>
+      <div class="legend"><span class="lg in">Entrate</span><span class="lg out">Uscite</span><span class="lg sal-bar">Saldo</span></div>
+      <div class="chart-box" id="ch-bars"></div>
+      <button class="btn ghost small" id="det-toggle" type="button" aria-expanded="${espanso}" aria-controls="det-body">${espanso ? 'Comprimi ▴' : 'Espandi ▾'}</button>
+      <div id="det-body"${espanso ? '' : ' hidden'}>
+        ${tutto ? yearTable(ys, list) : monthTable(sel)}
+      </div>
     </section>
 
     <section class="card">
@@ -159,26 +167,22 @@ function draw() {
       <div id="cat-in"></div>
     </section>
 
-    <div class="two">
-      <section class="card">
-        <h2>${tutto ? 'Anno per anno' : 'Mese per mese'}</h2>
-        ${tutto ? yearTable(ys, list) : monthTable(sel)}
-      </section>
+    ${tutto ? '' : confrontoCard()}
+
+    <div class="three">
       <section class="card">
         <h2>Le spese più grandi</h2>
         ${topTable(list)}
       </section>
-    </div>
-
-    <section class="card">
-      <h2>Tag</h2>
-      ${tagCard(list)}
-    </section>
-
-    <section class="card" id="butt-card">
-      <h2>Soldi buttati</h2>
-      ${tutto ? buttYears(ysButt) : buttEditor(sel)}
-    </section>`;
+      <section class="card">
+        <h2>Tag</h2>
+        ${tagCard(list)}
+      </section>
+      <section class="card" id="butt-card">
+        <h2>Soldi buttati</h2>
+        ${tutto ? buttYears(ysButt) : buttEditor(sel)}
+      </section>
+    </div>`;
 
   $('#ch-bars', root).innerHTML = C.bars({
     width: width('#ch-bars'), labels,
@@ -194,6 +198,52 @@ function draw() {
   $('#cat-out', root).innerHTML = catBars(list, 'out');
   $('#cat-in', root).innerHTML = catBars(list, 'in');
   bind();
+}
+
+// --- Confronti nel tempo ---
+const pctFmt = (v) => v.toLocaleString('it-IT', { maximumFractionDigits: 1, signDisplay: 'exceptZero' }) + '%';
+// Variazione in percentuale: per le uscite salire è un male (rosso), per le entrate un bene (verde)
+function varCell(v, tipo) {
+  if (v === null) return '<td class="num muted">–</td>';
+  if (Math.abs(v) < 0.05) return '<td class="num muted">0%</td>';
+  const bene = tipo === 'in' ? v > 0 : v < 0;
+  return `<td class="num ${bene ? 'pos' : 'neg'}">${pctFmt(v)}</td>`;
+}
+
+// Uscite stimate a fine anno, continuando al ritmo attuale (solo per l'anno in corso)
+function proiezioneCard() {
+  if (sel !== new Date().getFullYear()) return '';
+  const p = M.proiezioneUscite();
+  const head = '<h2>Proiezione a fine anno</h2>';
+  if (p.stima === null) return `<section class="card">${head}<p class="muted">Troppo presto per una stima: serve almeno un mese di dati.</p></section>`;
+  const conPrev = p.prev > 0 && p.var !== null
+    ? `<p class="muted">Nel ${p.y - 1} hai speso ${fmtEur(p.prev)}: a questo ritmo la spesa sarebbe <b class="${p.var > 0 ? 'neg' : 'pos'}">${pctFmt(p.var)}</b>.</p>` : '';
+  return `<section class="card">${head}
+    <p class="muted">Stima delle uscite dell'intero anno, se continui a spendere come dall'inizio dell'anno a oggi.</p>
+    <dl class="stats">
+      <div><dt>Uscite finora</dt><dd class="out">${fmtEur(p.speso)}</dd></div>
+      <div><dt>Ritmo al mese</dt><dd class="out">${fmtEur(p.ritmo)}</dd></div>
+      <div><dt>Stima a fine ${p.y}</dt><dd class="out">${fmtEur(p.stima)}</dd></div>
+    </dl>${conPrev}</section>`;
+}
+
+// Entrate, uscite e categorie rispetto all'anno prima. Per l'anno in corso si confronta lo stesso periodo.
+function confrontoCard() {
+  const now = new Date();
+  const fino = sel === now.getFullYear() ? now.getMonth() + 1 : 12;
+  const c = M.confrontoAnno(sel, fino);
+  if (!c) return '';
+  const periodo = (y) => fino === 12 ? String(y) : `${fino === 1 ? M.MESI[0] : M.MESI[0] + '–' + M.MESI[fino - 1].toLowerCase()} ${y}`;
+  const riga = (nome, o, tipo) => `<tr><td>${nome}</td><td class="num muted">${fmt(o.prev)}</td><td class="num ${tipo}">${fmt(o.cur)}</td>${varCell(o.var, tipo)}</tr>`;
+  const tab = (titolo, righe, tipo) => righe.length ? `<h4 class="sub-h"><button class="cmp-toggle" type="button" data-cmp="${tipo}" aria-expanded="${aperti[tipo]}">${titolo} <span aria-hidden="true">${aperti[tipo] ? '▴' : '▾'}</span></button></h4>
+    <table class="tbl cmp-tbl"${aperti[tipo] ? '' : ' hidden'}><tbody>${righe.map((o) => riga(esc(M.catLabel(o.cat)), o, tipo)).join('')}</tbody></table>` : '';
+  return `<section class="card">
+    <h2>Rispetto al ${sel - 1}</h2>
+    <p class="muted">${periodo(sel)} confrontato con ${periodo(sel - 1).toLowerCase()}.${fino < 12 ? ' L\'ultimo mese è ancora in corso.' : ''}</p>
+    <table class="tbl cmp-tbl"><thead><tr><th></th><th class="num">${sel - 1}</th><th class="num">${sel}</th><th class="num">Variazione</th></tr></thead>
+      <tbody>${riga('Entrate', c.tin, 'in')}${riga('Uscite', c.tout, 'out')}</tbody></table>
+    ${tab('Uscite per categoria', c.out, 'out')}${tab('Entrate per categoria', c.in, 'in')}
+  </section>`;
 }
 
 function monthTable(y) {
@@ -276,6 +326,20 @@ function toggleTagRow(tr) {
 }
 
 function bind() {
+  root.querySelectorAll('.cmp-toggle').forEach((b) => b.addEventListener('click', () => {
+    const tipo = b.dataset.cmp, tab = b.closest('.sub-h').nextElementSibling;
+    aperti[tipo] = tab.hidden;
+    tab.hidden = !aperti[tipo];
+    b.setAttribute('aria-expanded', String(aperti[tipo]));
+    b.lastElementChild.textContent = aperti[tipo] ? '▴' : '▾';
+  }));
+  const tog = $('#det-toggle', root);
+  tog?.addEventListener('click', () => {
+    espanso = $('#det-body', root).hidden;
+    $('#det-body', root).hidden = !espanso;
+    tog.setAttribute('aria-expanded', String(espanso));
+    tog.textContent = espanso ? 'Comprimi ▴' : 'Espandi ▾';
+  });
   root.querySelectorAll('.tag-row').forEach((tr) => {
     tr.addEventListener('click', (e) => { if (!e.target.closest('a')) toggleTagRow(tr); });
     tr.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === tr) { e.preventDefault(); toggleTagRow(tr); } });

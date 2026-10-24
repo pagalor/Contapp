@@ -236,12 +236,16 @@ function transfers(list) {
   return `
     <section class="ledger trasf">
       <h2><span>Trasferimenti tra fondi</span><span class="ledger-hint">non contano come entrate o uscite</span></h2>
+      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Da</span><span>A</span><span></span></div>
       <div class="rows">${list.map((r) => `
-        <button class="trow" data-trasf="${r.id}">
+        <div class="trow" data-trasf="${r.id}" role="button" tabindex="0">
           <span class="c-day">${r.data.d ?? '–'}</span>
-          <span class="t-amt">${fmt(r.data.val)}</span>
-          <span class="t-path">${esc(M.accName(r.data.da))} <span class="muted">verso</span> ${esc(M.accName(r.data.a))}${r.data.note ? `<small>${esc(r.data.note)}</small>` : ''}</span>
-        </button>`).join('')}</div>
+          <span class="c-amt"${r.data.espr ? ` title="${esc(r.data.espr)}"` : ''}>${fmt(r.data.val)}</span>
+          <span class="c-desc${r.data.note ? '' : ' empty'}">${esc(r.data.note || 'Trasferimento')}</span>
+          <span class="c-cat"><span class="c-lbl"><b class="trf-k">Da</b> ${esc(M.accName(r.data.da))}</span></span>
+          <span class="c-acc"><span class="c-lbl"><b class="trf-k">A</b> ${esc(M.accName(r.data.a))}</span></span>
+          <span class="c-more" aria-hidden="true">${PENCIL}</span>
+        </div>`).join('')}</div>
       <button class="add-row" data-addtr>+ Aggiungi trasferimento</button>
     </section>`;
 }
@@ -284,6 +288,7 @@ function updateCats() {
 const rec = (row) => store.get(row.dataset.id);
 
 function bindBody(body) {
+  bindDrag(body);
   body.addEventListener('click', async (e) => {
     const cb = e.target.closest('.catbar');
     if (cb) { toggleCat(cb, cb.closest('.search-res') ? searchList : M.movsOf(state.y, state.m)); return; }
@@ -387,7 +392,122 @@ function bindBody(body) {
     }
     // Da tastiera la riga si apre con Invio o Spazio
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.row')) { e.preventDefault(); toggleDetails(e.target); }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.trow')) { e.preventDefault(); e.target.click(); }
   });
+}
+
+// ---------------------------------------------------------------- riordino
+// Tenendo premuto su un movimento (mezzo secondo scarso) lo si può trascinare, ma solo tra i movimenti dello
+// stesso giorno e dello stesso riquadro (nell'elenco entrate o uscite, nel calendario il giorno scelto).
+// L'ordine è il campo `ord`, che conta solo tra movimenti con lo stesso giorno.
+const HOLD_MS = 380; // durata della pressione prima di poter trascinare
+const HOLD_SLOP = 8; // di quanto ci si può muovere durante la pressione senza annullarla (è uno scorrimento)
+let drag = null; // { row, pid, x, y, cy, timer, raf, active, grab, group, orig, anchor }
+let dragClick = false; // il clic che segue un trascinamento non deve aprire le voci extra
+
+const dayOf = (el) => rec(el)?.data.d ?? null;
+
+function dragGroup(row) {
+  const d = dayOf(row);
+  return [...row.parentNode.children].filter((el) => el.matches?.('.row') && dayOf(el) === d);
+}
+
+function dragEnd(commit) {
+  const dg = drag;
+  if (!dg) return;
+  drag = null;
+  clearTimeout(dg.timer);
+  cancelAnimationFrame(dg.raf);
+  if (!dg.active) return;
+  const { row } = dg;
+  row.classList.remove('dragging');
+  row.style.transform = '';
+  root?.classList.remove('is-dragging');
+  dragClick = true;
+  setTimeout(() => { dragClick = false; }, 60);
+  const ids = dragGroup(row).map((el) => el.dataset.id);
+  if (!row.isConnected) return;
+  if (!commit) { // ripristina l'ordine di partenza
+    const parent = row.parentNode;
+    for (const id of dg.orig) parent.insertBefore(parent.querySelector(`.row[data-id="${CSS.escape(id)}"]`), dg.anchor);
+    return;
+  }
+  if (ids.join() !== dg.orig.join()) saveOrder(ids);
+}
+
+// Rinumera `ord` per tutti i movimenti del giorno: quelli trascinati prendono i posti già occupati dal loro gruppo
+function saveOrder(ids) {
+  const d = store.get(ids[0])?.data.d ?? null;
+  const day = M.movsOf(state.y, state.m).filter((r) => (r.data.d ?? null) === d);
+  const set = new Set(ids);
+  let k = 0;
+  day.map((r) => (set.has(r.id) ? ids[k++] : r.id)).forEach((id, i) => {
+    if (store.get(id)?.data.ord !== i) store.patch(id, { ord: i });
+  });
+}
+
+function dragMove(e) {
+  const dg = drag;
+  const { row } = dg;
+  if (!row.isConnected) { dragEnd(false); return; }
+  dg.cy = e.clientY;
+  // Il movimento segue il dito; se ha passato metà di un altro movimento del gruppo, ne prende il posto
+  const others = dg.group.filter((el) => el !== row);
+  const next = others.find((el) => { const b = el.getBoundingClientRect(); return e.clientY < b.top + b.height / 2; });
+  if (next) { if (row.nextElementSibling !== next) next.before(row); }
+  else if (others.length && row.previousElementSibling !== others[others.length - 1]) others[others.length - 1].after(row);
+  row.style.transform = '';
+  row.style.transform = `translateY(${e.clientY - dg.grab - row.getBoundingClientRect().top}px)`;
+}
+
+// Vicino al bordo dello schermo la pagina scorre da sola, mentre si trascina
+function dragScroll() {
+  const dg = drag;
+  if (!dg?.active) return;
+  const edge = 70;
+  const dy = dg.cy < edge ? -Math.ceil((edge - dg.cy) / 5) : dg.cy > innerHeight - edge ? Math.ceil((dg.cy - (innerHeight - edge)) / 5) : 0;
+  if (dy) {
+    scrollBy(0, dy);
+    dragMove({ clientY: dg.cy });
+  }
+  dg.raf = requestAnimationFrame(dragScroll);
+}
+
+function bindDrag(body) {
+  body.addEventListener('pointerdown', (e) => {
+    if (drag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const row = e.target.closest?.(ROW);
+    if (!row || e.target.closest('.details, button, a, input, select, textarea, label')) return;
+    const group = dragGroup(row);
+    if (group.length < 2) return;
+    drag = { row, id: row.dataset.id, pid: e.pointerId, x: e.clientX, y: e.clientY, cy: e.clientY, active: false, group, orig: group.map((el) => el.dataset.id), anchor: group[group.length - 1].nextElementSibling };
+    drag.timer = setTimeout(() => {
+      const dg = drag;
+      if (!dg || !dg.row.isConnected) return;
+      dg.active = true;
+      const open = dg.row.classList.contains('open');
+      if (open) toggleDetails(dg.row, false); // una riga aperta è alta: la si chiude per trascinarla
+      dg.grab = dg.y - dg.row.getBoundingClientRect().top;
+      dg.row.classList.add('dragging');
+      root.classList.add('is-dragging');
+      try { dg.row.setPointerCapture(dg.pid); } catch {}
+      navigator.vibrate?.(15);
+      dg.raf = requestAnimationFrame(dragScroll);
+    }, HOLD_MS);
+  });
+
+  body.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    if (drag.active) { e.preventDefault(); dragMove(e); return; }
+    if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > HOLD_SLOP) dragEnd(false); // si sta scorrendo, non premendo
+  });
+  const fine = (commit) => (e) => { if (drag && e.pointerId === drag.pid) dragEnd(commit); };
+  body.addEventListener('pointerup', fine(true));
+  body.addEventListener('pointercancel', fine(false));
+  // Sul telefono, una volta iniziato il trascinamento la pagina non deve scorrere né aprire il menu del tasto lungo
+  body.addEventListener('touchmove', (e) => { if (drag?.active) e.preventDefault(); }, { passive: false });
+  body.addEventListener('contextmenu', (e) => { if (drag && e.target.closest?.(ROW)) e.preventDefault(); });
+  body.addEventListener('click', (e) => { if (dragClick) { e.stopPropagation(); e.preventDefault(); dragClick = false; } }, true);
 }
 
 function addTag(row, raw, refocus = false) {

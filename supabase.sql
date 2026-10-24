@@ -1,4 +1,4 @@
--- Contabilità: tabella per la sincronizzazione tra dispositivi.
+-- Rationes: tabella per la sincronizzazione tra dispositivi.
 -- Da incollare ed eseguire una volta nel SQL Editor del progetto Supabase.
 
 create table public.records (

@@ -45,7 +45,7 @@ export function render(el) {
           </select></label>
         <div id="install-box"></div>
       </section>
-      <p class="muted version">Contabilità<span id="app-ver"></span>. I dati sono salvati su questo dispositivo${sync.session() ? ' e sincronizzati, cifrati, sul tuo progetto Supabase' : ''}.</p>
+      <p class="muted version">Rationes<span id="app-ver"></span>. I dati sono salvati su questo dispositivo${sync.session() ? ' e sincronizzati, cifrati, sul tuo progetto Supabase' : ''}.</p>
     </section>`;
   renderSync();
   renderCats();
@@ -234,7 +234,7 @@ async function importFile(file) {
   let json;
   try { json = JSON.parse(await file.text()); } catch { toast('Il file non è un JSON valido.'); return; }
   const recs = json && json.format === 'contabilita-v1' && Array.isArray(json.records) ? json.records : null;
-  if (!recs) { toast('Questo file non è un backup di Contabilità.'); return; }
+  if (!recs) { toast('Questo file non è un backup di Rationes.'); return; }
   const n = { mov: 0, snap: 0 };
   for (const r of recs) if (n[r.kind] != null) n[r.kind]++;
   const ok = await confirmBox(`Importare ${n.mov} movimenti e ${n.snap} rilevazioni del patrimonio? I record già presenti con lo stesso identificativo verranno sostituiti.`, { ok: 'Importa' });
@@ -270,7 +270,7 @@ function exportCSV() {
     rows.push([d.y, M.MESI[d.m - 1], d.d ?? '', 'Trasferimento', num(d.val), d.espr || '',
       `Da ${M.accName(d.da)} a ${M.accName(d.a)}`, '', '', '', '', d.note || '']);
   }
-  download(`contabilita-movimenti-${stamp()}.csv`, '\uFEFF' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
+  download(`rationes-movimenti-${stamp()}.csv`, '\uFEFF' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
 }
 
 function exportPatCSV() {
@@ -282,7 +282,7 @@ function exportPatCSV() {
     rows.push([p.date, 'Calcolato', ...conts.map((c) => num(p.bal.get(c.id) || 0)), num(M.totaleGruppi(p.bal).tot)]);
   }
   rows.sort((x, y) => x[0].localeCompare(y[0]));
-  download(`contabilita-patrimonio-${stamp()}.csv`, '\uFEFF' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
+  download(`rationes-patrimonio-${stamp()}.csv`, '\uFEFF' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
 }
 
 // --- Categorie ---
@@ -324,7 +324,7 @@ function bind() {
   sec.addEventListener('click', async (e) => {
     const exp = e.target.closest('[data-exp]')?.dataset.exp;
     if (exp === 'json') {
-      download(`contabilita-backup-${stamp()}.json`, JSON.stringify({ format: 'contabilita-v1', creato: stamp(), records: store.exportRecords() }), 'application/json');
+      download(`rationes-backup-${stamp()}.json`, JSON.stringify({ format: 'contabilita-v1', creato: stamp(), records: store.exportRecords() }), 'application/json');
     }
     if (exp === 'csv') exportCSV();
     if (exp === 'pat') exportPatCSV();
