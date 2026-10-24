@@ -54,7 +54,6 @@ js/budgetui.js          riga con barra di un budget (speso, disponibile, segno d
 js/view-altro.js        pagina Altro: sincronizzazione e cifratura, import/export (backup JSON, CSV di movimenti e patrimonio), movimenti ricorrenti, budget, pagamenti a rate (impostazione "Conta gli acquisti a rate"), categorie e sottocategorie, tema, installazione come app, versione
 js/demo.js              modalità demo: attivazione con ?demo, avviso in cima, dati di esempio generati da codice
 supabase.sql            tabella, permessi, RLS e trigger da eseguire una volta su Supabase
-js/model.js.orig        vecchia copia di `model.js` rimasta nel repository: non è importata da nessuno, non sta in `SHELL` e non fa parte dell'app (si può eliminare). Non va usata come riferimento: vale `js/model.js`
 ```
 
 **Route** (il router è in `main.js`, funzione `route()`; un hash vuoto o sconosciuto apre Mese del mese attuale):
