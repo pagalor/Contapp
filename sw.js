@@ -1,10 +1,10 @@
 // Service worker: rende l'app utilizzabile offline.
 // Quando pubblichi una nuova versione dei file, aumenta il numero di VERSION.
-const VERSION = 'contabilita-v47';
+const VERSION = 'contabilita-v48';
 const SHELL = [
   './', './index.html', './style.css', './manifest.webmanifest',
   './js/main.js', './js/store.js', './js/model.js', './js/sync.js', './js/expr.js', './js/charts.js', './js/catstats.js', './js/ui.js',
-  './js/view-mese.js', './js/view-riepilogo.js', './js/view-patrimonio.js', './js/view-altro.js', './js/view-conti.js', './js/dialogs.js', './js/crypto.js', './js/view-debiti.js', './js/view-ricorrenti.js',
+  './js/view-mese.js', './js/view-riepilogo.js', './js/view-patrimonio.js', './js/view-altro.js', './js/view-conti.js', './js/dialogs.js', './js/crypto.js', './js/view-debiti.js', './js/view-ricorrenti.js', './js/demo.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/icon-monochrome-512.png',
   './icons/favicon.svg', './icons/favicon-32.png', './icons/favicon-16.png',
 ];
@@ -17,6 +17,11 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((keys) =>
     Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+});
+
+// La pagina chiede la versione dei file in uso: la demo la usa per rigenerare i dati di esempio dopo un aggiornamento
+self.addEventListener('message', (e) => {
+  if (e.data === 'versione') e.ports[0]?.postMessage(VERSION);
 });
 
 self.addEventListener('fetch', (e) => {

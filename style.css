@@ -114,6 +114,16 @@ p { margin: 0 0 .6rem; }
 }
 main { max-width: 1180px; outline: none; }
 
+/* ---------- Avviso della modalità demo (sempre visibile in cima) ---------- */
+.demo-bar {
+  position: sticky; top: 0; z-index: 15; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .1rem 1.1rem;
+  padding: calc(.4rem + env(safe-area-inset-top)) .8rem .4rem; background: var(--warn-bg); color: var(--warn);
+  border-bottom: 1px solid color-mix(in srgb, var(--warn) 22%, transparent); font-size: .84rem; font-weight: 600; text-align: center;
+}
+.demo-act { display: flex; gap: 1rem; }
+.demo-bar .link-btn { color: inherit; font-size: inherit; padding: .15rem 0; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); }
+@media (min-width: 900px) { .demo-bar { margin-left: 224px; justify-content: flex-start; padding-inline: clamp(1.2rem, 4vw, 3rem); } }
+
 /* ---------- Controlli ---------- */
 .btn {
   font: inherit; font-weight: 600; font-size: .92rem; border-radius: var(--r-md); padding: .55rem 1rem; cursor: pointer;
@@ -695,7 +705,7 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .donut.pre:not(.go) .donut-sweep { stroke-dashoffset: 100; }
 .donut.go:not(.seen) .donut-sweep { animation: donut-close .9s cubic-bezier(.3, .6, .3, 1) both; }
 @keyframes donut-close { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-@media (min-width: 760px) { .cat-split.open { grid-template-columns: 210px minmax(0, 1fr); } .cat-split.open .pie { position: sticky; top: 1rem; } }
+@media (min-width: 760px) { .cat-split.open { grid-template-columns: 210px minmax(0, 1fr); } .cat-split.open .pie { position: sticky; top: 1rem; } html.demo .cat-split.open .pie { top: 3.2rem; } }
 
 /* ---------- Patrimonio: debiti ---------- */
 .hero-debt { margin: .9rem 0 0; font-size: .9rem; color: var(--muted); }

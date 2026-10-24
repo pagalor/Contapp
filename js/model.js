@@ -11,7 +11,7 @@ const DEFAULT_CATS = {
   out: [['ristoranti', 'Ristoranti e bar', '#D9822B', '🍽️'], ['spesa', 'Spesa', '#4C9A2A', '🛒'], ['trasporti', 'Trasporti', '#2F6FB3', '🚆'],
     ['viaggi', 'Viaggi', '#14A3A3', '✈️'], ['svago', 'Svago e sport', '#8E44AD', '🎳'], ['shopping', 'Shopping', '#C2185B', '🛍️'],
     ['regali', 'Regali', '#D4A106', '🎁'], ['abbonamenti', 'Abbonamenti digitali', '#5C6BC0', '📺'], ['telefonia', 'Telefonia', '#00897B', '📱'],
-    ['cura', 'Cura personale e salute', '#8D6E63', '💈'], ['universita', 'Università', '#6D8B1E', '🎓'],
+    ['cura', 'Cura personale e salute', '#8D6E63', '💈'], ['universita', 'Istruzione', '#6D8B1E', '🎓'],
     ['tasse', 'Tasse e burocrazia', '#78909C', '🏛️'], ['altro-out', 'Altro', '#9E9E9E', '📦']],
   in: [['famiglia', 'Famiglia', '#2457A6', '👨‍👩‍👦'], ['interessi', 'Interessi', '#14A3A3', '📈'], ['regali-in', 'Regali ricevuti', '#D4A106', '🎁'],
     ['vendite', 'Vendite', '#C2185B', '🏷️'], ['vincite', 'Vincite', '#8E44AD', '🍀'], ['rimborsi', 'Rimborsi', '#4C9A2A', '↩️'],
@@ -181,28 +181,29 @@ export function proiezioneUscite(oggi = new Date()) {
 }
 
 // --- Suggerimento categoria dalla descrizione ---
+// Regole di base: id della categoria predefinita -> parole della descrizione. Nomi generici e marchi diffusi in tutta Italia.
 const RULES = {
   out: [
-    ['Regali', /^regal/],
-    ['Viaggi', /gita|vacanza|^casa |airbnb|booking|hotel|volo|ryanair|escursione|noleggio/],
-    ['Ristoranti e bar', /^cen|pranzo|caff|colazione|aperitivo|^bar\b|birra|gelato|kebab|pizza|dopocena|starbucks|glovo|deliveroo|just eat/],
-    ['Spesa', /^spes/],
-    ['Università', /universit|laurea|libro|libreria|cartoleria|^stampa/],
-    ['Trasporti', /flixbus|caputobus|itabus|italo|trenitalia|treno|marinobus|sitbus|trainline|gnv|atac|metro|enjoy|lime|carburante|benzina|autostrada|parcheggio|taxi|uber|bus/],
-    ['Telefonia', /^very$|iliad|esim|ricarica/],
-    ['Abbonamenti digitali', /prime|google ai|anthropic|claude|chatgpt|dazn|disney|netflix|spotify|youtube/],
-    ['Svago e sport', /cinema|bowling|calc|padel|tennis|volley|kart|partita|poker|sisal|eurobet|museo|concerto|festa|steam|palestra/],
-    ['Cura personale e salute', /barbiere|farmacia|dr\.? ?max|medic|dentist|tampone/],
-    ['Tasse e burocrazia', /passaporto|fototessera|bollettino|pagopa|poste|imposta|bollo|multa|commission/],
-    ['Shopping', /amazon|aliexpress|wallapop|decathlon|zalando|adidas|nike|puma|h&m|ebay|ikea|mediaworld|unieuro/],
+    ['cat-regali', /^regal/],
+    ['cat-viaggi', /gita|vacanza|viaggio|^casa |airbnb|booking|hotel|ostello|volo|escursione|noleggio/],
+    ['cat-ristoranti', /^cen|pranzo|caff|colazione|aperitivo|^bar\b|birra|gelato|kebab|pizza|dopocena|cibo a domicilio|glovo|deliveroo|just eat/],
+    ['cat-spesa', /^spes|supermercato/],
+    ['cat-universita', /universit|scuola|corso|laurea|libro|libreria|cartoleria|^stampa/],
+    ['cat-trasporti', /treno|trenitalia|italo|pullman|bus|metro|tram\b|traghetto|mezzi|monopattino|sharing|carburante|benzina|autostrada|pedaggio|parcheggio|taxi|uber/],
+    ['cat-telefonia', /telefon|cellulare|\be?sim\b|ricarica|\b(tim|vodafone|wind|windtre|iliad|fastweb)\b/],
+    ['cat-abbonamenti', /netflix|spotify|disney|prime video|amazon prime|dazn|youtube|icloud|google one|chatgpt|streaming/],
+    ['cat-svago', /cinema|teatro|bowling|calc|padel|tennis|volley|kart|partita|museo|concerto|festa|videogioc|palestra|piscina/],
+    ['cat-cura', /barbiere|parrucchier|farmacia|medic|dentist|visita|ottico/],
+    ['cat-tasse', /passaporto|carta d.identit|fototessera|bollettino|pagopa|poste|imposta|tassa|bollo|multa|commission/],
+    ['cat-shopping', /amazon|aliexpress|decathlon|zalando|adidas|nike|h&m|ebay|ikea|mediaworld|unieuro/],
   ],
   in: [
-    ['Famiglia', /pap[aà]|mamma|zio|zia|nonn/],
-    ['Interessi', /bbva|revolut|hype|interess|isybank|buono postale/],
-    ['Regali ricevuti', /regalo|eredit/],
-    ['Vendite', /ebay|vinted|wallapop|vendita/],
-    ['Vincite', /sisal|vincita|eurobet/],
-    ['Rimborsi', /rimbors/],
+    ['cat-famiglia', /pap[aà]|mamma|genitori|zio|zia|nonn/],
+    ['cat-interessi', /interess|rendiment|cedol|buono postale|conto deposito/],
+    ['cat-regali-in', /regalo|eredit/],
+    ['cat-vendite', /ebay|vinted|wallapop|vendita/],
+    ['cat-vincite', /vincita|lotteria|gratta/],
+    ['cat-rimborsi', /rimbors/],
   ],
 };
 
@@ -219,11 +220,10 @@ export function suggestCat(tipo, desc, excludeId) {
   }
   if (freq.size) return [...freq.entries()].sort((a, b) => b[1] - a[1])[0][0];
   // 2. regole di base
-  for (const [nome, rx] of RULES[tipo]) {
-    if (rx.test(d)) {
-      const c = cats(tipo).find((x) => x.data.nome === nome);
-      if (c) return c.id;
-    }
+  for (const [id, rx] of RULES[tipo]) {
+    if (!rx.test(d)) continue;
+    const c = store.get(id);
+    if (c && c.data.tipo === tipo) return id;
   }
   return null;
 }
