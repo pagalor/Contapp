@@ -31,6 +31,15 @@ export function render(el) {
         <a class="btn ghost" href="#ricorrenti">Gestisci i movimenti ricorrenti${M.rics().length ? ` (${M.rics().length})` : ''}</a>
       </section>
       <section class="card">
+        <h2>Pagamenti a rate</h2>
+        <p class="muted">Acquisti pagati a rate (PayPal, Klarna, finanziamenti): le rate si aggiungono da sole e il residuo conta come debito.</p>
+        <label class="field inline"><span>Conta gli acquisti a rate</span>
+          <select id="rate-mod">${M.RATE_MODALITA.map(([k, n]) => `<option value="${k}"${k === M.modalitaRate() ? ' selected' : ''}>${k === 'acquisto' ? "all'acquisto" : 'rata per rata'}</option>`).join('')}</select></label>
+        <p class="muted small-note">All'acquisto: il prezzo è un'uscita il giorno in cui compri, le rate muovono solo il fondo (gli interessi sono uscite a parte).
+          Rata per rata: ogni rata è un'uscita quando la paghi. Vale per i nuovi pagamenti; quelli già inseriti si cambiano dal pagamento stesso.</p>
+        <a class="btn ghost" href="#rate">Gestisci i pagamenti a rate${M.piani().length ? ` (${M.piani().length})` : ''}</a>
+      </section>
+      <section class="card">
         <h2>Budget</h2>
         <p class="muted">Imposta quanto vuoi spendere al massimo per una categoria, una sottocategoria, un tag o per tutte le uscite.</p>
         <a class="btn ghost" href="#budget">Gestisci i budget${M.budgets({ tutti: true }).length ? ` (${M.budgets({ tutti: true }).length})` : ''}</a>
@@ -402,6 +411,10 @@ function bind() {
       }
       store.patch(id, { [cf]: v });
     }
+  });
+  $('#rate-mod', root).addEventListener('change', (e) => {
+    M.setCfg({ modalitaRate: e.target.value });
+    toast('Impostazione salvata: vale per i nuovi pagamenti a rate');
   });
   const theme = $('#theme', root);
   theme.value = localStorage.getItem('contabilita.theme') || 'auto';

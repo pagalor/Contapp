@@ -59,6 +59,6 @@ export function movListHTML(list) {
     const d = r.data;
     return `<a href="#mese/${d.y}-${String(d.m).padStart(2, '0')}/${r.id}">
       <span class="muted">${d.d ? d.d + ' ' : ''}${M.MESI_BREVI[d.m - 1].toLowerCase()}</span>
-      <span>${esc(d.desc || 'Senza descrizione')}</span><span class="num">${fmt(d.val)}</span></a>`;
+      <span>${esc(d.desc || 'Senza descrizione')}</span><span class="num${M.rimborsoReso(r) ? ' in' : ''}">${M.rimborsoReso(r) ? '−' : ''}${fmt(d.val)}</span></a>`;
   }).join('')}</div>`;
 }

@@ -99,8 +99,9 @@ export async function prepara() {
   M.ensureCategories();
   M.ensureSubcats();
   await store.importRecords(genera(new Date()));
-  // le scadenze dei movimenti ricorrenti diventano movimenti con il meccanismo normale dell'app
+  // le scadenze dei movimenti ricorrenti e dei pagamenti a rate diventano movimenti con il meccanismo normale dell'app
   M.generaRicorrenti();
+  M.generaRate();
   // target del conto deposito poco sopra il saldo di oggi, così si vede l'avviso
   const dep = M.balances().get(F.dep) || 0;
   store.patch(F.dep, { obiettivo: Math.ceil(dep / 1000) * 1000 + 1000, obEspr: null });
@@ -357,6 +358,19 @@ export function genera(oggi) {
     tags: [], note: null, escl: false, inizio: M.isoOf(y0, m0, 27), freq: 'mese', ogni: 1, fine: null, ord: 10001 });
   add('ric', 'ric-demo-musica', { tipo: 'out', desc: 'Abbonamento musica', val: 10.99, espr: null, cat: C.abb, sub: null, conti: [{ c: F.web }],
     tags: [], note: null, escl: false, inizio: M.isoOf(y0, m0, 15), freq: 'mese', ogni: 1, fine: null, ord: 10002 });
+
+  // Pagamenti a rate: le rate scadute le genera l'app al primo avvio.
+  // Uno con interessi, contato all'acquisto (anticipo e 10 rate: il costo del finanziamento va in "Interessi e commissioni")…
+  const acq1 = new Date(fine.getFullYear(), fine.getMonth() - 4, 12);
+  add('rate', 'rate-demo-lavatrice', { desc: 'Lavatrice', cat: C.casa, sub: null, tags: [], prezzo: 549, prEspr: null,
+    anticipo: { val: 49, espr: null, data: isoD(acq1), fondo: F.conto }, nRate: 10, importoRata: 52.9, irEspr: null, ultimaRata: null, urEspr: null,
+    fondo: F.conto, creditore: 'Finanziaria del negozio', dataAcquisto: isoD(acq1), primaScadenza: isoD(new Date(acq1.getFullYear(), acq1.getMonth() + 1, 12)),
+    freq: 'mese', ogni: 1, modalita: 'acquisto', chiuso: false, chiusura: null, gen: 1, note: null, ord: 10003 });
+  // …e uno a tasso zero in 3 rate, la prima il giorno dell'acquisto, contato rata per rata (la prossima scade entro una settimana)
+  const acq2 = new Date(fine); acq2.setDate(acq2.getDate() - 26);
+  add('rate', 'rate-demo-telefono', { desc: 'Smartphone', cat: C.shop, sub: 'sub-shopping-elettronica', tags: [], prezzo: 299.99, prEspr: null,
+    anticipo: null, nRate: 3, importoRata: 100, irEspr: null, ultimaRata: 99.99, urEspr: null, fondo: F.conto, creditore: 'PayPal',
+    dataAcquisto: isoD(acq2), primaScadenza: isoD(acq2), freq: 'mese', ogni: 1, modalita: 'rate', chiuso: false, chiusura: null, gen: 1, note: null, ord: 10004 });
 
   // Rilevazioni storiche, precedenti alla data di partenza (per il grafico del patrimonio)
   [[6, [90, 1900, 5800, 40, 300]], [3, [130, 2150, 6200, 25, 350]]].forEach(([mesi, vals], i) => {

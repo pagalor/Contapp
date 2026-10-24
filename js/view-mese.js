@@ -148,6 +148,14 @@ function renderAlerts() {
       <span class="alert-items">${oltre.map((s) => `<a class="pill" href="#conto/${s.c.id}"
         title="Apri ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>+${fmt(s.extra)}</b></a>`).join('')}</span></div>`;
   }
+  const rate = M.rateInScadenza(7);
+  if (rate.length) {
+    const oggi = M.todayIso();
+    const quando = (iso) => (iso === oggi ? 'oggi' : new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }));
+    html += `<div class="alert rate-alert"><span>${rate.length === 1 ? 'Una rata in scadenza' : rate.length + ' rate in scadenza'} nei prossimi 7 giorni:</span>
+      <span class="alert-items">${rate.map((x) => `<a class="pill" href="#rate" title="${esc(x.p.data.desc || '')}, rata ${x.n} di ${M.nRateOf(x.p)}">${esc(x.p.data.desc || 'Rata')}
+        <b>${fmt(x.val)}</b> <small>${quando(x.date)}</small></a>`).join('')}</span></div>`;
+  }
   if (senza.length && state.q.length < 2) {
     html += `<div class="alert"><span>${senza.length === 1 ? 'Un movimento' : senza.length + ' movimenti'} di questo mese non ${senza.length === 1 ? 'indica' : 'indicano'} il fondo:
       scegli da dove sono passati i soldi per tenere aggiornato il patrimonio.</span></div>`;
@@ -170,15 +178,17 @@ function ledger(tipo, title, list) {
 function rowFlags(r) {
   const d = r.data;
   const inizio = M.cfg().inizio;
-  const needAcc = inizio && M.recDate(r) > inizio && typeof d.val === 'number' && !M.allocations(r).length;
+  const needAcc = inizio && M.recDate(r) > inizio && typeof d.val === 'number' && !M.allocations(r).length && !M.fondoNonServe(r);
   return (d.note ? ' has-note' : '') + (d.escl ? ' excluded' : '') + (d.espr ? ' has-expr' : '') +
-    (needAcc ? ' no-acc' : '') + (M.splitMismatch(r) ? ' split-ko' : '') + (d.tags?.length || d.ricId ? ' has-tags' : '');
+    (needAcc ? ' no-acc' : '') + (M.splitMismatch(r) ? ' split-ko' : '') + (d.tags?.length || d.ricId || d.rataId ? ' has-tags' : '');
 }
 
 function tagLine(d) {
-  return (d.ricId ? '<a class="tag ric" href="#ricorrenti" title="Aggiunto in automatico da un movimento ricorrente">↻ Ricorrente</a>' : '') + (d.tags || []).map((t) => `<a class="tag" href="#tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join('');
+  return (d.ricId ? '<a class="tag ric" href="#ricorrenti" title="Aggiunto in automatico da un movimento ricorrente">↻ Ricorrente</a>' : '') +
+    (d.rataId ? `<a class="tag ric" href="#rate" title="Aggiunto in automatico da un pagamento a rate">▤ ${RUOLI_RATA[d.rataRuolo] || 'Pagamento a rate'}</a>` : '') + (d.tags || []).map((t) => `<a class="tag" href="#tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join('');
 }
 
+const RUOLI_RATA = { acquisto: 'Acquisto a rate', anticipo: 'Anticipo', rata: 'Rata', interessi: 'Interessi della rata', saldo: 'Saldo delle rate', reso: 'Reso' };
 const PENCIL = '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
 
 // `nodate`: nel calendario il giorno è già indicato dalla data scelta; `open`: voci extra già aperte
@@ -186,7 +196,7 @@ function rowHTML(r, { nodate = false, open = false } = {}) {
   const d = r.data;
   const cat = M.catById(d.cat);
   const flags = rowFlags(r);
-  const fondo = d.conti?.length ? M.contiLabel(r) : flags.includes('no-acc') ? 'Scegli il fondo' : '—';
+  const fondo = d.conti?.length ? M.contiLabel(r) : flags.includes('no-acc') ? 'Scegli il fondo' : M.fondoNonServe(r) ? 'A rate' : '—';
   return `
     <div class="row t-${d.tipo}${nodate ? ' nodate' : ''}${flags}${open ? ' open' : ''}" data-id="${r.id}" style="--cat:${cat?.data.colore || 'transparent'}" tabindex="0" aria-expanded="${open}">
       ${nodate ? '' : `<span class="c-day">${d.d ?? '–'}</span>`}
@@ -211,7 +221,7 @@ function detailsHTML(r) {
     <label class="check"><input type="checkbox" data-f="escl"${d.escl ? ' checked' : ''}> Escludi dai totali di entrate e uscite (es. entrate straordinarie)</label>
     <div class="detail-actions">
       <button class="btn ghost small" data-act="dup">Duplica</button>
-      ${d.ricId || typeof d.val !== 'number' ? '' : '<button class="btn ghost small" data-act="ric">Rendi ricorrente</button>'}
+      ${d.ricId || d.rataId || typeof d.val !== 'number' ? '' : '<button class="btn ghost small" data-act="ric">Rendi ricorrente</button>'}
       <label class="btn ghost small move">Sposta in un altro mese<input type="month" data-act="move" value="${ymHash(d.y, d.m)}"></label>
       <button class="btn ghost small danger" data-act="del">Elimina</button>
     </div>`;
@@ -365,8 +375,7 @@ function bindBody(body) {
     if (act === 'ric' && r) ricDialog({ seed: ricSeedFromMov(r), onDone: () => renderBody() });
     if (act === 'dup' && r) {
       const id = store.newId();
-      const { ricId, ...copia } = r.data; // la copia è un movimento normale, non una scadenza
-      store.save('mov', id, { ...copia, ord: Date.now() });
+      store.save('mov', id, { ...M.copiaMov(r.data), ord: Date.now() }); // la copia è un movimento normale, non una scadenza
       renderBody(id);
       toast('Movimento duplicato');
     }
@@ -564,7 +573,7 @@ function addRow(tipo, day) {
   movDialog({
     tipo, y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
     onDone: (id, data) => {
-      if (data.y === state.y && data.m === state.m) { renderBody(id); return; }
+      if (!data || (data.y === state.y && data.m === state.m)) { renderBody(id ?? undefined); return; }
       renderBody();
       toast(`Aggiunto in ${M.MESI[data.m - 1]} ${data.y}`, { action: 'Vai', onAction: () => { location.hash = `#mese/${ymHash(data.y, data.m)}/${id}`; } });
     },

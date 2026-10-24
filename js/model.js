@@ -6,7 +6,6 @@ export const MESI = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno
 export const MESI_BREVI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
 // Stessi identificativi usati per lo storico importato: così non nascono doppioni
-// Stessi identificativi usati per lo storico importato: così non nascono doppioni
 const DEFAULT_CATS = {
   out: [['ristoranti', 'Ristoranti e bar', '#D9822B', '🍽️'], ['spesa', 'Spesa', '#4C9A2A', '🛒'], ['trasporti', 'Trasporti', '#2F6FB3', '🚆'],
     ['viaggi', 'Viaggi', '#14A3A3', '✈️'], ['svago', 'Svago e sport', '#8E44AD', '🎳'], ['shopping', 'Shopping', '#C2185B', '🛍️'],
@@ -77,6 +76,9 @@ export const hasSubs = (catId) => store.all('sub').some((s) => s.data.cat === ca
 
 // --- Movimenti ---
 export const movs = () => store.all('mov');
+
+// Copia di un movimento come movimento normale: senza i legami con una ricorrenza o un piano rateale
+export const copiaMov = ({ ricId, rataId, rataN, rataRuolo, ...copia }) => copia;
 
 export function sortMovs(list) {
   return list.sort((a, b) => (a.data.d ?? 0) - (b.data.d ?? 0) || a.data.ord - b.data.ord);
@@ -419,10 +421,16 @@ export function budgetLabel(b) {
 }
 
 // Funzione che dice se un movimento rientra nel budget. Un budget su una categoria include le sue sottocategorie.
+// Il rimborso di un reso di un pagamento a rate contato "rata per rata" è un'entrata nella categoria (di uscita) del piano:
+// nei budget riduce la spesa, come in modalità "all'acquisto" si riduce l'uscita del prezzo
+export const rimborsoReso = (r) => r.data.tipo === 'in' && r.data.rataRuolo === 'reso' && !!r.data.rataId;
+// Importo con cui un movimento conta nei budget (negativo per un rimborso)
+export const valBudget = (r) => (rimborsoReso(r) ? -r.data.val : r.data.val);
+
 function budgetMatch(su, rif) {
   const tag = (rif || '').toLowerCase();
   return (r) => {
-    if (r.data.tipo !== 'out' || !counts(r)) return false;
+    if ((r.data.tipo !== 'out' && !rimborsoReso(r)) || !counts(r)) return false;
     if (su === 'cat') return r.data.cat === rif;
     if (su === 'sub') return r.data.sub === rif && !!subOf(r);
     if (su === 'tag') return (r.data.tags || []).some((t) => t.toLowerCase() === tag);
@@ -439,8 +447,9 @@ function speseBudget(su, rif, per) {
   for (const r of movs()) {
     if (!ok(r)) continue;
     const k = periodIdx(per, r.data.y, r.data.m);
-    map.set(k, (map.get(k) || 0) + r.data.val);
+    map.set(k, (map.get(k) || 0) + valBudget(r));
   }
+  for (const [k, v] of map) if (v < 0) map.set(k, 0); // un rimborso più grande della spesa del periodo non la rende negativa
   return map;
 }
 
@@ -553,6 +562,240 @@ export function medianaMensile(su, rif, n = 12) {
   const mid = v.length >> 1;
   return Math.round(v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2);
 }
+
+// --- Pagamenti a rate (piani rateali) ---
+// rate: { desc, cat, sub, tags, prezzo, prEspr, anticipo: { val, espr, data, fondo } | null, nRate, importoRata, irEspr,
+//         ultimaRata, urEspr (null = come le altre), fondo, creditore, dataAcquisto, primaScadenza, freq, ogni (come nei ricorrenti),
+//         modalita: 'acquisto' | 'rate' (assente = impostazione generale), chiuso, chiusura: { tipo: 'saldo' | 'reso', data, val, espr, fondo } | null,
+//         gen (generazione dei movimenti automatici, vedi store.saveAuto), note, ord }
+// Ogni scadenza diventa un movimento con id fisso `mov-rata-<idPiano>-<n>` (0 = anticipo) e il campo rataId; rataRuolo dice che cos'è:
+// 'acquisto' (uscita del prezzo, senza fondo), 'anticipo', 'rata', 'interessi' (`…-<n>-int`), 'saldo', 'reso'.
+// Modalità 'acquisto': il prezzo è un'uscita alla data di acquisto; anticipo e rate muovono solo il fondo (escl), tranne la quota
+// di interessi di ogni rata, che è un'uscita normale in "Interessi e commissioni". Modalità 'rate': ogni rata è un'uscita normale.
+export const RATE_MODALITA = [['acquisto', "All'acquisto"], ['rate', 'Rata per rata']];
+export const CAT_ONERI = 'cat-interessi-commissioni';
+export const piani = () => store.all('rate');
+export const modalitaRate = () => (cfg().modalitaRate === 'rate' ? 'rate' : 'acquisto');
+export const modalitaPiano = (p) => (p.data.modalita === 'rate' || p.data.modalita === 'acquisto' ? p.data.modalita : modalitaRate());
+export const nRateOf = (p) => Math.max(1, Math.min(360, Math.floor(p.data.nRate) || 1));
+const genOf = (p) => Math.max(1, Math.min(store.AUTO_TS - 1, Math.floor(p.data.gen) || 1));
+export const anticipoVal = (p) => (typeof p.data.anticipo?.val === 'number' && p.data.anticipo.val > 0 ? p.data.anticipo.val : 0);
+export const anticipoData = (p) => (ISO.test(p.data.anticipo?.data || '') ? p.data.anticipo.data : p.data.dataAcquisto);
+export const pianoValido = (p) => ISO.test(p.data.dataAcquisto || '') && ISO.test(p.data.primaScadenza || '') &&
+  typeof p.data.prezzo === 'number' && typeof p.data.importoRata === 'number' && p.data.importoRata > 0;
+
+// Categoria predefinita per la quota di interessi: si crea la prima volta che serve. Se l'hai eliminata si usa "Altro".
+export function catOneri() {
+  store.saveDefault('cat', CAT_ONERI, { nome: 'Interessi e commissioni', tipo: 'out', colore: '#A1662F', emoji: '💳', ord: 11.5 });
+  return store.get(CAT_ONERI) ? CAT_ONERI : fallbackCat('out');
+}
+
+// Importo della rata n (1 = la prima): l'ultima può essere diversa per gli arrotondamenti
+export function importoRataN(p, n) {
+  const d = p.data;
+  if (n === nRateOf(p) && typeof d.ultimaRata === 'number') return d.ultimaRata;
+  return typeof d.importoRata === 'number' ? d.importoRata : 0;
+}
+export const rataDate = (p, n) => ricDate({ data: { inizio: p.data.primaScadenza, freq: p.data.freq, ogni: p.data.ogni } }, n - 1);
+// Tutte le scadenze: [{ n, date, val }]
+export function scadenzeRate(p) {
+  if (!ISO.test(p.data.primaScadenza || '')) return [];
+  return Array.from({ length: nRateOf(p) }, (_, i) => ({ n: i + 1, date: rataDate(p, i + 1), val: importoRataN(p, i + 1) }));
+}
+export const totaleRate = (p) => round2(scadenzeRate(p).reduce((s, x) => s + x.val, 0));
+// Costo del finanziamento = anticipo + somma delle rate − prezzo (se è positivo sono interessi e commissioni)
+export const costoFinanziamento = (p) => round2(anticipoVal(p) + totaleRate(p) - (p.data.prezzo || 0));
+// Quota di interessi di una rata: il costo diviso per il numero di rate, al centesimo; l'ultima prende la differenza
+export function quotaInteressi(p, n) {
+  const c = costoFinanziamento(p);
+  if (!(c > 0.005)) return 0;
+  const N = nRateOf(p), q = round2(c / N);
+  return Math.max(0, Math.min(n === N ? round2(c - q * (N - 1)) : q, importoRataN(p, n)));
+}
+// Rata proposta quando non ci sono interessi: (prezzo − anticipo) / numero di rate, con l'arrotondamento sull'ultima
+export function rataSenzaInteressi(prezzo, anticipo, nRate) {
+  const n = Math.max(1, Math.floor(nRate) || 1), netto = round2((prezzo || 0) - (anticipo || 0));
+  if (!(netto > 0)) return null;
+  const rata = round2(netto / n), ultima = round2(netto - rata * (n - 1));
+  return { rata, ultima: Math.abs(ultima - rata) < 0.005 ? null : ultima };
+}
+
+// Situazione del piano a una data: rate pagate e rimanenti, residuo, prossima scadenza.
+// Un piano chiuso (saldato o annullato per reso) non ha più niente da pagare.
+export function statoPiano(p, oggi = todayIso()) {
+  const sc = scadenzeRate(p);
+  const chiuso = !!p.data.chiuso;
+  const fino = chiuso && p.data.chiusura?.data && p.data.chiusura.data < oggi ? p.data.chiusura.data : oggi;
+  const rimanenti = chiuso ? [] : sc.filter((x) => x.date > oggi);
+  return {
+    chiuso, pagate: sc.filter((x) => x.date <= fino).length, rimanenti: rimanenti.length, totale: sc.length,
+    pagato: pagatoAl(p, fino),
+    residuo: chiuso ? 0 : residuoAl(p, oggi),
+    interessiResidui: round2(rimanenti.reduce((s, x) => s + quotaInteressi(p, x.n), 0)),
+    prossima: rimanenti[0] || null,
+    finita: !chiuso && !rimanenti.length,
+  };
+}
+
+// Totale ancora da pagare dei piani aperti, per il patrimonio netto (solo acquisti già fatti)
+export function rateTotali(oggi = todayIso()) {
+  let residuo = 0, aperti = 0;
+  for (const p of piani()) {
+    if (!pianoValido(p) || p.data.chiuso || p.data.dataAcquisto > oggi) continue;
+    const st = statoPiano(p, oggi);
+    if (st.residuo <= 0.005) continue;
+    residuo += st.residuo; aperti++;
+  }
+  return { residuo: round2(residuo), aperti };
+}
+
+// Rate dei piani aperti in scadenza da oggi ai prossimi `giorni` giorni: [{ p, n, date, val }]
+export function rateInScadenza(giorni = 7, oggi = todayIso()) {
+  const t = new Date(oggi + 'T12:00:00'); t.setDate(t.getDate() + giorni);
+  const fino = isoOf(t.getFullYear(), t.getMonth() + 1, t.getDate());
+  const out = [];
+  for (const p of piani()) {
+    if (!pianoValido(p) || p.data.chiuso) continue;
+    for (const x of scadenzeRate(p)) if (x.date >= oggi && x.date <= fino) out.push({ p, ...x });
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+const contiDi = (fondo) => (fondo ? [{ c: fondo }] : []);
+// Dati di un movimento generato da un piano
+function movRata(p, date, extra) {
+  const d = p.data;
+  const [y, m, g] = date.split('-').map(Number);
+  return {
+    y, m, d: g, tipo: 'out', espr: null, desc: d.desc || 'Acquisto a rate', cat: catById(d.cat) ? d.cat : fallbackCat('out'),
+    sub: d.sub || null, catAuto: false, conti: contiDi(d.fondo), contoAuto: false, tags: [...(d.tags || [])], note: null, escl: false,
+    ord: d.ord ?? 0, rataId: p.id, rataN: null, ...extra,
+  };
+}
+
+// Movimenti automatici di un piano fino a oggi: [{ kind, id, data, ts }] (data null = non serve più in questa modalità)
+function movimentiPiano(p, oggi) {
+  const d = p.data, mod = modalitaPiano(p), ts = genOf(p), out = [];
+  if (d.chiuso && !ISO.test(d.chiusura?.data || '')) return out;
+  const fine = d.chiuso ? d.chiusura.data : null;
+  const desc = d.desc || 'Acquisto a rate';
+  const add = (id, date, data) => { if (date <= oggi) out.push({ kind: 'mov', id: `mov-rata-${p.id}-${id}`, ts, data: fine && date > fine ? null : data }); };
+  const acquisto = mod === 'acquisto';
+  const reso = d.chiuso && d.chiusura.tipo === 'reso';
+  add('acquisto', d.dataAcquisto, acquisto && !reso ? movRata(p, d.dataAcquisto, { val: d.prezzo, conti: [], rataRuolo: 'acquisto' }) : null);
+  const ant = anticipoVal(p);
+  if (ant) {
+    add('0', anticipoData(p), movRata(p, anticipoData(p), {
+      desc: desc + ' · anticipo', val: ant, conti: contiDi(d.anticipo.fondo || d.fondo), escl: acquisto, rataRuolo: 'anticipo', rataN: 0,
+    }));
+  }
+  const N = nRateOf(p);
+  for (const x of scadenzeRate(p)) {
+    if (x.date > oggi) break;
+    const qi = acquisto ? quotaInteressi(p, x.n) : 0;
+    add(String(x.n), x.date, movRata(p, x.date, { desc: `${desc} · rata ${x.n}/${N}`, val: round2(x.val - qi), escl: acquisto, rataRuolo: 'rata', rataN: x.n }));
+    add(`${x.n}-int`, x.date, qi ? movRata(p, x.date, {
+      desc: `${desc} · interessi rata ${x.n}/${N}`, val: qi, cat: catOneri(), sub: null, rataRuolo: 'interessi', rataN: x.n, ord: (d.ord ?? 0) + 0.5,
+    }) : null);
+  }
+  return out;
+}
+
+// Crea i movimenti delle scadenze arrivate (anche quelle perse ad app chiusa). Restituisce quante rate ha aggiunto e quanti movimenti in tutto.
+export function generaRate(oggi = todayIso()) {
+  const list = [];
+  for (const p of piani()) if (pianoValido(p)) list.push(...movimentiPiano(p, oggi));
+  const nuovi = store.saveAuto(list);
+  return { rate: nuovi.filter((r) => r.data.rataRuolo === 'rata' || r.data.rataRuolo === 'anticipo').length, tot: nuovi.length };
+}
+
+// Il movimento d'acquisto (modalità "all'acquisto") non passa da nessun fondo: non tocca i saldi e non va segnalato
+export const fondoNonServe = (r) => !!r.data.rataId && r.data.rataRuolo === 'acquisto';
+
+// Capitale ancora da restituire alla data (modalità "all'acquisto"): prezzo − anticipo − la parte di capitale delle rate pagate
+function capitalePagato(p, data) {
+  const ant = anticipoVal(p) && anticipoData(p) <= data ? anticipoVal(p) : 0;
+  return round2(ant + scadenzeRate(p).filter((x) => x.date <= data).reduce((s, x) => s + x.val - quotaInteressi(p, x.n), 0));
+}
+// Quanto è stato pagato fino alla data (anticipo e rate): è il rimborso proposto per un reso
+export function pagatoAl(p, data) {
+  const ant = anticipoVal(p) && anticipoData(p) <= data ? anticipoVal(p) : 0;
+  return round2(ant + scadenzeRate(p).filter((x) => x.date <= data).reduce((s, x) => s + x.val, 0));
+}
+// Residuo alla data: le rate con scadenza successiva (è l'importo proposto per saldare)
+export const residuoAl = (p, data) => round2(scadenzeRate(p).filter((x) => x.date > data).reduce((s, x) => s + x.val, 0) +
+  (anticipoVal(p) && anticipoData(p) > data ? anticipoVal(p) : 0));
+
+// Chiude il piano: niente più rate dopo la data di chiusura. I movimenti automatici successivi non toccati a mano spariscono.
+function chiudi(p, chiusura) {
+  store.save('rate', p.id, { ...p.data, modalita: modalitaPiano(p), chiuso: true, chiusura, gen: genOf(p) + 1 });
+  generaRate();
+}
+
+// "Salda il residuo": pagamento finale dal fondo alla data scelta. In modalità "all'acquisto" la parte che supera il capitale
+// ancora da restituire è un costo per interessi e commissioni.
+export function saldaPiano(id, { data, val, espr = null, fondo = '' }) {
+  generaRate();
+  const p = store.get(id);
+  if (!p || !(val > 0)) return;
+  const desc = (p.data.desc || 'Acquisto a rate') + ' · saldo del residuo';
+  const base = { conti: contiDi(fondo), rataRuolo: 'saldo', ord: Date.now() };
+  if (modalitaPiano(p) === 'acquisto') {
+    const capitale = round2(Math.min(val, Math.max(0, (p.data.prezzo || 0) - capitalePagato(p, data))));
+    const interessi = round2(val - capitale);
+    if (capitale > 0.005) store.save('mov', `mov-rata-${id}-saldo`, movRata(p, data, { ...base, desc, val: capitale, espr: interessi > 0.005 ? null : espr, escl: true }));
+    if (interessi > 0.005) store.save('mov', `mov-rata-${id}-saldo-int`, movRata(p, data, { ...base, desc: desc + ' (interessi)', val: interessi, cat: catOneri(), sub: null }));
+  } else {
+    store.save('mov', `mov-rata-${id}-saldo`, movRata(p, data, { ...base, desc, val, espr }));
+  }
+  chiudi(p, { tipo: 'saldo', data, val, espr, fondo });
+}
+
+// "Annulla per reso": il piano si chiude e alla data scelta il fondo riceve il rimborso delle rate già pagate (importo modificabile,
+// per i resi parziali). In modalità "all'acquisto" il rimborso muove solo il fondo e l'uscita del prezzo si riduce di quanto rimborsato
+// (sparisce se il reso è totale); in modalità "rata per rata" il rimborso è un'entrata normale nella categoria del piano.
+export function resoPiano(id, { data, val, espr = null, fondo = '' }) {
+  generaRate();
+  const p = store.get(id);
+  if (!p) return;
+  const acquisto = modalitaPiano(p) === 'acquisto';
+  if (val > 0) {
+    store.save('mov', `mov-rata-${id}-reso`, movRata(p, data, {
+      tipo: 'in', desc: (p.data.desc || 'Acquisto a rate') + ' · rimborso per reso', val, espr, conti: contiDi(fondo),
+      escl: acquisto, rataRuolo: 'reso', ord: Date.now(),
+    }));
+  }
+  if (acquisto) {
+    const acqId = `mov-rata-${id}-acquisto`;
+    const netto = round2(Math.max(0, capitalePagato(p, data) - (val || 0)));
+    if (store.get(acqId)) { if (netto < 0.005) store.remove(acqId); else store.patch(acqId, { val: netto, espr: null }); }
+  }
+  chiudi(p, { tipo: 'reso', data, val: val || 0, espr, fondo });
+}
+
+// Riapre un piano chiuso: toglie i movimenti della chiusura e riprende a generare le rate
+export function riapriPiano(id) {
+  const p = store.get(id);
+  if (!p || !p.data.chiuso) return;
+  for (const k of ['saldo', 'saldo-int', 'reso']) if (store.get(`mov-rata-${id}-${k}`)) store.remove(`mov-rata-${id}-${k}`);
+  const acqId = `mov-rata-${id}-acquisto`;
+  if (p.data.chiusura?.tipo === 'reso' && modalitaPiano(p) === 'acquisto' && p.data.dataAcquisto <= todayIso()) {
+    store.save('mov', acqId, movRata(p, p.data.dataAcquisto, { val: p.data.prezzo, conti: [], rataRuolo: 'acquisto' }));
+  }
+  store.save('rate', id, { ...p.data, chiuso: false, chiusura: null, gen: genOf(p) + 1 });
+  generaRate();
+}
+
+// Cambio di modalità di un piano esistente: i movimenti generati e non modificati a mano si rigenerano nella nuova modalità
+export function cambiaModalitaPiano(id, modalita) {
+  const p = store.get(id);
+  if (!p || modalitaPiano(p) === modalita) return;
+  store.save('rate', id, { ...p.data, modalita, gen: genOf(p) + 1 });
+  generaRate();
+}
+
+export const creditori = () => [...new Set(['PayPal', 'Klarna', 'Scalapay', ...piani().map((p) => p.data.creditore).filter(Boolean)])]
+  .sort((a, b) => a.localeCompare(b));
 
 // Aggiornamenti una tantum dei dati salvati con versioni precedenti dell'app (idempotente)
 export function migrate() {
@@ -773,7 +1016,7 @@ export function oltreTarget(bal = balances()) {
 export function senzaConto() {
   const inizio = cfg().inizio;
   if (!inizio) return [];
-  return sortMovs(movs().filter((r) => recDate(r) > inizio && typeof r.data.val === 'number' && !allocations(r).length));
+  return sortMovs(movs().filter((r) => recDate(r) > inizio && typeof r.data.val === 'number' && !allocations(r).length && !fondoNonServe(r)));
 }
 
 // Serie per il grafico: saldi a fine mese dalla partenza a oggi
@@ -874,7 +1117,7 @@ export function usciteMedie(n = 12) {
   return { media: mesi ? round2(tot / mesi) : 0, mesi };
 }
 
-// Patrimonio netto (fondi + crediti − debiti) diviso per le uscite medie mensili: per quanti mesi si potrebbe andare avanti senza entrate.
+// Patrimonio netto (fondi + crediti − debiti − rate da pagare) diviso per le uscite medie mensili: per quanti mesi si potrebbe andare avanti senza entrate.
 export function autonomia(patrimonioNetto) {
   const { media, mesi } = usciteMedie();
   if (!(media > 0)) return null;

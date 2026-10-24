@@ -1,7 +1,8 @@
 // Archivio locale: tutti i record vivono in IndexedDB e in memoria.
 // Ogni record: { id, kind, data, updated_at, deleted, dirty }
 // kind: 'mov' (movimento), 'cat' (categoria), 'sub' (sottocategoria), 'cont' (contenitore patrimonio),
-//       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente), 'budg' (budget di spesa)
+//       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente), 'budg' (budget di spesa),
+//       'rate' (piano rateale)
 
 const DB_NAME = 'contabilita'; // in demo si usa un altro database (vedi demo.js)
 let db;
@@ -96,6 +97,30 @@ export function saveMissing(list) {
   }
   if (out.length) { persist(out); emit({ local: true, ids: out.map((r) => r.id) }); }
   return out.length;
+}
+
+// Record generati in automatico che si possono rigenerare (i movimenti dei piani rateali). updated_at è un numero piccolo,
+// la "generazione" del piano (sempre sotto AUTO_TS): si scrive solo se il record manca o se è ancora quello automatico di una
+// generazione precedente. Una modifica o un'eliminazione fatta a mano (updated_at = adesso) vince sempre, anche sugli altri dispositivi.
+// list: [{ kind, id, data, ts }], con data null se il record non serve più (si elimina). Restituisce i record comparsi.
+export const AUTO_TS = 1e9;
+export function saveAuto(list) {
+  const out = [], nuovi = [];
+  for (const x of list) {
+    const cur = recs.get(x.id);
+    if (cur && cur.updated_at >= x.ts) continue;
+    if (x.data == null) {
+      if (!cur || cur.deleted) continue;
+      out.push({ ...cur, deleted: true, updated_at: x.ts, dirty: 1 });
+      continue;
+    }
+    const r = { id: x.id, kind: x.kind, data: x.data, updated_at: x.ts, deleted: false, dirty: 1 };
+    out.push(r);
+    if (!cur || cur.deleted) nuovi.push(r);
+  }
+  for (const r of out) recs.set(r.id, r);
+  if (out.length) { persist(out); emit({ local: true, ids: out.map((r) => r.id) }); }
+  return nuovi;
 }
 
 // Modifica parziale dei dati di un record esistente
