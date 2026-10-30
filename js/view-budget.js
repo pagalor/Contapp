@@ -3,6 +3,7 @@ import * as store from './store.js';
 import { fmt, fmtEur } from './expr.js';
 import { esc, $, modal, toast, confirmBox } from './ui.js';
 import { bindAmount } from './dialogs.js';
+import { monthInput, yearInput } from './datepick.js';
 import { rowHTML, rowVuotaHTML } from './budgetui.js';
 
 let root;
@@ -78,8 +79,8 @@ function budgetDialog({ rec = null, onDone } = {}) {
       </div>
       <div class="form-grid">
         <label class="field"><span>Importo</span><input name="val" class="amt" inputmode="decimal" value="${amount ? fmt(amount.val) : ''}" required></label>
-        <label class="field" data-da="mese"><span>Vale dal</span><input name="da" type="month" value="${oggi}"></label>
-        <label class="field" data-da="anno" hidden><span>Vale dall'anno</span><input name="daY" type="number" min="2000" max="2100" step="1" inputmode="numeric" value="${oggi.slice(0, 4)}"></label>
+        <label class="field" data-da="mese"><span>Vale dal</span>${monthInput({ name: 'da', value: oggi })}</label>
+        <label class="field" data-da="anno" hidden><span>Vale dall'anno</span>${yearInput({ name: 'daY', value: oggi.slice(0, 4) })}</label>
       </div>
       <p class="bud-hint muted"></p>
       <label class="check"><input type="checkbox" name="riporto"${d.riporto ? ' checked' : ''}> <span data-rip></span></label>

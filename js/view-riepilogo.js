@@ -4,6 +4,7 @@ import * as C from './charts.js';
 import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, saldoCls, plain, round2 } from './expr.js';
 import { esc, $, toast } from './ui.js';
 import { catBars, toggleCat, tagPies } from './catstats.js';
+import { monthInput, setPick } from './datepick.js';
 
 let root, sel; // sel: anno (numero) oppure 'tutto'
 let curList = []; // movimenti del periodo mostrato, per il dettaglio delle categorie
@@ -54,7 +55,7 @@ export function render(el, { anno } = {}) {
 function rangeBar(ys) {
   const min = ys.length ? `${ys[0]}-01` : '', max = ys.length ? `${ys[ys.length - 1]}-12` : '';
   const inp = (id, label, v) => `<label class="field inline"><span>${label}</span>
-    <input type="month" id="${id}" value="${v}" min="${min}" max="${max}" placeholder="AAAA-MM"></label>`;
+    ${monthInput({ id, value: v, min, max, vuoto: 'Nessun mese', scegli: id === 'rg-from' ? 'Dall\'inizio' : 'Fino alla fine' })}</label>`;
   return `<div class="rie-range" role="group" aria-label="Intervallo di date">
     ${inp('rg-from', 'Dal', range.from)}${inp('rg-to', 'Al', range.to)}
     <button class="chip" id="rg-reset" type="button"${range.from || range.to ? '' : ' hidden'}>Tutto il periodo</button>
@@ -74,7 +75,7 @@ function bindRange() {
   };
   from.addEventListener('change', apply);
   to.addEventListener('change', apply);
-  reset.addEventListener('click', () => { from.value = ''; to.value = ''; apply(); });
+  reset.addEventListener('click', () => { setPick(from, ''); setPick(to, ''); apply(); });
 }
 
 export function redraw() { if (root && root.isConnected) draw(); }

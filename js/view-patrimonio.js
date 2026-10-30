@@ -4,6 +4,7 @@ import * as C from './charts.js';
 import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, plain, round2 } from './expr.js';
 import { esc, $, $$, toast, modal, confirmBox } from './ui.js';
 import { transferDialog } from './dialogs.js';
+import { dateInput, setPick } from './datepick.js';
 
 let root;
 export const fmtDate = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -149,8 +150,8 @@ function drawChart() {
   box.innerHTML = `<section class="card">
     <h2>Andamento</h2>
     <div class="rie-range" role="group" aria-label="Intervallo di date">
-      <label class="field inline"><span>Dal</span><input type="date" id="pg-from" value="${range.from}" min="${min}" max="${max}"></label>
-      <label class="field inline"><span>Al</span><input type="date" id="pg-to" value="${range.to}" min="${min}" max="${max}"></label>
+      <label class="field inline"><span>Dal</span>${dateInput({ id: 'pg-from', value: range.from, min, max, vuoto: 'Nessuna data', scegli: 'Dall\'inizio' })}</label>
+      <label class="field inline"><span>Al</span>${dateInput({ id: 'pg-to', value: range.to, min, max, vuoto: 'Nessuna data', scegli: 'Fino a oggi' })}</label>
       <button class="chip" id="pg-reset" type="button"${range.from || range.to ? '' : ' hidden'}>Tutto il periodo</button>
     </div>
     <div class="chart-info" aria-live="polite"></div>
@@ -167,7 +168,7 @@ function drawChart() {
   };
   from.addEventListener('change', apply);
   to.addEventListener('change', apply);
-  reset.addEventListener('click', () => { from.value = ''; to.value = ''; apply(); });
+  reset.addEventListener('click', () => { setPick(from, ''); setPick(to, ''); apply(); });
   updateChart();
 }
 
@@ -240,7 +241,7 @@ function snapDialog(snap) {
     <form class="dlg" method="dialog">
       <header class="dlg-head"><h2>${snap ? 'Rilevazione del ' + fmtDateShort(snap.data.date) : 'Rilevazione manuale'}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
       <p class="muted">Scrivi quanto c'è davvero in ogni fondo in un certo giorno. I fondi che lasci vuoti non vengono rilevati.</p>
-      <label class="field inline"><span>Data</span><input type="date" name="date" value="${snap?.data.date || M.todayIso()}" required></label>
+      <label class="field inline"><span>Data</span>${dateInput({ name: 'date', value: snap?.data.date || M.todayIso() })}</label>
       ${conts.map((c) => `<div class="snap-item"><label class="snap-row"><span>${esc(c.data.nome)}</span>
         <input class="amt" data-c="${c.id}" inputmode="decimal" value="${vals[c.id] ? fmt(vals[c.id].val) : ''}" placeholder="–"></label>
         <small class="snap-cmp" data-cmp="${c.id}"></small></div>`).join('')}
