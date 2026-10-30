@@ -244,6 +244,8 @@ Serve a far provare l'app ad altre persone senza toccare i dati veri.
 
 ## Interfaccia
 
+**Ordine entrate e uscite**: ovunque le entrate vengono sempre prima delle uscite (totali, colonne, riquadri, pulsanti di scelta del tipo, categorie, caselle del calendario). Fa eccezione solo la finestra «Debito o credito» (Mi deve / Devo), che non è un tipo di movimento.
+
 **Stile minimale e monocromatico**. Il colore ha sempre un significato: verde per le entrate (`--in`), rosso per le uscite (`--out`), ambra per gli avvisi (`--warn`), blu per il saldo dei fondi (`--saldo`), viola per i soldi buttati (`--butt`). Il saldo di un periodo ha un colore dinamico (`saldoCls` in `expr.js`): verde se positivo (`--sal-pos`), un rosso diverso da quello delle uscite se negativo (`--sal-neg`), neutro se zero. I gruppi dei fondi hanno i loro colori (`--g-<gruppo>`). I budget usano tre grigi/ambra propri: `--bud-ok` (grigio), `--bud-warn` (ambra: ritmo troppo veloce e vicino al limite), `--bud-over` (ambra intenso: sforato), mai il rosso. Gli avvisi usano `--warn` su `--warn-bg`; gli indicatori positivi/negativi `--pos`/`--neg`.
 
 **Layout e temi**:
@@ -363,18 +365,18 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 - Legenda «Il segno sulla barra indica a che punto è il periodo.»
 
 **Vista Elenco**
-- Sopra i riquadri il selettore «Entrate e uscite: Separate | Insieme» (ricordato sul dispositivo). Con **Insieme** c'è un solo riquadro «Movimenti» (con il numero dei movimenti) con entrate e uscite in ordine di data, distinte dal colore dell'importo, e un solo pulsante «+ Aggiungi movimento» in fondo; nella finestra Movimento, aperta da qui e dal calendario, compare il selettore Uscita/Entrata.
+- Sopra i riquadri il selettore «Entrate e uscite: Separate | Insieme» (ricordato sul dispositivo). Con **Insieme** c'è un solo riquadro «Movimenti» (con il numero dei movimenti) con entrate e uscite in ordine di data, distinte dal colore dell'importo, e un solo pulsante «+ Aggiungi movimento» in fondo; nella finestra Movimento, aperta da qui e dal calendario, compare il selettore Entrata/Uscita.
 - Se l'archivio è vuoto: riquadro «Non ci sono ancora movimenti…» con il pulsante «Importa lo storico» (→ Altro).
 - Due riquadri, **Entrate** e **Uscite**. Intestazione con il numero di movimenti; su schermo largo anche la riga delle colonne (Giorno, Importo, Descrizione, Categoria, «Ricevuto su» o «Pagato con»).
 - **Riga di un movimento**: giorno (– se manca); importo (sottolineato a puntini se è un'espressione, con la formula al passaggio del mouse); descrizione («Senza descrizione» in tenue); categoria con pallino colorato, emoji, nome e « · sottocategoria»; fondo (nomi uniti da «+»; «Scegli il fondo» in ambra con pallino se manca; «A rate» per l'acquisto di un piano; «—» altrimenti; in rosso se la ripartizione non torna); **matita** per modificare (con un puntino se c'è una nota). Barrata e attenuata se esclusa dai totali. Sotto, la riga dei tag: «↻ Ricorrente» (→ Ricorrenti), «▤ Acquisto a rate / Anticipo / Rata / Interessi della rata / Saldo delle rate / Reso» (→ Rate) e i `#tag` (→ pagina del tag).
 - **Voci extra** (si aprono toccando la riga, o con Invio o Spazio da tastiera): avviso «La ripartizione sui conti non torna con l'importo» con «Correggi»; editor dei tag (chip con ×, campo «Aggiungi un tag…» con suggerimenti, Invio o virgola per aggiungere); **Nota**; casella «Escludi dai totali di entrate e uscite»; pulsanti «Duplica», «Rendi ricorrente» (non per movimenti generati o senza importo), «Elimina» (con conferma e «Annulla»).
 - **Riordino**: tenendo premuto circa 0,4 secondi un movimento lo si trascina tra quelli dello stesso giorno e dello stesso riquadro (la pagina scorre da sola vicino ai bordi; vibrazione sul telefono).
-- Pulsanti «+ Aggiungi entrata» e «+ Aggiungi uscita» sotto ciascun riquadro → finestra Movimento, senza il selettore Uscita/Entrata (il tipo l'ha già scelto chi preme il pulsante; vale anche per la matita delle righe).
+- Pulsanti «+ Aggiungi entrata» e «+ Aggiungi uscita» sotto ciascun riquadro → finestra Movimento, senza il selettore Entrata/Uscita (il tipo l'ha già scelto chi preme il pulsante; vale anche per la matita delle righe).
 - **Trasferimenti tra fondi** (riquadro, se il calcolo automatico è attivo o ci sono trasferimenti nel mese): nota «non contano come entrate o uscite»; righe con giorno, importo, nota («Trasferimento» se manca), **Da** e **A**; tocco → finestra Trasferimento; «+ Aggiungi trasferimento».
 - **Uscite per categoria** e **Entrate per categoria**: vedi «Torta per categoria» sotto.
 
 **Vista Calendario**
-- Griglia da lunedì a domenica; ogni giorno è una casella con il numero, le uscite («−», rosso), le entrate («+», verde) e, se ci sono entrambe, il saldo del giorno. Sfondo verde o rosso con intensità proporzionale al saldo. Evidenziati il giorno di oggi e quello selezionato. Su telefono gli importi sono abbreviati.
+- Griglia da lunedì a domenica; ogni giorno è una casella con il numero, le entrate («+», verde), le uscite («−», rosso) e, se ci sono entrambe, il saldo del giorno. Sfondo verde o rosso con intensità proporzionale al saldo. Evidenziati il giorno di oggi e quello selezionato. Su telefono gli importi sono abbreviati.
 - **Pannello del giorno** sotto la griglia: data per esteso con il saldo del giorno; i movimenti del giorno con la stessa riga dell'elenco (senza il giorno, con le voci extra e il riordino); «Nessun movimento in questo giorno»; un solo pulsante «+ Aggiungi movimento» (già con quel giorno; il tipo si sceglie nella finestra). Senza un giorno selezionato: «Tocca un giorno per vedere i movimenti.»
 - **Senza giorno** (riquadro con il conteggio) per i movimenti senza giorno.
 - Poi, come nell'elenco: trasferimenti e categorie del mese.
@@ -447,7 +449,7 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 ### Movimenti ricorrenti (`#ricorrenti`)
 
 - **Intestazione**: titolo e «Nuovo» (→ finestra Movimento ricorrente); nota introduttiva.
-- **Statistiche** (se ci sono ricorrenze attive): Uscite fisse al mese (circa), Entrate fisse al mese (circa).
+- **Statistiche** (se ci sono ricorrenze attive): Entrate fisse al mese (circa), Uscite fisse al mese (circa).
 - **Elenco delle attive**, per prossima scadenza: emoji della categoria, descrizione, frase («Ogni mese, il 5», «Ogni 2 settimane», «Ogni anno, il 3 mar»…) e fondo, importo con segno e «prossima: data». Senza ricorrenze: testo con un esempio (Netflix).
 - **Terminati**: ricorrenze arrivate all'ultima scadenza, con «terminata».
 
@@ -470,7 +472,7 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 - **Movimenti ricorrenti**: breve descrizione e «Gestisci i movimenti ricorrenti (N)» (→ Ricorrenti).
 - **Pagamenti a rate**: descrizione, scelta «Conta gli acquisti a rate» (all'acquisto / rata per rata), nota di spiegazione e «Gestisci i pagamenti a rate (N)» (→ Rate).
 - **Budget**: breve descrizione e «Gestisci i budget (N)» (→ Budget).
-- **Categorie**: due colonne, Uscite ed Entrate. Ogni categoria: selettore del colore, emoji (un solo simbolo), nome, numero di movimenti, pulsante **↳N** (apre le sottocategorie: nome modificabile, numero di movimenti, ×, «+ Nuova sottocategoria») e **×** (elimina, con conferma: i movimenti passano in «Altro», o nella prima altra categoria dello stesso tipo, senza sottocategoria). «+ Nuova categoria di uscita» / «+ Nuova categoria di entrata».
+- **Categorie**: due colonne, Entrate e Uscite. Ogni categoria: selettore del colore, emoji (un solo simbolo), nome, numero di movimenti, pulsante **↳N** (apre le sottocategorie: nome modificabile, numero di movimenti, ×, «+ Nuova sottocategoria») e **×** (elimina, con conferma: i movimenti passano in «Altro», o nella prima altra categoria dello stesso tipo, senza sottocategoria). «+ Nuova categoria di entrata» / «+ Nuova categoria di uscita».
 - **Aspetto**: scelta «Tema» (Come il sistema, Chiaro, Scuro) e, se l'app non è già installata, «Installa come app» (o le istruzioni per Android e Windows).
 - **Riga finale**: «Rationes, versione N. I dati sono salvati su questo dispositivo [e sincronizzati, cifrati, sul tuo progetto Supabase]».
 

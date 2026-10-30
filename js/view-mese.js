@@ -672,8 +672,8 @@ function renderCalendar(body) {
     const heat = sal ? (0.08 + 0.3 * Math.sqrt(Math.abs(sal) / max)).toFixed(3) : 0;
     cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}" style="--heat:${heat};--tint:var(${sal > 0 ? '--in' : '--out'})">
       <span class="cal-n">${d}</span>
-      ${o.tout ? `<span class="cal-out">${calAmt('−', o.tout)}</span>` : ''}
       ${o.tin ? `<span class="cal-in">${calAmt('+', o.tin)}</span>` : ''}
+      ${o.tout ? `<span class="cal-out">${calAmt('−', o.tout)}</span>` : ''}
       ${o.tin && o.tout ? calSaldo(o.tin - o.tout) : ''}
     </button>`;
   }

@@ -47,8 +47,8 @@ export function render(el) {
       <section class="card">
         <h2>Categorie</h2>
         <div class="two tight">
-          <div><h3>Uscite</h3><div id="cats-out"></div><button class="add-row" data-addcat="out">+ Nuova categoria di uscita</button></div>
           <div><h3>Entrate</h3><div id="cats-in"></div><button class="add-row" data-addcat="in">+ Nuova categoria di entrata</button></div>
+          <div><h3>Uscite</h3><div id="cats-out"></div><button class="add-row" data-addcat="out">+ Nuova categoria di uscita</button></div>
         </div>
       </section>
       <section class="card">
@@ -317,7 +317,7 @@ function subsPanel(c) {
 }
 
 function renderCats() {
-  for (const tipo of ['out', 'in']) {
+  for (const tipo of ['in', 'out']) {
     const uso = new Map();
     for (const m of M.movs()) if (m.data.tipo === tipo) uso.set(m.data.cat, (uso.get(m.data.cat) || 0) + 1);
     $(`#cats-${tipo}`, root).innerHTML = M.cats(tipo).map((c) => `

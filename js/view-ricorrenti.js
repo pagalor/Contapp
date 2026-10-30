@@ -51,8 +51,8 @@ function draw() {
       <p class="muted intro-note">Abbonamenti, affitto, stipendio: li imposti una volta e il movimento viene aggiunto da solo nel giorno della scadenza.
         L'app lo registra quando la apri: se non la apri per qualche giorno, trovi i movimenti arrivati nel frattempo.</p>
       ${attive.length ? `<dl class="stats">
-        <div><dt>Uscite fisse al mese (circa)</dt><dd class="out">${fmtEur(out)}</dd></div>
         <div><dt>Entrate fisse al mese (circa)</dt><dd class="in">${fmtEur(inn)}</dd></div>
+        <div><dt>Uscite fisse al mese (circa)</dt><dd class="out">${fmtEur(out)}</dd></div>
       </dl>` : ''}
       ${attive.length ? `<div class="ric-list">${attive.map(item).join('')}</div>` : `
         <div class="empty-hint"><p>Nessun movimento ricorrente. Per esempio: Netflix da 12,99 € ogni mese il giorno 5.
