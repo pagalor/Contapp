@@ -640,8 +640,10 @@ details.history[open] > summary { margin-bottom: .8rem; }
 @media (max-width: 520px) {
   .tbl th, .tbl td { padding: .45rem .25rem; font-size: .88rem; }
   .card { padding: 1rem .9rem; }
-  .cmp-tbl th.num, .cmp-tbl td.num { width: 5.3rem; padding-left: .1rem; padding-right: .3rem; }
-  .cmp-tbl th.num:last-child, .cmp-tbl td.num:last-child { width: 4.4rem; }
+  .cmp-tbl th, .cmp-tbl td { font-size: .82rem; }
+  .cmp-tbl th.num, .cmp-tbl td.num { width: 4.5rem; padding-left: .1rem; padding-right: .3rem; }
+  .cmp-tbl th.num:last-child, .cmp-tbl td.num:last-child { width: 4.1rem; }
+  .cmp-tbl td:first-child { overflow-wrap: break-word; }
   .sums { gap: 1.1rem; }
   .sums dd { font-size: .98rem; }
   .sums .saldo dd { font-size: 1.15rem; }
