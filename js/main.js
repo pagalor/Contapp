@@ -11,6 +11,7 @@ import * as vRic from './view-ricorrenti.js';
 import * as vRate from './view-rate.js';
 import * as vBudget from './view-budget.js';
 import * as demo from './demo.js';
+import * as pannelli from './pannelli.js';
 import { $, $$, setupTooltips, debounce, toast } from './ui.js';
 import { fmtEur } from './expr.js';
 
@@ -27,7 +28,17 @@ function route() {
   const h = location.hash.replace(/^#/, '');
   const [name, a, b] = h.split('/').map((x) => (x == null ? x : decodeURIComponent(x)));
   current = NAV_OF[name || 'mese'] ? (name || 'mese') : 'mese';
-  $$('.nav a').forEach((l) => l.classList.toggle('on', l.dataset.view === NAV_OF[current]));
+  $$('.nav a').forEach((l) => {
+    const on = l.dataset.view === NAV_OF[current];
+    l.classList.toggle('on', on);
+    if (on) l.setAttribute('aria-current', 'page'); else l.removeAttribute('aria-current');
+  });
+  // Altro, Ricorrenti e Budget si aprono dal pannello dell'account: evidenziato l'avatar
+  $('#account-btn')?.classList.toggle('on', NAV_OF[current] === 'altro');
+  // Pulsante "Nuovo" (solo telefono) nelle pagine del mese
+  const fab = $('#fab');
+  if (fab) fab.hidden = NAV_OF[current] !== 'mese';
+  document.body.classList.toggle('has-fab', NAV_OF[current] === 'mese');
   window.scrollTo(0, 0);
   if (current === 'mese' || current === 'cerca' || current === 'tag') {
     let y, m;
@@ -103,14 +114,6 @@ function refreshAfterRemote() {
   else if (current === 'budget') vBudget.redraw();
 }
 
-function paintSyncDot(st) {
-  const dot = $('#sync-ind');
-  if (!dot) return;
-  dot.dataset.state = st.state;
-  dot.title = st.msg || '';
-  dot.setAttribute('aria-label', 'Sincronizzazione: ' + (st.msg || st.state));
-}
-
 // Aggiunge i movimenti ricorrenti e le rate arrivati a scadenza. Dopo l'avvio avvisa e aggiorna la vista.
 function runScadenze(avvisa = true) {
   const n = M.generaRicorrenti();
@@ -153,7 +156,8 @@ async function boot() {
   document.addEventListener('focusout', () => {
     if (pendingRemote) setTimeout(() => { if (!view().contains(document.activeElement)) refreshAfterRemote(); }, 50);
   });
-  sync.onStatus(paintSyncDot);
+  pannelli.avvia();
+  $('#fab')?.addEventListener('click', () => vMese.nuovoMovimento());
   if (!demo.attiva) sync.start();
   addEventListener('hashchange', route);
   let lastW = innerWidth;

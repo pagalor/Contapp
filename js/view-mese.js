@@ -575,16 +575,21 @@ function addTag(row, raw, refocus = false) {
 const sceglieTipo = () => mode() === 'cal' || layout() === 'all';
 
 // "+ Aggiungi uscita/entrata" apre una finestra come quella dei trasferimenti, con i pulsanti Annulla e Aggiungi
-function addRow(tipo, day) {
+function addRow(tipo, day, sceltaTipo = sceglieTipo()) {
   const t = today();
   movDialog({
-    tipo, sceltaTipo: sceglieTipo(), y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
+    tipo, sceltaTipo, y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
     onDone: (id, data) => {
       if (!data || (data.y === state.y && data.m === state.m)) { renderBody(id ?? undefined); return; }
       renderBody();
       toast(`Aggiunto in ${M.MESI[data.m - 1]} ${data.y}`, { action: 'Vai', onAction: () => { location.hash = `#mese/${ymHash(data.y, data.m)}/${id}`; } });
     },
   });
+}
+
+// Pulsante "Nuovo" del telefono: un'uscita nel mese mostrato (nel calendario il giorno scelto), con la scelta del tipo
+export function nuovoMovimento() {
+  addRow('out', mode() === 'cal' && selDay ? selDay : undefined, true);
 }
 
 // ---------------------------------------------------------------- ricerca

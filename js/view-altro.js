@@ -14,7 +14,7 @@ export function render(el) {
     <section class="altro">
       <header class="page-head"><h1>Altro</h1></header>
       <section class="card" id="sync-card"></section>
-      <section class="card">
+      <section class="card" id="sez-dati">
         <h2>Dati</h2>
         <p class="muted">Lo storico preparato dal tuo Excel si importa da qui, una volta sola, su un solo dispositivo:
         gli altri lo riceveranno con la sincronizzazione. Reimportare lo stesso file non crea doppioni.</p>
@@ -25,12 +25,12 @@ export function render(el) {
           <button class="btn ghost" data-exp="pat">Esporta patrimonio per Excel</button>
         </div>
       </section>
-      <section class="card">
+      <section class="card" id="sez-ricorrenti">
         <h2>Movimenti ricorrenti</h2>
         <p class="muted">Abbonamenti, affitto, stipendio: imposta la scadenza una volta sola e il movimento si aggiunge da solo.</p>
         <a class="btn ghost" href="#ricorrenti">Gestisci i movimenti ricorrenti${M.rics().length ? ` (${M.rics().length})` : ''}</a>
       </section>
-      <section class="card">
+      <section class="card" id="sez-rate">
         <h2>Pagamenti a rate</h2>
         <p class="muted">Acquisti pagati a rate (PayPal, Klarna, finanziamenti): le rate si aggiungono da sole e il residuo conta come debito.</p>
         <label class="field inline"><span>Conta gli acquisti a rate</span>
@@ -39,19 +39,19 @@ export function render(el) {
           Rata per rata: ogni rata è un'uscita quando la paghi. Vale per i nuovi pagamenti; quelli già inseriti si cambiano dal pagamento stesso.</p>
         <a class="btn ghost" href="#rate">Gestisci i pagamenti a rate${M.piani().length ? ` (${M.piani().length})` : ''}</a>
       </section>
-      <section class="card">
+      <section class="card" id="sez-budget">
         <h2>Budget</h2>
         <p class="muted">Imposta quanto vuoi spendere al massimo per una categoria, una sottocategoria, un tag o per tutte le uscite.</p>
         <a class="btn ghost" href="#budget">Gestisci i budget${M.budgets({ tutti: true }).length ? ` (${M.budgets({ tutti: true }).length})` : ''}</a>
       </section>
-      <section class="card">
+      <section class="card" id="sez-categorie">
         <h2>Categorie</h2>
         <div class="two tight">
           <div><h3>Entrate</h3><div id="cats-in"></div><button class="add-row" data-addcat="in">+ Nuova categoria di entrata</button></div>
           <div><h3>Uscite</h3><div id="cats-out"></div><button class="add-row" data-addcat="out">+ Nuova categoria di uscita</button></div>
         </div>
       </section>
-      <section class="card">
+      <section class="card" id="sez-aspetto">
         <h2>Aspetto</h2>
         <label class="field inline"><span>Tema</span>
           <select id="theme">
@@ -65,18 +65,38 @@ export function render(el) {
   renderCats();
   bind();
   showVersion();
+  if (sezione) { const id = sezione; sezione = null; requestAnimationFrame(() => scorriA(id)); }
   if (unsub) unsub();
   unsub = sync.onStatus(() => { if (root.isConnected) paintStatus(); else unsub(); });
 }
 
+// Apre la pagina Altro su una sezione (dal pannello dell'account): sync, dati, ricorrenti, rate, budget, categorie, aspetto.
+// La route resta #altro: la sezione si ricorda qui finché la pagina non è disegnata.
+let sezione = null;
+export function vaiA(sez) {
+  if (location.hash === '#altro' && root?.isConnected) { scorriA(sez); return; }
+  sezione = sez;
+  location.hash = '#altro';
+}
+function scorriA(sez) {
+  const el = $(sez === 'sync' ? '#sync-card' : '#sez-' + sez, root);
+  if (!el) return;
+  el.scrollIntoView({ block: 'start' });
+  el.classList.remove('flash-sez'); void el.offsetWidth; el.classList.add('flash-sez');
+}
+
 // La versione è il numero della cache del service worker (VERSION in sw.js, "contabilita-vN"):
-// è quella dei file che l'app sta davvero usando. Se non è disponibile, non si scrive nessun numero.
-async function showVersion() {
+// è quella dei file che l'app sta davvero usando. Se non è disponibile, il numero è null.
+export async function numeroVersione() {
   try {
     const nums = (await caches.keys()).map((k) => /^contabilita-v(\d+)$/.exec(k)).filter(Boolean).map((m) => +m[1]);
-    const el = $('#app-ver', root);
-    if (nums.length && el) el.textContent = `, versione ${Math.max(...nums)}`;
-  } catch { /* cache non disponibile (es. navigazione privata): nessun numero */ }
+    return nums.length ? Math.max(...nums) : null;
+  } catch { return null; /* cache non disponibile (es. navigazione privata) */ }
+}
+async function showVersion() {
+  const n = await numeroVersione();
+  const el = $('#app-ver', root);
+  if (n && el) el.textContent = `, versione ${n}`;
 }
 
 // --- Sincronizzazione ---

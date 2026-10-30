@@ -18,9 +18,10 @@ export function toast(msg, { action, onAction, ms = 3500 } = {}) {
 
 // Finestra modale basata su <dialog>. Restituisce il dialog; chiamare dlg.close() per chiudere.
 // Con { sheet: true } la finestra occupa tutto lo schermo e segue l'area visibile, così la tastiera non copre i pulsanti.
-export function modal(html, { onClose, wide, sheet } = {}) {
+// cls aggiunge altre classi (per esempio i pannelli dell'account e della sincronizzazione).
+export function modal(html, { onClose, wide, sheet, cls } = {}) {
   const dlg = document.createElement('dialog');
-  dlg.className = 'modal' + (wide ? ' wide' : '') + (sheet ? ' sheet' : '');
+  dlg.className = 'modal' + (wide ? ' wide' : '') + (sheet ? ' sheet' : '') + (cls ? ' ' + cls : '');
   dlg.innerHTML = html;
   document.body.appendChild(dlg);
   const vv = sheet ? window.visualViewport : null;
