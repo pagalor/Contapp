@@ -2,6 +2,7 @@ import * as store from './store.js';
 import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, saldoCls, plain, round2 } from './expr.js';
 import { esc, $, $$, modal, toast, confirmBox } from './ui.js';
+import { dateInput } from './datepick.js';
 
 let root;
 const FILTER_KEY = 'contabilita.debitiFiltro';
@@ -118,7 +119,7 @@ function editor(rec) {
         <label class="field"><span>Persona</span><input name="persona" list="dl-persone" value="${esc(d.persona)}" required autocomplete="off"></label>
         <label class="field"><span>Importo</span><input name="val" class="amt" inputmode="decimal" value="${d.val == null ? '' : fmt(d.val)}" required></label>
         <label class="field"><span>Per cosa</span><input name="desc" value="${esc(d.desc)}" placeholder="es. cena di sabato" autocomplete="off"></label>
-        <label class="field"><span>Data</span><input name="data" type="date" value="${d.data}" required></label>
+        <label class="field"><span>Data</span>${dateInput({ name: 'data', value: d.data })}</label>
       </div>
       ${auto ? `<label class="field"><span data-fondo-label></span><select name="fondo">${fondoOptions(d.fondo)}</select></label>
       <p class="muted small-note">Se i soldi sono usciti o entrati davvero da un tuo fondo, sceglilo: il saldo del fondo resta corretto
@@ -147,7 +148,7 @@ function editor(rec) {
     const res = round2((amount?.val || 0) - d.rimborsi.reduce((s, p) => s + (p.val || 0), 0));
     box.innerHTML = (d.rimborsi.length ? d.rimborsi.map((p, i) => `
       <div class="rimb-row" data-i="${i}">
-        <input type="date" data-rk="data" value="${p.data}" aria-label="Data">
+        ${dateInput({ value: p.data, attrs: 'data-rk="data"', label: 'Data' })}
         <input class="amt" data-rk="val" inputmode="decimal" value="${p.val == null ? '' : fmt(p.val)}" aria-label="Importo">
         ${auto ? `<select data-rk="fondo" aria-label="${d.tipo === 'credito' ? 'Ricevuto su' : 'Pagato con'}">${fondoOptions(p.fondo).replace('Nessuno (non tocca i fondi)', 'Nessun fondo')}</select>` : ''}
         <button type="button" class="icon-btn small" data-rmr aria-label="Togli">×</button>

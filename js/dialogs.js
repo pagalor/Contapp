@@ -2,6 +2,7 @@ import * as store from './store.js';
 import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, plain, round2 } from './expr.js';
 import { esc, $, $$, modal, toast, confirmBox } from './ui.js';
+import { dayPicker, dateInput, setPick, focusPick } from './datepick.js';
 
 const accOptions = (sel, { empty = '' } = {}) =>
   (empty ? `<option value="">${esc(empty)}</option>` : '') +
@@ -98,52 +99,6 @@ export function splitEditor(rec, onDone) {
   paint();
 }
 
-// --- Scelta della data: un piccolo calendario con le frecce per cambiare mese ---
-// `y`, `m` e `selected` sono il mese e il giorno attuali (selected può essere null).
-// `onPick(giorno, anno, mese)` riceve la scelta; con "Senza giorno" il giorno è null e il mese è quello mostrato.
-export function dayPicker({ y, m, selected = null, onPick }) {
-  let cy = y, cm = m; // mese mostrato
-  const dlg = modal(`
-    <div class="dlg day-picker">
-      <header class="dlg-head dp-head">
-        <button type="button" class="icon-btn" data-nav="-1" aria-label="Mese precedente">‹</button>
-        <h2 class="dp-title" aria-live="polite"></h2>
-        <button type="button" class="icon-btn" data-nav="1" aria-label="Mese successivo">›</button>
-      </header>
-      <div class="dp-grid"></div>
-      <div class="actions"><button type="button" class="btn ghost" data-none>Senza giorno</button><button type="button" class="btn ghost" data-x>Annulla</button></div>
-    </div>`);
-  function paint() {
-    const n = new Date(cy, cm, 0).getDate();
-    const first = (new Date(cy, cm - 1, 1).getDay() + 6) % 7; // il lunedì è la prima colonna
-    const t = new Date();
-    const oggi = t.getFullYear() === cy && t.getMonth() + 1 === cm ? t.getDate() : null;
-    const scelto = cy === y && cm === m ? selected : null;
-    let cells = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((g) => `<div class="cal-h">${g}</div>`).join('');
-    cells += '<span></span>'.repeat(first);
-    for (let i = 1; i <= n; i++) {
-      cells += `<button type="button" class="dp-day${i === scelto ? ' sel' : ''}${i === oggi ? ' today' : ''}" data-day="${i}"${i === scelto ? ' aria-pressed="true"' : ''}>${i}</button>`;
-    }
-    $('.dp-title', dlg).textContent = `${M.MESI[cm - 1]} ${cy}`;
-    $('.dp-grid', dlg).innerHTML = cells;
-  }
-  dlg.addEventListener('click', (e) => {
-    const nav = e.target.closest('[data-nav]');
-    if (nav) {
-      cm += Number(nav.dataset.nav);
-      if (cm < 1) { cm = 12; cy--; } else if (cm > 12) { cm = 1; cy++; }
-      paint();
-      return;
-    }
-    const b = e.target.closest('[data-day]');
-    if (b) { dlg.close(); onPick(Number(b.dataset.day), cy, cm); return; }
-    if (e.target.closest('[data-none]')) { dlg.close(); onPick(null, cy, cm); return; }
-    if (e.target.closest('[data-x]')) dlg.close();
-  });
-  paint();
-  return dlg;
-}
-
 // --- Movimento: finestra per aggiungerne uno nuovo o modificarne uno esistente ---
 // Non salva niente finché non si preme "Aggiungi" (o "Salva"); "Annulla" chiude senza lasciare tracce.
 // `rec` è il movimento da modificare; `seed` precompila i campi di un nuovo movimento (serve a "Aggiungi e duplica").
@@ -164,8 +119,8 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
     <form class="dlg mov-dlg" method="dialog" novalidate>
       <header class="dlg-head"><h2 data-title></h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
       ${sceltaTipo ? `<div class="seg wide" role="group" aria-label="Tipo di movimento">
-        <button type="button" data-seg="out">Uscita</button>
         <button type="button" data-seg="in">Entrata</button>
+        <button type="button" data-seg="out">Uscita</button>
       </div>` : ''}
       <label class="field big-amt"><span>Importo (€)</span>
         <input name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" enterkeyhint="next">
@@ -381,7 +336,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
   });
   // Toccando la data si apre il calendario: si sceglie giorno e mese (con le frecce) in un colpo solo
   const scegliData = () => dayPicker({
-    y: cur.y, m: cur.m, selected: cur.d,
+    y: cur.y, m: cur.m, selected: cur.d, vuoto: 'Senza giorno',
     onPick: (g, yy, mm) => { Object.assign(cur, { y: yy, m: mm, d: g }); f.d.value = dataTesto(); setTitle(); },
   });
   f.d.addEventListener('click', scegliData);
@@ -433,7 +388,7 @@ export function transferDialog({ rec = null, da = '', a = '', val = null, date =
         <label class="field"><span>A</span><select name="a" required>${accOptions(rec?.data.a || a, { empty: 'Scegli' })}</select></label>
       </div>
       <label class="field"><span>Importo (€)</span><input name="val" class="amt trf-amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${amount ? fmt(amount.val) : ''}" required></label>
-      <label class="field"><span>Data</span><input name="date" type="date" value="${d0}" required></label>
+      <label class="field"><span>Data</span>${dateInput({ name: 'date', value: d0 })}</label>
       <label class="field"><span>Nota</span><input name="note" value="${esc(rec?.data.note || '')}" autocomplete="off"></label>
       <div class="actions sticky-actions">
         ${rec ? '<button type="button" class="btn ghost danger" data-del>Elimina</button>' : ''}
@@ -551,8 +506,8 @@ export function ricDialog({ rec = null, seed = null, onDone } = {}) {
       <header class="dlg-head"><h2>${isNew ? 'Nuovo movimento ricorrente' : 'Movimento ricorrente'}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
       <p class="muted">Viene aggiunto da solo ai movimenti, ogni volta che arriva la scadenza.</p>
       <div class="seg wide" role="group">
-        <button type="button" data-tipo="out" aria-pressed="${d.tipo === 'out'}">Uscita</button>
         <button type="button" data-tipo="in" aria-pressed="${d.tipo === 'in'}">Entrata</button>
+        <button type="button" data-tipo="out" aria-pressed="${d.tipo === 'out'}">Uscita</button>
       </div>
       <div class="form-grid">
         <label class="field"><span>Descrizione</span><input name="desc" list="dl-ric-${d.tipo}" value="${esc(d.desc)}" placeholder="es. Netflix" autocomplete="off" required></label>
@@ -561,11 +516,11 @@ export function ricDialog({ rec = null, seed = null, onDone } = {}) {
         <label class="field"><span data-conto-label></span><select name="conto"></select></label>
       </div>
       <div class="form-grid">
-        <label class="field"><span>Prima scadenza</span><input name="inizio" type="date" value="${d.inizio}" required></label>
+        <label class="field"><span>Prima scadenza</span>${dateInput({ name: 'inizio', value: d.inizio })}</label>
         <div class="field"><span>Si ripete ogni</span>
           <div class="ric-every"><input name="ogni" type="number" min="1" max="99" step="1" value="${Math.max(1, d.ogni || 1)}" inputmode="numeric" aria-label="Ogni quante volte">
             <select name="freq" aria-label="Unità">${M.FREQ.map(([k, p]) => `<option value="${k}"${k === d.freq ? ' selected' : ''}>${p}</option>`).join('')}</select></div></div>
-        <label class="field"><span>Ultima scadenza (facoltativa)</span><input name="fine" type="date" value="${d.fine || ''}"></label>
+        <label class="field"><span>Ultima scadenza (facoltativa)</span>${dateInput({ name: 'fine', value: d.fine, vuoto: 'Nessuna data', scegli: 'Nessuna' })}</label>
       </div>
       <p class="ric-sum muted small-note"></p>
       <label class="field"><span>Nota</span><input name="note" value="${esc(d.note || '')}" autocomplete="off"></label>
@@ -704,7 +659,7 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
         <label class="field"><span>Prezzo del bene</span><input name="prezzo" class="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" value="${prezzo ? fmt(prezzo.val) : ''}" required></label>
         <label class="field"><span>Categoria</span><select name="cat"></select></label>
         <label class="field" data-subf hidden><span>Sottocategoria</span><select name="sub"></select></label>
-        <label class="field"><span>Data di acquisto</span><input name="acq" type="date" value="${d.dataAcquisto}" required></label>
+        <label class="field"><span>Data di acquisto</span>${dateInput({ name: 'acq', value: d.dataAcquisto })}</label>
         <label class="field"><span>Creditore (facoltativo)</span><input name="cred" list="dl-cred" value="${esc(d.creditore || '')}" placeholder="es. Klarna" autocomplete="off"></label>
       </div>
       <h3 class="rate-h">Rate</h3>
@@ -712,7 +667,7 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
         <label class="field"><span>Numero di rate</span><input name="n" type="number" min="1" max="360" step="1" inputmode="numeric" value="${d.nRate || ''}" required></label>
         <label class="field"><span>Importo della rata</span><input name="rata" class="amt" inputmode="decimal" autocomplete="off" placeholder="da inserire" value="${rata ? fmt(rata.val) : ''}" required></label>
         <label class="field"><span>Ultima rata, se diversa</span><input name="ultima" class="amt" inputmode="decimal" autocomplete="off" placeholder="come le altre" value="${ultima ? fmt(ultima.val) : ''}"></label>
-        <label class="field"><span>Prima scadenza</span><input name="prima" type="date" value="${d.primaScadenza}" required></label>
+        <label class="field"><span>Prima scadenza</span>${dateInput({ name: 'prima', value: d.primaScadenza })}</label>
         <div class="field"><span>Si ripete ogni</span>
           <div class="ric-every"><input name="ogni" type="number" min="1" max="99" step="1" value="${Math.max(1, d.ogni || 1)}" inputmode="numeric" aria-label="Ogni quante volte">
             <select name="freq" aria-label="Unità">${M.FREQ.map(([k, pl]) => `<option value="${k}"${k === d.freq ? ' selected' : ''}>${pl}</option>`).join('')}</select></div></div>
@@ -722,7 +677,7 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
       <h3 class="rate-h">Anticipo <span class="muted">(facoltativo)</span></h3>
       <div class="form-grid">
         <label class="field"><span>Importo</span><input name="ant" class="amt" inputmode="decimal" autocomplete="off" placeholder="nessuno" value="${ant ? fmt(ant.val) : ''}"></label>
-        <label class="field" data-antf><span>Data</span><input name="antData" type="date" value="${d.anticipo?.data || d.dataAcquisto}"></label>
+        <label class="field" data-antf><span>Data</span>${dateInput({ name: 'antData', value: d.anticipo?.data || d.dataAcquisto })}</label>
         <label class="field" data-antf><span>Pagato con</span><select name="antFondo">${fondoOpts(d.anticipo?.fondo || d.fondo, 'Come le rate')}</select></label>
       </div>
       <p class="rate-sum"></p>
@@ -761,7 +716,7 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
     showAmt(f.rata, rata); showAmt(f.ultima, ultima);
   }
   function autoScadenza() {
-    if (scadAuto && f.acq.value) f.prima.value = modSubito ? f.acq.value : unMeseDopo(f.acq.value);
+    if (scadAuto && f.acq.value) setPick(f.prima, modSubito ? f.acq.value : unMeseDopo(f.acq.value));
   }
   function paintCat() {
     f.cat.innerHTML = M.cats('out').map((c) => `<option value="${c.id}"${c.id === d.cat ? ' selected' : ''}>${esc(M.catLabel(c))}</option>`).join('');
@@ -830,7 +785,7 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
   f.addEventListener('change', (e) => {
     const n = e.target.name;
     if (n === 'modello') applyModello(e.target.value);
-    if (n === 'acq') { autoScadenza(); if (!d.anticipo?.data) f.antData.value = f.acq.value; paintSum(); }
+    if (n === 'acq') { autoScadenza(); if (!d.anticipo?.data) setPick(f.antData, f.acq.value); paintSum(); }
     if (n === 'prima') { scadAuto = false; paintSum(); }
     if (n === 'freq') paintSum();
     if (n === 'cat') { d.cat = e.target.value; d.sub = M.suggestSub(d.cat, f.desc.value.trim()); catManual = true; paintCat(); }
@@ -874,7 +829,7 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
     document.activeElement?.blur?.();
     const tg = $('[data-tagin]', f);
     if (tg?.value.trim()) addTags(tg.value);
-    const err = (msg, el) => { toast(msg); el?.focus(); };
+    const err = (msg, el) => { toast(msg); if (el?.dataset?.pick) focusPick(el); else el?.focus(); };
     if (!f.desc.value.trim()) return err('Scrivi una descrizione.', f.desc);
     if (!(prezzo?.val > 0)) return err('Indica il prezzo del bene.', f.prezzo);
     if (!(rata?.val > 0)) return err("Indica l'importo della rata.", f.rata);
@@ -933,7 +888,7 @@ export function chiusuraDialog(p, tipo, onDone) {
           ${acquisto ? "Il rimborso non conta come entrata e l'uscita del prezzo si riduce di quanto ti viene restituito: sparisce se il reso è totale." : 'Il rimborso è un\'entrata nella categoria del piano.'}`
         : `Registra il pagamento finale: il piano si chiude e non vengono aggiunte altre rate.${acquisto ? ' Se paghi più del capitale ancora da restituire, la differenza conta come interessi e commissioni.' : ''}`}</p>
       <div class="form-grid">
-        <label class="field"><span>Data</span><input name="date" type="date" value="${oggi}" max="${oggi}" required></label>
+        <label class="field"><span>Data</span>${dateInput({ name: 'date', value: oggi, max: oggi })}</label>
         <label class="field"><span>${reso ? 'Rimborso' : 'Importo pagato'}</span><input name="val" class="amt" inputmode="decimal" autocomplete="off" value="${fmt(amount.val)}"></label>
       </div>
       <label class="field"><span>${reso ? 'Ricevuto su' : 'Pagato con'}</span><select name="fondo"><option value="">Nessun fondo</option>${accOptions(p.data.fondo)}</select></label>
@@ -951,7 +906,7 @@ export function chiusuraDialog(p, tipo, onDone) {
     e.preventDefault();
     if (e.submitter && e.submitter.value !== 'ok') return;
     document.activeElement?.blur?.();
-    if (!f.date.value || f.date.value > oggi) { toast('Scegli una data di oggi o passata.'); f.date.focus(); return; }
+    if (!f.date.value || f.date.value > oggi) { toast('Scegli una data di oggi o passata.'); focusPick(f.date); return; }
     const val = amount?.val ?? 0;
     if (val < 0 || (!reso && !(val > 0))) { toast(reso ? 'Il rimborso non può essere negativo.' : 'Indica quanto hai pagato.'); f.val.focus(); return; }
     const args = { data: f.date.value, val, espr: amount?.espr || null, fondo: f.fondo.value };

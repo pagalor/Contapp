@@ -3,6 +3,7 @@ import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, fmtSigned, plain, round2 } from './expr.js';
 import { esc, $, $$, toast, confirmBox } from './ui.js';
 import { transferDialog, adjustDialog } from './dialogs.js';
+import { dateInput } from './datepick.js';
 import { fmtDate, fmtDateShort } from './view-patrimonio.js';
 
 let root;
@@ -24,7 +25,7 @@ export function renderConfig(el) {
         <p class="muted">I saldi iniziali sono quelli che avevi alla fine della data di partenza. Le entrate, le uscite e i trasferimenti
         dei giorni successivi aggiornano i fondi in automatico. I movimenti precedenti restano nello storico ma non toccano i saldi.</p>
         <div class="start-row">
-          <label class="field inline"><span>Data di partenza</span><input type="date" id="inizio" value="${cfg.inizio || ''}"></label>
+          <label class="field inline"><span>Data di partenza</span>${dateInput({ id: 'inizio', value: cfg.inizio, scegli: 'Scegli la data' })}</label>
           ${cfg.inizio ? '<button class="btn ghost small" data-act="stop">Disattiva il calcolo automatico</button>' : ''}
         </div>
         ${last ? `<button class="link-btn" data-act="fromsnap">Usa come saldi iniziali i valori della rilevazione del ${fmtDateShort(last.data.date)}</button>` : ''}

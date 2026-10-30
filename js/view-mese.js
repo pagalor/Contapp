@@ -4,6 +4,7 @@ import { fmt, fmtEur, fmtSigned, saldoCls } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
 import { catBars, toggleCat, setPieOpen } from './catstats.js';
 import * as B from './budgetui.js';
+import { monthPicker } from './datepick.js';
 import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov, movDialog } from './dialogs.js';
 
 let state = { y: 0, m: 0, q: '' };
@@ -40,7 +41,6 @@ export function render(el, { y, m, q = '', highlight } = {}) {
         <div class="mese-nav">
           <button class="icon-btn" data-act="prev" aria-label="Mese precedente">${chevron('l')}</button>
           <button class="mese-title" data-act="pick" aria-label="Scegli il mese">${M.MESI[state.m - 1]} <span>${state.y}</span></button>
-          <input type="month" class="month-picker" value="${ymHash(state.y, state.m)}" tabindex="-1" aria-hidden="true">
           <button class="icon-btn" data-act="next" aria-label="Mese successivo">${chevron('r')}</button>
           ${isNow ? '' : '<button class="btn ghost small" data-act="oggi">Oggi</button>'}
         </div>
@@ -82,15 +82,7 @@ function bindHead() {
     if (act === 'prev') { m--; if (m < 1) { m = 12; y--; } go(y, m); }
     if (act === 'next') { m++; if (m > 12) { m = 1; y++; } go(y, m); }
     if (act === 'oggi') { const t = today(); go(t.y, t.m); }
-    if (act === 'pick') {
-      const p = $('.month-picker', root);
-      if (p.showPicker) { try { p.showPicker(); return; } catch {} }
-      p.focus(); p.click();
-    }
-  });
-  $('.month-picker', root).addEventListener('change', (e) => {
-    const [y, m] = e.target.value.split('-').map(Number);
-    if (y && m) go(y, m);
+    if (act === 'pick') monthPicker({ y: state.y, m: state.m, onPick: (yy, mm) => go(yy, mm) });
   });
   root.querySelector('.seg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mode]');
@@ -680,8 +672,8 @@ function renderCalendar(body) {
     const heat = sal ? (0.08 + 0.3 * Math.sqrt(Math.abs(sal) / max)).toFixed(3) : 0;
     cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}" style="--heat:${heat};--tint:var(${sal > 0 ? '--in' : '--out'})">
       <span class="cal-n">${d}</span>
-      ${o.tout ? `<span class="cal-out">${calAmt('−', o.tout)}</span>` : ''}
       ${o.tin ? `<span class="cal-in">${calAmt('+', o.tin)}</span>` : ''}
+      ${o.tout ? `<span class="cal-out">${calAmt('−', o.tout)}</span>` : ''}
       ${o.tin && o.tout ? calSaldo(o.tin - o.tout) : ''}
     </button>`;
   }

@@ -40,8 +40,9 @@ js/sync.js              autenticazione Supabase, pull e push, gestione della fra
 js/crypto.js            PBKDF2, AES-GCM, HMAC per gli id, conservazione delle chiavi
 js/catstats.js          entrate/uscite per categoria (torta, percentuali, dettaglio con sottocategorie), torte per categoria di un tag; usato da Mese e Riepilogo. Si vede solo la torta: toccando il centro (`.donut-hit`, un solo ascolto sul documento) si apre l'elenco delle voci
 js/charts.js            grafici SVG fatti a mano: barre, linea, aree impilate nel tempo (con selezione interattiva del punto), anello (si anima quando compare scorrendo la pagina)
+js/datepick.js           scelta di date, mesi e anni: calendari (`dayPicker`, `monthPicker`, `yearPicker`) e campi (`dateInput`, `monthInput`, `yearInput`, `setPick`), usati in tutta l'app al posto dei selettori del browser
 js/ui.js                toast (con pulsante d'azione), finestre (`modal`, `confirmBox`, `promptBox`), tooltip dei grafici (`data-tip`), download, debounce
-js/dialogs.js           finestre condivise: movimento (nuovo e modifica, con "Pagato a rate" e la scelta della data in un calendario con le frecce per cambiare mese: `dayPicker`), ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente, pagamento a rate (con i modelli precompilati), saldo del residuo e annullamento per reso; `bindAmount` (campo importo con espressioni) usato anche da Budget
+js/dialogs.js           finestre condivise: movimento (nuovo e modifica, con "Pagato a rate" e la scelta della data con `dayPicker` di datepick.js), ripartizione su più fondi, trasferimento, correzione saldo, editor dei tag, movimento ricorrente, pagamento a rate (con i modelli precompilati), saldo del residuo e annullamento per reso; `bindAmount` (campo importo con espressioni) usato anche da Budget
 js/view-mese.js         pagina Mese: elenco (entrate e uscite in due riquadri separati o in un unico elenco ordinato per data, scelta ricordata sul dispositivo) e calendario (caselle colorate in base al saldo del giorno), ricerca, trasferimenti (righe con la stessa grafica dei movimenti, Da e A espliciti), avvisi, categorie in fondo. I movimenti sono di sola lettura: toccandone uno (elenco o calendario) si aprono le voci extra (tag, nota, duplica…), e solo la matita apre la finestra di modifica (`movDialog`), la stessa del "+ Aggiungi". Tenendo premuto su un movimento (circa 0,4 s) lo si trascina, ma solo tra quelli dello stesso giorno e dello stesso riquadro (entrate, uscite, giorno del calendario, «Senza giorno»); a fine trascinamento `ord` dei movimenti di quel giorno viene rinumerato (0, 1, 2…)
 js/view-riepilogo.js    pagina Riepilogo: statistiche (medie al mese, risparmio), saldo accumulato interattivo, barre con tabella mensile o annuale espandibile, proiezione a fine anno, torte per categoria, confronto con l'anno prima (categorie a scomparsa), spese più grandi, tag, soldi buttati
 js/view-patrimonio.js   pagina Patrimonio: saldi per fondo (in ordine decrescente), mesi di autonomia, andamento (interattivo, con intervallo di date personalizzabile), rilevazioni manuali e storiche; contiene anche la finestra della rilevazione manuale (`snapDialog`) e i formati di data `fmtDate`/`fmtDateShort`
@@ -243,6 +244,8 @@ Serve a far provare l'app ad altre persone senza toccare i dati veri.
 
 ## Interfaccia
 
+**Ordine entrate e uscite**: ovunque le entrate vengono sempre prima delle uscite (totali, colonne, riquadri, pulsanti di scelta del tipo, categorie, caselle del calendario). Fa eccezione solo la finestra «Debito o credito» (Mi deve / Devo), che non è un tipo di movimento.
+
 **Stile minimale e monocromatico**. Il colore ha sempre un significato: verde per le entrate (`--in`), rosso per le uscite (`--out`), ambra per gli avvisi (`--warn`), blu per il saldo dei fondi (`--saldo`), viola per i soldi buttati (`--butt`). Il saldo di un periodo ha un colore dinamico (`saldoCls` in `expr.js`): verde se positivo (`--sal-pos`), un rosso diverso da quello delle uscite se negativo (`--sal-neg`), neutro se zero. I gruppi dei fondi hanno i loro colori (`--g-<gruppo>`). I budget usano tre grigi/ambra propri: `--bud-ok` (grigio), `--bud-warn` (ambra: ritmo troppo veloce e vicino al limite), `--bud-over` (ambra intenso: sforato), mai il rosso. Gli avvisi usano `--warn` su `--warn-bg`; gli indicatori positivi/negativi `--pos`/`--neg`.
 
 **Layout e temi**:
@@ -252,6 +255,8 @@ Serve a far provare l'app ad altre persone senza toccare i dati veri.
 - Le righe dei movimenti cambiano disposizione con una container query sulla larghezza del riquadro (`container: ledger`), non dello schermo.
 - Font di sistema e numeri tabellari (`tabular-nums`).
 - Il colore della barra del browser (`meta theme-color`) segue il tema scelto (`applyTheme` in `view-altro.js`); `theme_color` e `background_color` del manifest (`#17181c`, il fondo del logo) valgono solo per la schermata di avvio dell'app installata.
+
+**Date, mesi e anni**: non si usano mai i selettori del browser (`<input type="date">`, `type="month"`): dove serve una data c'è un pulsante che mostra il valore («12 novembre 2026», «Novembre 2026», «2026») e apre il calendario di `datepick.js`, sempre uguale: per le date i giorni del mese con le frecce ‹ › per cambiare mese e, dove la data si può togliere, un pulsante come «Senza giorno» o «Nessuna data»; per i mesi dodici mesi con le frecce per cambiare anno; per gli anni dodici anni per volta. Si scrive nella pagina con `dateInput`, `monthInput` o `yearInput` (un input nascosto con il valore `AAAA-MM-GG`, `AAAA-MM` o `AAAA`, più il pulsante) e si legge come un input normale: l'input nascosto lancia `input` e `change` quando si sceglie. Dal codice il valore si cambia con `setPick(input, valore)`, non con `.value =` (il pulsante non si aggiornerebbe); `min` e `max` rendono non scegliibili i giorni o i mesi fuori intervallo. Un solo ascolto sul documento apre i calendari. Dove c'erano: titolo del mese in Mese, Dal/Al del Riepilogo (mesi) e del Patrimonio (giorni), data di partenza dei Fondi, trasferimento, ricorrenti, rate (acquisto, prima scadenza, anticipo, saldo e reso), debiti (data e rimborsi), rilevazione manuale, budget («Vale dal» in mesi o in anni) e finestra del movimento.
 
 **Testi**: nell'interfaccia si parla di **fondi**, non di "conti". Nelle righe la colonna si chiama "Pagato con" per le uscite e "Ricevuto su" per le entrate. Nel codice id e route restano `conto`, `conti`, `cont`.
 
@@ -339,7 +344,7 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 
 **Intestazione**
 - Frecce «Mese precedente» e «Mese successivo».
-- Titolo «Mese Anno» (per esempio «Marzo 2026»): toccandolo si apre il selettore del mese.
+- Titolo «Mese Anno» (per esempio «Marzo 2026»): toccandolo si apre il calendario dei mesi (con le frecce per cambiare anno).
 - Pulsante «Oggi» (solo se non si è nel mese attuale).
 - Tre totali del mese: **Entrate** (verde), **Uscite** (rosso), **Saldo** (colore dinamico, con segno). Valgono anche durante la ricerca e restano quelli del mese.
 
@@ -360,18 +365,18 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 - Legenda «Il segno sulla barra indica a che punto è il periodo.»
 
 **Vista Elenco**
-- Sopra i riquadri il selettore «Entrate e uscite: Separate | Insieme» (ricordato sul dispositivo). Con **Insieme** c'è un solo riquadro «Movimenti» (con il numero dei movimenti) con entrate e uscite in ordine di data, distinte dal colore dell'importo, e un solo pulsante «+ Aggiungi movimento» in fondo; nella finestra Movimento, aperta da qui e dal calendario, compare il selettore Uscita/Entrata.
+- Sopra i riquadri il selettore «Entrate e uscite: Separate | Insieme» (ricordato sul dispositivo). Con **Insieme** c'è un solo riquadro «Movimenti» (con il numero dei movimenti) con entrate e uscite in ordine di data, distinte dal colore dell'importo, e un solo pulsante «+ Aggiungi movimento» in fondo; nella finestra Movimento, aperta da qui e dal calendario, compare il selettore Entrata/Uscita.
 - Se l'archivio è vuoto: riquadro «Non ci sono ancora movimenti…» con il pulsante «Importa lo storico» (→ Altro).
 - Due riquadri, **Entrate** e **Uscite**. Intestazione con il numero di movimenti; su schermo largo anche la riga delle colonne (Giorno, Importo, Descrizione, Categoria, «Ricevuto su» o «Pagato con»).
 - **Riga di un movimento**: giorno (– se manca); importo (sottolineato a puntini se è un'espressione, con la formula al passaggio del mouse); descrizione («Senza descrizione» in tenue); categoria con pallino colorato, emoji, nome e « · sottocategoria»; fondo (nomi uniti da «+»; «Scegli il fondo» in ambra con pallino se manca; «A rate» per l'acquisto di un piano; «—» altrimenti; in rosso se la ripartizione non torna); **matita** per modificare (con un puntino se c'è una nota). Barrata e attenuata se esclusa dai totali. Sotto, la riga dei tag: «↻ Ricorrente» (→ Ricorrenti), «▤ Acquisto a rate / Anticipo / Rata / Interessi della rata / Saldo delle rate / Reso» (→ Rate) e i `#tag` (→ pagina del tag).
 - **Voci extra** (si aprono toccando la riga, o con Invio o Spazio da tastiera): avviso «La ripartizione sui conti non torna con l'importo» con «Correggi»; editor dei tag (chip con ×, campo «Aggiungi un tag…» con suggerimenti, Invio o virgola per aggiungere); **Nota**; casella «Escludi dai totali di entrate e uscite»; pulsanti «Duplica», «Rendi ricorrente» (non per movimenti generati o senza importo), «Elimina» (con conferma e «Annulla»).
 - **Riordino**: tenendo premuto circa 0,4 secondi un movimento lo si trascina tra quelli dello stesso giorno e dello stesso riquadro (la pagina scorre da sola vicino ai bordi; vibrazione sul telefono).
-- Pulsanti «+ Aggiungi entrata» e «+ Aggiungi uscita» sotto ciascun riquadro → finestra Movimento, senza il selettore Uscita/Entrata (il tipo l'ha già scelto chi preme il pulsante; vale anche per la matita delle righe).
+- Pulsanti «+ Aggiungi entrata» e «+ Aggiungi uscita» sotto ciascun riquadro → finestra Movimento, senza il selettore Entrata/Uscita (il tipo l'ha già scelto chi preme il pulsante; vale anche per la matita delle righe).
 - **Trasferimenti tra fondi** (riquadro, se il calcolo automatico è attivo o ci sono trasferimenti nel mese): nota «non contano come entrate o uscite»; righe con giorno, importo, nota («Trasferimento» se manca), **Da** e **A**; tocco → finestra Trasferimento; «+ Aggiungi trasferimento».
 - **Uscite per categoria** e **Entrate per categoria**: vedi «Torta per categoria» sotto.
 
 **Vista Calendario**
-- Griglia da lunedì a domenica; ogni giorno è una casella con il numero, le uscite («−», rosso), le entrate («+», verde) e, se ci sono entrambe, il saldo del giorno. Sfondo verde o rosso con intensità proporzionale al saldo. Evidenziati il giorno di oggi e quello selezionato. Su telefono gli importi sono abbreviati.
+- Griglia da lunedì a domenica; ogni giorno è una casella con il numero, le entrate («+», verde), le uscite («−», rosso) e, se ci sono entrambe, il saldo del giorno. Sfondo verde o rosso con intensità proporzionale al saldo. Evidenziati il giorno di oggi e quello selezionato. Su telefono gli importi sono abbreviati.
 - **Pannello del giorno** sotto la griglia: data per esteso con il saldo del giorno; i movimenti del giorno con la stessa riga dell'elenco (senza il giorno, con le voci extra e il riordino); «Nessun movimento in questo giorno»; un solo pulsante «+ Aggiungi movimento» (già con quel giorno; il tipo si sceglie nella finestra). Senza un giorno selezionato: «Tocca un giorno per vedere i movimenti.»
 - **Senza giorno** (riquadro con il conteggio) per i movimenti senza giorno.
 - Poi, come nell'elenco: trasferimenti e categorie del mese.
@@ -444,7 +449,7 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 ### Movimenti ricorrenti (`#ricorrenti`)
 
 - **Intestazione**: titolo e «Nuovo» (→ finestra Movimento ricorrente); nota introduttiva.
-- **Statistiche** (se ci sono ricorrenze attive): Uscite fisse al mese (circa), Entrate fisse al mese (circa).
+- **Statistiche** (se ci sono ricorrenze attive): Entrate fisse al mese (circa), Uscite fisse al mese (circa).
 - **Elenco delle attive**, per prossima scadenza: emoji della categoria, descrizione, frase («Ogni mese, il 5», «Ogni 2 settimane», «Ogni anno, il 3 mar»…) e fondo, importo con segno e «prossima: data». Senza ricorrenze: testo con un esempio (Netflix).
 - **Terminati**: ricorrenze arrivate all'ultima scadenza, con «terminata».
 
@@ -467,7 +472,7 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 - **Movimenti ricorrenti**: breve descrizione e «Gestisci i movimenti ricorrenti (N)» (→ Ricorrenti).
 - **Pagamenti a rate**: descrizione, scelta «Conta gli acquisti a rate» (all'acquisto / rata per rata), nota di spiegazione e «Gestisci i pagamenti a rate (N)» (→ Rate).
 - **Budget**: breve descrizione e «Gestisci i budget (N)» (→ Budget).
-- **Categorie**: due colonne, Uscite ed Entrate. Ogni categoria: selettore del colore, emoji (un solo simbolo), nome, numero di movimenti, pulsante **↳N** (apre le sottocategorie: nome modificabile, numero di movimenti, ×, «+ Nuova sottocategoria») e **×** (elimina, con conferma: i movimenti passano in «Altro», o nella prima altra categoria dello stesso tipo, senza sottocategoria). «+ Nuova categoria di uscita» / «+ Nuova categoria di entrata».
+- **Categorie**: due colonne, Entrate e Uscite. Ogni categoria: selettore del colore, emoji (un solo simbolo), nome, numero di movimenti, pulsante **↳N** (apre le sottocategorie: nome modificabile, numero di movimenti, ×, «+ Nuova sottocategoria») e **×** (elimina, con conferma: i movimenti passano in «Altro», o nella prima altra categoria dello stesso tipo, senza sottocategoria). «+ Nuova categoria di entrata» / «+ Nuova categoria di uscita».
 - **Aspetto**: scelta «Tema» (Come il sistema, Chiaro, Scuro) e, se l'app non è già installata, «Installa come app» (o le istruzioni per Android e Windows).
 - **Riga finale**: «Rationes, versione N. I dati sono salvati su questo dispositivo [e sincronizzati, cifrati, sul tuo progetto Supabase]».
 
