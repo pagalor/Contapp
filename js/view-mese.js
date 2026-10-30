@@ -127,8 +127,8 @@ export function renderBody(highlight) {
 function footerHTML() {
   const trs = M.trasfOf(state.y, state.m);
   return `${M.autoAttivo() || trs.length ? transfers(trs) : ''}
-    <section class="card"><h2>Uscite per categoria</h2><div id="mese-cat-out"></div></section>
-    <section class="card"><h2>Entrate per categoria</h2><div id="mese-cat-in"></div></section>`;
+    <section class="card"><h2>Entrate per categoria</h2><div id="mese-cat-in"></div></section>
+    <section class="card"><h2>Uscite per categoria</h2><div id="mese-cat-out"></div></section>`;
 }
 
 function renderAlerts() {
@@ -317,7 +317,7 @@ function updateSums() {
 // Torte per categoria in fondo all'elenco: si aggiornano a ogni modifica, ricordando i dettagli aperti.
 function updateCats() {
   const list = M.movsOf(state.y, state.m);
-  for (const t of ['out', 'in']) {
+  for (const t of ['in', 'out']) {
     const box = root.querySelector(`#mese-cat-${t}`);
     if (!box) continue;
     const aperte = [...box.querySelectorAll('.catbar[aria-expanded="true"]')].map((b) => b.dataset.cat);
@@ -602,7 +602,7 @@ function renderSearch(body) {
   html += `</p>${res.length ? '<button class="btn ghost small" data-bulktag>Aggiungi un tag a tutti</button>' : ''}</div>`;
   // Con un tag: come si ripartiscono le spese e le entrate tra le categorie
   if (isTag && res.length) {
-    for (const [t, titolo] of [['out', 'Uscite'], ['in', 'Entrate']]) {
+    for (const [t, titolo] of [['in', 'Entrate'], ['out', 'Uscite']]) {
       if (res.some((r) => r.data.tipo === t && !r.data.escl && typeof r.data.val === 'number')) {
         html += `<section class="card"><h2>${titolo} per categoria</h2>${catBars(res, t)}</section>`;
       }
