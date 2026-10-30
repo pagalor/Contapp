@@ -243,7 +243,6 @@ function detailsHTML(r) {
     <div class="detail-actions">
       <button class="btn ghost small" data-act="dup">Duplica</button>
       ${d.ricId || d.rataId || typeof d.val !== 'number' ? '' : '<button class="btn ghost small" data-act="ric">Rendi ricorrente</button>'}
-      <label class="btn ghost small move">Sposta in un altro mese<input type="month" data-act="move" value="${ymHash(d.y, d.m)}"></label>
       <button class="btn ghost small danger" data-act="del">Elimina</button>
     </div>`;
 }
@@ -382,7 +381,7 @@ function bindBody(body) {
     const row = e.target.closest(ROW);
     // Un tocco sulla riga (fuori dai pulsanti e dai link) apre o chiude le voci extra
     if (row && !act && !e.target.closest('.details, button, a, input, select, textarea, label')) { toggleDetails(row); return; }
-    if (!row || !act || act === 'move') return;
+    if (!row || !act) return;
     const r = rec(row);
     if (act === 'edit' && r) {
       movDialog({
@@ -436,17 +435,6 @@ function bindBody(body) {
     }
     updateSums();
     if (f === 'escl' && row.classList.contains('nodate')) renderBody(); // il calendario mostra i totali di ogni giorno
-  });
-
-  body.addEventListener('input', (e) => {
-    if (e.target.dataset?.act !== 'move') return;
-    const [y, m] = e.target.value.split('-').map(Number);
-    const r = rec(e.target.closest(ROW));
-    if (!r || !y || !m || (y === r.data.y && m === r.data.m)) return;
-    const d = r.data.d && r.data.d <= daysIn(y, m) ? r.data.d : null;
-    store.patch(r.id, { y, m, d });
-    renderBody();
-    toast(`Spostato in ${M.MESI[m - 1]} ${y}`, { action: 'Vai', onAction: () => { location.hash = `#mese/${ymHash(y, m)}/${r.id}`; } });
   });
 
   body.addEventListener('keydown', (e) => {
