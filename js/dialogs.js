@@ -147,7 +147,8 @@ export function dayPicker({ y, m, selected = null, onPick }) {
 // --- Movimento: finestra per aggiungerne uno nuovo o modificarne uno esistente ---
 // Non salva niente finché non si preme "Aggiungi" (o "Salva"); "Annulla" chiude senza lasciare tracce.
 // `rec` è il movimento da modificare; `seed` precompila i campi di un nuovo movimento (serve a "Aggiungi e duplica").
-export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = null, onDone } = {}) {
+// `sceltaTipo`: mostra il selettore Uscita/Entrata; chi apre la finestra da un riquadro di sole entrate o sole uscite lo toglie, perché il tipo è già deciso.
+export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = null, sceltaTipo = true, onDone } = {}) {
   const isEdit = !!rec;
   const init = rec ? rec.data : seed;
   if (rec) ({ tipo, y, m, d } = rec.data);
@@ -162,10 +163,10 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
   const dlg = modal(`
     <form class="dlg mov-dlg" method="dialog" novalidate>
       <header class="dlg-head"><h2 data-title></h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
-      <div class="seg wide" role="group" aria-label="Tipo di movimento">
+      ${sceltaTipo ? `<div class="seg wide" role="group" aria-label="Tipo di movimento">
         <button type="button" data-seg="out">Uscita</button>
         <button type="button" data-seg="in">Entrata</button>
-      </div>
+      </div>` : ''}
       <label class="field big-amt"><span>Importo (€)</span>
         <input name="amt" inputmode="decimal" autocomplete="off" placeholder="0,00" enterkeyhint="next">
         <small class="amt-prev muted"></small>
@@ -303,7 +304,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
       dlg.close();
       toast(data.tipo === 'in' ? 'Entrata aggiunta' : 'Uscita aggiunta');
       onDone && onDone(id, data);
-      movDialog({ tipo: data.tipo, y: data.y, m: data.m, d: data.d, seed: data, onDone });
+      movDialog({ tipo: data.tipo, y: data.y, m: data.m, d: data.d, seed: data, sceltaTipo, onDone });
       return;
     }
     if (e.target.closest('[data-ric]')) {
