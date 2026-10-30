@@ -657,6 +657,7 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .seg { display: inline-flex; background: var(--hover); border: 1px solid var(--line); border-radius: var(--r-md); padding: 3px; gap: 2px; flex: none; }
 .seg button { font: inherit; font-size: .88rem; font-weight: 600; color: var(--muted); background: none; border: 0; border-radius: 8px; padding: .45rem .8rem; cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+.list-opts { display: flex; align-items: center; gap: .7rem; margin: 0 0 .8rem; font-size: .9rem; }
 .seg.wide { display: flex; margin: .4rem 0 .6rem; }
 .seg.wide button { flex: 1; }
 @media (max-width: 560px) { .toolbar { flex-direction: column; align-items: stretch; } .seg { align-self: flex-start; } }
