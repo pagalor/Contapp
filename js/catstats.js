@@ -55,10 +55,10 @@ function subTable(list, catId, tipo) {
     <h4 class="sub-h">Voci principali</h4>`;
 }
 
-// Torte per categoria dei movimenti di un tag (uscite ed entrate), come in Mese e Riepilogo
+// Torte per categoria dei movimenti di un tag (entrate e uscite), come in Mese e Riepilogo
 export function tagPies(list) {
   let html = '';
-  for (const [tipo, titolo] of [['out', 'Uscite'], ['in', 'Entrate']]) {
+  for (const [tipo, titolo] of [['in', 'Entrate'], ['out', 'Uscite']]) {
     if (!M.byCategory(list, tipo).length) continue;
     html += `<h4 class="sub-h">${titolo} per categoria</h4>${catBars(list, tipo)}`;
   }

@@ -159,12 +159,12 @@ function draw() {
     </section>
 
     <section class="card">
-      <h2>Uscite per categoria</h2>
-      <div id="cat-out"></div>
-    </section>
-    <section class="card">
       <h2>Entrate per categoria</h2>
       <div id="cat-in"></div>
+    </section>
+    <section class="card">
+      <h2>Uscite per categoria</h2>
+      <div id="cat-out"></div>
     </section>
 
     ${tutto ? '' : confrontoCard()}
@@ -197,8 +197,8 @@ function draw() {
     const p = cum[i ?? cum.length - 1];
     lineInfo.innerHTML = p ? `<b>${p.label}</b> · <span class="${saldoCls(p.value)}">${fmtSigned(p.value)}</span>` : '';
   });
-  $('#cat-out', root).innerHTML = catBars(list, 'out');
   $('#cat-in', root).innerHTML = catBars(list, 'in');
+  $('#cat-out', root).innerHTML = catBars(list, 'out');
   bind();
 }
 
@@ -244,7 +244,7 @@ function confrontoCard() {
     <p class="muted">${periodo(sel)} confrontato con ${periodo(sel - 1).toLowerCase()}.${fino < 12 ? ' L\'ultimo mese è ancora in corso.' : ''}</p>
     <table class="tbl cmp-tbl"><thead><tr><th></th><th class="num">${sel - 1}</th><th class="num">${sel}</th><th class="num">Variazione</th></tr></thead>
       <tbody>${riga('Entrate', c.tin, 'in')}${riga('Uscite', c.tout, 'out')}</tbody></table>
-    ${tab('Uscite per categoria', c.out, 'out')}${tab('Entrate per categoria', c.in, 'in')}
+    ${tab('Entrate per categoria', c.in, 'in')}${tab('Uscite per categoria', c.out, 'out')}
   </section>`;
 }
 
