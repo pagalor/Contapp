@@ -1,0 +1,203 @@
+/* Rationes: palette dei colori (vedi STILE.md).
+   Base verde acqua (dal cappello Mercedes F1 del GP del Messico), verde e rosso ispirati alla bandiera messicana.
+   Il colore ha sempre un significato: verde acqua = struttura e azioni, verde = denaro che entra o saldo positivo,
+   rosso = denaro che esce o saldo negativo, ambra = avvisi, target e budget, viola = soldi buttati.
+   I nomi delle variabili già usate dall'app (--in, --out, --warn, --warn-bg, --saldo, --butt, --sal-pos,
+   --sal-neg, --pos, --neg, --bud-*, --g-*) restano: cambia solo il valore. Le altre sono nuove. */
+
+:root {
+  color-scheme: light;
+  --bg: #F3F7F7;  /* sfondo dell'app */
+  --surface: #FFFFFF;  /* riquadri, righe, finestre */
+  --surface-2: #E4EEEF;  /* pulsanti tonali, campi, binari delle barre */
+  --outline: #CFDFE0;  /* linee e bordi */
+  --text: #0B2427;  /* testo principale */
+  --text-2: #4A6062;  /* testo secondario */
+  --text-3: #7A8E8F;  /* solo etichette brevi */
+  --primary: #046C75;  /* azione principale: verde acqua */
+  --on-primary: #FFFFFF;
+  --hero: #055A63;  /* riquadro di riepilogo verde acqua */
+  --hero-text: #FFFFFF;
+  --hero-text-2: #B9DCDF;
+  --hero-in: #4FD67E;  /* entrate su fondo verde acqua (anche nel logo) */
+  --hero-out: #FF7484;  /* uscite su fondo verde acqua */
+  --hero-pos: #A9EDBE;  /* saldo positivo su fondo verde acqua */
+  --hero-neg: #FFB3BC;  /* saldo negativo su fondo verde acqua */
+  --dock: #055A63;  /* barra di navigazione su telefono */
+  --dock-icon: #9CCBCF;
+  --in: #13783A;  /* entrate: importi e testo */
+  --in-bar: #22A653;  /* entrate: barre e grafici */
+  --in-cont: #DDF6E4;
+  --on-in-cont: #0D4A22;
+  --out: #C21A33;  /* uscite: importi e testo */
+  --out-bar: #EE4358;  /* uscite: barre e grafici */
+  --out-cont: #FDE3E7;
+  --on-out-cont: #6E0F1D;
+  --sal-pos: #13783A;  /* saldo positivo (testo) */
+  --sal-neg: #C21A33;  /* saldo negativo (testo) */
+  --sal-pos-bar: #74D394;  /* saldo positivo (barre) */
+  --sal-neg-bar: #FF9AA6;  /* saldo negativo (barre) */
+  --pos: var(--in);  /* indicatori positivi */
+  --neg: var(--out);  /* indicatori negativi */
+  --warn: #9A5800;  /* avvisi: testo */
+  --warn-bar: #F5A524;  /* avvisi: barre e pallini */
+  --warn-bg: #FFEBCC;  /* avvisi: riquadri */
+  --on-warn-bg: #4A2A00;
+  --butt: #8A3DB3;  /* soldi buttati: testo */
+  --butt-bar: #B05FD8;
+  --butt-bg: #F3E4FB;
+  --on-butt-bg: #4A1766;
+  --saldo: var(--text);  /* saldo dei fondi: neutro (prima era blu) */
+  --bud-ok: #7A8E8F;  /* budget nei limiti */
+  --bud-warn: #F5A524;  /* budget: ritmo veloce o vicino al limite */
+  --bud-over: #D9822B;  /* budget sforato */
+  --cal-in-1: #EEF9F1;  /* calendario: saldo positivo del giorno, dal più piccolo al più grande */
+  --cal-in-2: #D5F2DE;
+  --cal-in-3: #B5E8C4;
+  --cal-in-4: #8EDCA6;
+  --cal-in-5: #66CF88;
+  --cal-out-1: #FDEEF0;  /* calendario: saldo negativo del giorno */
+  --cal-out-2: #FBD6DB;
+  --cal-out-3: #F8B8C1;
+  --cal-out-4: #F493A1;
+  --cal-out-5: #EE6E81;
+
+  /* gruppi dei fondi (uguali nei due temi) */
+  --g-contanti: #D9A441;
+  --g-corrente: #3D63D9;
+  --g-deposito: #49B6E5;
+  --g-digitale: #8C7BEF;
+  --g-crypto: #F08A3C;
+  --g-altro: #98A2A3;
+
+  /* sfondo delle icone delle categorie: tinta ricavata dal colore scelto dall'utente
+     uso: background: color-mix(in srgb, <colore categoria> var(--cat-mix), var(--surface)); */
+  --cat-mix: 22%;
+
+  /* forme */
+  --r-xs: 6px;      /* angoli interni dei gruppi collegati e dei blocchi di una lista */
+  --r-s: 12px;      /* icone delle categorie, chip */
+  --r-m: 20px;      /* angoli esterni dei blocchi e dei riquadri */
+  --r-l: 28px;      /* riquadri principali e finestre */
+  --r-pill: 999px;  /* capsule: pulsanti, barre, navigazione */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #071315;  /* sfondo dell'app */
+    --surface: #0D1F22;  /* riquadri, righe, finestre */
+    --surface-2: #15292D;  /* pulsanti tonali, campi, binari delle barre */
+    --outline: #23393D;  /* linee e bordi */
+    --text: #ECF4F4;  /* testo principale */
+    --text-2: #A0B3B4;  /* testo secondario */
+    --text-3: #6E8385;  /* solo etichette brevi */
+    --primary: #5CC6CE;  /* azione principale: verde acqua */
+    --on-primary: #032C30;
+    --hero: #0A4950;  /* riquadro di riepilogo verde acqua */
+    --hero-text: #FFFFFF;
+    --hero-text-2: #A8CFD2;
+    --hero-in: #4FD67E;  /* entrate su fondo verde acqua (anche nel logo) */
+    --hero-out: #FF7484;  /* uscite su fondo verde acqua */
+    --hero-pos: #A9EDBE;  /* saldo positivo su fondo verde acqua */
+    --hero-neg: #FFB3BC;  /* saldo negativo su fondo verde acqua */
+    --dock: #0A4950;  /* barra di navigazione su telefono */
+    --dock-icon: #8FBFC3;
+    --in: #5EDC88;  /* entrate: importi e testo */
+    --in-bar: #4FD67E;  /* entrate: barre e grafici */
+    --in-cont: #12351F;
+    --on-in-cont: #A9EDBE;
+    --out: #FF7A88;  /* uscite: importi e testo */
+    --out-bar: #FF7484;  /* uscite: barre e grafici */
+    --out-cont: #45161E;
+    --on-out-cont: #FFB3BC;
+    --sal-pos: #5EDC88;  /* saldo positivo (testo) */
+    --sal-neg: #FF7A88;  /* saldo negativo (testo) */
+    --sal-pos-bar: #A9EDBE;  /* saldo positivo (barre) */
+    --sal-neg-bar: #FFB3BC;  /* saldo negativo (barre) */
+    --pos: var(--in);  /* indicatori positivi */
+    --neg: var(--out);  /* indicatori negativi */
+    --warn: #F5B041;  /* avvisi: testo */
+    --warn-bar: #F5A524;  /* avvisi: barre e pallini */
+    --warn-bg: #3A2A0D;  /* avvisi: riquadri */
+    --on-warn-bg: #FFD58A;
+    --butt: #D29BF0;  /* soldi buttati: testo */
+    --butt-bar: #C47FE6;
+    --butt-bg: #2E1A3B;
+    --on-butt-bg: #E8CCF7;
+    --saldo: var(--text);  /* saldo dei fondi: neutro (prima era blu) */
+    --bud-ok: #6E8385;  /* budget nei limiti */
+    --bud-warn: #F5A524;  /* budget: ritmo veloce o vicino al limite */
+    --bud-over: #FF9F1C;  /* budget sforato */
+    --cal-in-1: #10261A;  /* calendario: saldo positivo del giorno, dal più piccolo al più grande */
+    --cal-in-2: #14361F;
+    --cal-in-3: #1A4A2A;
+    --cal-in-4: #1F6036;
+    --cal-in-5: #267A44;
+    --cal-out-1: #2A1519;  /* calendario: saldo negativo del giorno */
+    --cal-out-2: #3D1A20;
+    --cal-out-3: #55202A;
+    --cal-out-4: #702735;
+    --cal-out-5: #8E2F42;
+    --cat-mix: 28%;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #071315;  /* sfondo dell'app */
+  --surface: #0D1F22;  /* riquadri, righe, finestre */
+  --surface-2: #15292D;  /* pulsanti tonali, campi, binari delle barre */
+  --outline: #23393D;  /* linee e bordi */
+  --text: #ECF4F4;  /* testo principale */
+  --text-2: #A0B3B4;  /* testo secondario */
+  --text-3: #6E8385;  /* solo etichette brevi */
+  --primary: #5CC6CE;  /* azione principale: verde acqua */
+  --on-primary: #032C30;
+  --hero: #0A4950;  /* riquadro di riepilogo verde acqua */
+  --hero-text: #FFFFFF;
+  --hero-text-2: #A8CFD2;
+  --hero-in: #4FD67E;  /* entrate su fondo verde acqua (anche nel logo) */
+  --hero-out: #FF7484;  /* uscite su fondo verde acqua */
+  --hero-pos: #A9EDBE;  /* saldo positivo su fondo verde acqua */
+  --hero-neg: #FFB3BC;  /* saldo negativo su fondo verde acqua */
+  --dock: #0A4950;  /* barra di navigazione su telefono */
+  --dock-icon: #8FBFC3;
+  --in: #5EDC88;  /* entrate: importi e testo */
+  --in-bar: #4FD67E;  /* entrate: barre e grafici */
+  --in-cont: #12351F;
+  --on-in-cont: #A9EDBE;
+  --out: #FF7A88;  /* uscite: importi e testo */
+  --out-bar: #FF7484;  /* uscite: barre e grafici */
+  --out-cont: #45161E;
+  --on-out-cont: #FFB3BC;
+  --sal-pos: #5EDC88;  /* saldo positivo (testo) */
+  --sal-neg: #FF7A88;  /* saldo negativo (testo) */
+  --sal-pos-bar: #A9EDBE;  /* saldo positivo (barre) */
+  --sal-neg-bar: #FFB3BC;  /* saldo negativo (barre) */
+  --pos: var(--in);  /* indicatori positivi */
+  --neg: var(--out);  /* indicatori negativi */
+  --warn: #F5B041;  /* avvisi: testo */
+  --warn-bar: #F5A524;  /* avvisi: barre e pallini */
+  --warn-bg: #3A2A0D;  /* avvisi: riquadri */
+  --on-warn-bg: #FFD58A;
+  --butt: #D29BF0;  /* soldi buttati: testo */
+  --butt-bar: #C47FE6;
+  --butt-bg: #2E1A3B;
+  --on-butt-bg: #E8CCF7;
+  --saldo: var(--text);  /* saldo dei fondi: neutro (prima era blu) */
+  --bud-ok: #6E8385;  /* budget nei limiti */
+  --bud-warn: #F5A524;  /* budget: ritmo veloce o vicino al limite */
+  --bud-over: #D9822B;  /* budget sforato */
+  --cal-in-1: #10261A;  /* calendario: saldo positivo del giorno, dal più piccolo al più grande */
+  --cal-in-2: #14361F;
+  --cal-in-3: #1A4A2A;
+  --cal-in-4: #1F6036;
+  --cal-in-5: #267A44;
+  --cal-out-1: #2A1519;  /* calendario: saldo negativo del giorno */
+  --cal-out-2: #3D1A20;
+  --cal-out-3: #55202A;
+  --cal-out-4: #702735;
+  --cal-out-5: #8E2F42;
+  --cat-mix: 28%;
+}
