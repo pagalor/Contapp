@@ -506,8 +506,8 @@ export function ricDialog({ rec = null, seed = null, onDone } = {}) {
       <header class="dlg-head"><h2>${isNew ? 'Nuovo movimento ricorrente' : 'Movimento ricorrente'}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
       <p class="muted">Viene aggiunto da solo ai movimenti, ogni volta che arriva la scadenza.</p>
       <div class="seg wide" role="group">
-        <button type="button" data-tipo="out" aria-pressed="${d.tipo === 'out'}">Uscita</button>
         <button type="button" data-tipo="in" aria-pressed="${d.tipo === 'in'}">Entrata</button>
+        <button type="button" data-tipo="out" aria-pressed="${d.tipo === 'out'}">Uscita</button>
       </div>
       <div class="form-grid">
         <label class="field"><span>Descrizione</span><input name="desc" list="dl-ric-${d.tipo}" value="${esc(d.desc)}" placeholder="es. Netflix" autocomplete="off" required></label>
