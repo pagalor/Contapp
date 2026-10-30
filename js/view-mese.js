@@ -598,7 +598,7 @@ function renderSearch(body) {
   searchList = res;
   const s = M.sums(res);
   let html = `<div class="search-res"><div class="search-sum"><p>${res.length} ${res.length === 1 ? 'movimento' : 'movimenti'}`;
-  if (res.length) html += `: uscite <b class="out">${fmtEur(s.tout)}</b>, entrate <b class="in">${fmtEur(s.tin)}</b>`;
+  if (res.length) html += `: entrate <b class="in">${fmtEur(s.tin)}</b>, uscite <b class="out">${fmtEur(s.tout)}</b>`;
   html += `</p>${res.length ? '<button class="btn ghost small" data-bulktag>Aggiungi un tag a tutti</button>' : ''}</div>`;
   // Con un tag: come si ripartiscono le spese e le entrate tra le categorie
   if (isTag && res.length) {
