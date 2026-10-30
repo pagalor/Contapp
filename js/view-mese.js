@@ -385,7 +385,7 @@ function bindBody(body) {
     const r = rec(row);
     if (act === 'edit' && r) {
       movDialog({
-        rec: r,
+        rec: r, sceltaTipo: sceglieTipo(),
         onDone: (id, data) => {
           if (!data || (data.y === state.y && data.m === state.m)) { renderBody(id ?? undefined); return; }
           renderBody();
@@ -578,11 +578,15 @@ function addTag(row, raw, refocus = false) {
   if (refocus) root.querySelector(`.row[data-id="${CSS.escape(r.id)}"] [data-tagin]`)?.focus();
 }
 
+// Nei riquadri separati di entrate e uscite il tipo lo ha già scelto chi preme il pulsante: nella finestra non si chiede di nuovo.
+// Nell'elenco unico e nel calendario, dove i movimenti sono mescolati, si sceglie nella finestra.
+const sceglieTipo = () => mode() === 'cal' || layout() === 'all';
+
 // "+ Aggiungi uscita/entrata" apre una finestra come quella dei trasferimenti, con i pulsanti Annulla e Aggiungi
 function addRow(tipo, day) {
   const t = today();
   movDialog({
-    tipo, y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
+    tipo, sceltaTipo: sceglieTipo(), y: state.y, m: state.m, d: day ?? (state.y === t.y && state.m === t.m ? t.d : null),
     onDone: (id, data) => {
       if (!data || (data.y === state.y && data.m === state.m)) { renderBody(id ?? undefined); return; }
       renderBody();
@@ -730,8 +734,8 @@ function paintDay(per) {
     <h2>${nome.charAt(0).toUpperCase() + nome.slice(1)}
       <span>${o.tin || o.tout ? `<b class="${saldoCls(o.tin - o.tout)}" title="Saldo del giorno">${fmtSigned(o.tin - o.tout)}</b>` : ''}</span></h2>
     ${o.items.length ? o.items.map(calItem).join('') : '<p class="muted">Nessun movimento in questo giorno.</p>'}
-    <div class="btn-row"><button class="btn small" data-calnew="out">+ Uscita</button><button class="btn small ghost" data-calnew="in">+ Entrata</button></div>`;
+    <div class="btn-row"><button class="btn small" data-calnew>+ Aggiungi movimento</button></div>`;
   $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {
-    addRow(b.dataset.calnew, selDay);
+    addRow('out', selDay); // il tipo si sceglie nella finestra
   }));
 }
