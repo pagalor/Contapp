@@ -175,14 +175,14 @@ function renderAlerts() {
 }
 
 // Un solo riquadro con entrate e uscite insieme, in ordine di data (il colore dell'importo distingue i due tipi)
+// Un solo pulsante per aggiungere: nella finestra si sceglie se è un'entrata o un'uscita (si apre su Uscita)
 function ledgerAll(list) {
   return `
     <section class="ledger all" data-tipo="all">
       <h2><span>Movimenti</span><span class="ledger-tot muted" data-tot="all"></span></h2>
       <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>Fondo</span><span></span></div>
       <div class="rows">${list.map(rowHTML).join('')}</div>
-      <button class="add-row" data-add="in">+ Aggiungi entrata</button>
-      <button class="add-row" data-add="out">+ Aggiungi uscita</button>
+      <button class="add-row" data-add="out">+ Aggiungi movimento</button>
     </section>`;
 }
 
