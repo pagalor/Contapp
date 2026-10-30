@@ -98,6 +98,33 @@ export function splitEditor(rec, onDone) {
   paint();
 }
 
+// --- Scelta del giorno: tutti i giorni del mese, come un piccolo calendario ---
+// `selected` è il giorno attuale (o null); `onPick(n)` riceve il giorno scelto, oppure null per "Senza giorno".
+export function dayPicker({ y, m, selected = null, onPick }) {
+  const n = new Date(y, m, 0).getDate();
+  const first = (new Date(y, m - 1, 1).getDay() + 6) % 7; // il lunedì è la prima colonna
+  const t = new Date();
+  const oggi = t.getFullYear() === y && t.getMonth() + 1 === m ? t.getDate() : null;
+  let cells = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((g) => `<div class="cal-h">${g}</div>`).join('');
+  cells += '<span></span>'.repeat(first);
+  for (let i = 1; i <= n; i++) {
+    cells += `<button type="button" class="dp-day${i === selected ? ' sel' : ''}${i === oggi ? ' today' : ''}" data-day="${i}"${i === selected ? ' aria-pressed="true"' : ''}>${i}</button>`;
+  }
+  const dlg = modal(`
+    <div class="dlg day-picker">
+      <header class="dlg-head"><h2>Giorno · ${M.MESI[m - 1]} ${y}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
+      <div class="dp-grid">${cells}</div>
+      <div class="actions"><button type="button" class="btn ghost" data-none>Senza giorno</button><button type="button" class="btn ghost" data-x>Annulla</button></div>
+    </div>`);
+  dlg.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-day]');
+    if (b) { dlg.close(); onPick(Number(b.dataset.day)); return; }
+    if (e.target.closest('[data-none]')) { dlg.close(); onPick(null); return; }
+    if (e.target.closest('[data-x]')) dlg.close();
+  });
+  return dlg;
+}
+
 // --- Movimento: finestra per aggiungerne uno nuovo o modificarne uno esistente ---
 // Non salva niente finché non si preme "Aggiungi" (o "Salva"); "Annulla" chiude senza lasciare tracce.
 // `rec` è il movimento da modificare; `seed` precompila i campi di un nuovo movimento (serve a "Aggiungi e duplica").
@@ -129,7 +156,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
       </div>
       <label class="field"><span>Descrizione</span><input name="desc" list="dl-out" autocomplete="off" placeholder="Per esempio: spesa, stipendio…" enterkeyhint="done"></label>
       <div class="form-grid">
-        <label class="field"><span>Giorno</span><input name="d" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="1–31" value="${d ?? ''}"></label>
+        <label class="field"><span>Giorno</span><input name="d" readonly inputmode="none" autocomplete="off" placeholder="Scegli" value="${d ?? ''}" aria-haspopup="dialog"></label>
         <label class="field"><span>Categoria</span><select name="cat"></select></label>
       </div>
       <label class="field" data-subf hidden><span>Sottocategoria</span><select name="sub"></select></label>
@@ -347,7 +374,17 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
       f.acc.innerHTML = accOpts(conti.length === 1 ? conti[0].c : null);
     });
   });
-  f.month.addEventListener('change', () => { f.d.placeholder = `1–${daysIn(mese().y, mese().m)}`; setTitle(); });
+  // Toccando il giorno si apre l'elenco di tutti i giorni del mese scelto nella finestra
+  const scegliGiorno = () => dayPicker({
+    y: mese().y, m: mese().m, selected: f.d.value ? Number(f.d.value) : null,
+    onPick: (g) => { f.d.value = g ?? ''; f.d.classList.remove('err'); },
+  });
+  f.d.addEventListener('click', scegliGiorno);
+  f.d.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scegliGiorno(); } });
+  f.month.addEventListener('change', () => {
+    if (Number(f.d.value) > daysIn(mese().y, mese().m)) f.d.value = ''; // il giorno scelto non esiste nel nuovo mese
+    setTitle();
+  });
   function setTitle() {
     $('[data-title]', f).textContent = `${isEdit ? (t() === 'in' ? 'Modifica entrata' : 'Modifica uscita') : (t() === 'in' ? 'Nuova entrata' : 'Nuova uscita')} · ${M.MESI_BREVI[mese().m - 1]} ${mese().y}`;
   }
@@ -371,7 +408,6 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
 
   paintTags();
   setTipo(tipo, !!init);
-  f.d.placeholder = `1–${daysIn(y, m)}`;
   if (init) {
     f.amt.value = init.espr || plain(init.val);
     f.desc.value = init.desc || '';
