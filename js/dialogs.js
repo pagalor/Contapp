@@ -98,30 +98,49 @@ export function splitEditor(rec, onDone) {
   paint();
 }
 
-// --- Scelta del giorno: tutti i giorni del mese, come un piccolo calendario ---
-// `selected` è il giorno attuale (o null); `onPick(n)` riceve il giorno scelto, oppure null per "Senza giorno".
+// --- Scelta della data: un piccolo calendario con le frecce per cambiare mese ---
+// `y`, `m` e `selected` sono il mese e il giorno attuali (selected può essere null).
+// `onPick(giorno, anno, mese)` riceve la scelta; con "Senza giorno" il giorno è null e il mese è quello mostrato.
 export function dayPicker({ y, m, selected = null, onPick }) {
-  const n = new Date(y, m, 0).getDate();
-  const first = (new Date(y, m - 1, 1).getDay() + 6) % 7; // il lunedì è la prima colonna
-  const t = new Date();
-  const oggi = t.getFullYear() === y && t.getMonth() + 1 === m ? t.getDate() : null;
-  let cells = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((g) => `<div class="cal-h">${g}</div>`).join('');
-  cells += '<span></span>'.repeat(first);
-  for (let i = 1; i <= n; i++) {
-    cells += `<button type="button" class="dp-day${i === selected ? ' sel' : ''}${i === oggi ? ' today' : ''}" data-day="${i}"${i === selected ? ' aria-pressed="true"' : ''}>${i}</button>`;
-  }
+  let cy = y, cm = m; // mese mostrato
   const dlg = modal(`
     <div class="dlg day-picker">
-      <header class="dlg-head"><h2>Giorno · ${M.MESI[m - 1]} ${y}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
-      <div class="dp-grid">${cells}</div>
+      <header class="dlg-head dp-head">
+        <button type="button" class="icon-btn" data-nav="-1" aria-label="Mese precedente">‹</button>
+        <h2 class="dp-title" aria-live="polite"></h2>
+        <button type="button" class="icon-btn" data-nav="1" aria-label="Mese successivo">›</button>
+      </header>
+      <div class="dp-grid"></div>
       <div class="actions"><button type="button" class="btn ghost" data-none>Senza giorno</button><button type="button" class="btn ghost" data-x>Annulla</button></div>
     </div>`);
+  function paint() {
+    const n = new Date(cy, cm, 0).getDate();
+    const first = (new Date(cy, cm - 1, 1).getDay() + 6) % 7; // il lunedì è la prima colonna
+    const t = new Date();
+    const oggi = t.getFullYear() === cy && t.getMonth() + 1 === cm ? t.getDate() : null;
+    const scelto = cy === y && cm === m ? selected : null;
+    let cells = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((g) => `<div class="cal-h">${g}</div>`).join('');
+    cells += '<span></span>'.repeat(first);
+    for (let i = 1; i <= n; i++) {
+      cells += `<button type="button" class="dp-day${i === scelto ? ' sel' : ''}${i === oggi ? ' today' : ''}" data-day="${i}"${i === scelto ? ' aria-pressed="true"' : ''}>${i}</button>`;
+    }
+    $('.dp-title', dlg).textContent = `${M.MESI[cm - 1]} ${cy}`;
+    $('.dp-grid', dlg).innerHTML = cells;
+  }
   dlg.addEventListener('click', (e) => {
+    const nav = e.target.closest('[data-nav]');
+    if (nav) {
+      cm += Number(nav.dataset.nav);
+      if (cm < 1) { cm = 12; cy--; } else if (cm > 12) { cm = 1; cy++; }
+      paint();
+      return;
+    }
     const b = e.target.closest('[data-day]');
-    if (b) { dlg.close(); onPick(Number(b.dataset.day)); return; }
-    if (e.target.closest('[data-none]')) { dlg.close(); onPick(null); return; }
+    if (b) { dlg.close(); onPick(Number(b.dataset.day), cy, cm); return; }
+    if (e.target.closest('[data-none]')) { dlg.close(); onPick(null, cy, cm); return; }
     if (e.target.closest('[data-x]')) dlg.close();
   });
+  paint();
   return dlg;
 }
 
@@ -132,8 +151,8 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
   const isEdit = !!rec;
   const init = rec ? rec.data : seed;
   if (rec) ({ tipo, y, m, d } = rec.data);
-  const ymVal = (yy, mm) => `${yy}-${String(mm).padStart(2, '0')}`;
-  const daysIn = (yy, mm) => new Date(yy, mm, 0).getDate();
+  const cur = { y, m, d }; // data del movimento: anno, mese e giorno (null se ignoto)
+  const dataTesto = () => (cur.d ? `${cur.d} ${M.MESI[cur.m - 1].toLowerCase()} ${cur.y}` : `${M.MESI[cur.m - 1]} ${cur.y} · senza giorno`);
   let catAuto = rec ? rec.data.catAuto !== false : !seed, contoAuto = rec ? rec.data.contoAuto !== false : !seed;
   let subManual = !!init?.sub; // la sottocategoria scelta a mano (o copiata) non viene più cambiata dai suggerimenti
   let tags = [...(init?.tags || [])];
@@ -155,17 +174,14 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
         ${['+', '−', '×', '÷', '(', ')'].map((k) => `<button type="button" tabindex="-1" data-op="${k}">${k}</button>`).join('')}
       </div>
       <label class="field"><span>Descrizione</span><input name="desc" list="dl-out" autocomplete="off" placeholder="Per esempio: spesa, stipendio…" enterkeyhint="done"></label>
-      <div class="form-grid">
-        <label class="field"><span>Giorno</span><input name="d" readonly inputmode="none" autocomplete="off" placeholder="Scegli" value="${d ?? ''}" aria-haspopup="dialog"></label>
-        <label class="field"><span>Categoria</span><select name="cat"></select></label>
-      </div>
+      <label class="field"><span>Data</span><input name="d" readonly inputmode="none" autocomplete="off" value="${esc(dataTesto())}" aria-haspopup="dialog"></label>
+      <label class="field"><span>Categoria</span><select name="cat"></select></label>
       <label class="field" data-subf hidden><span>Sottocategoria</span><select name="sub"></select></label>
       <label class="field"><span data-accl></span><select name="acc"></select></label>
       <h3 class="mov-more">Altre opzioni</h3>
       <div class="field"><span>Tag</span><div data-tags></div></div>
       <label class="field"><span>Nota</span><textarea name="note" rows="2">${esc(init?.note || '')}</textarea></label>
       <label class="check big-check"><input type="checkbox" name="escl"${init?.escl ? ' checked' : ''}> Escludi dai totali di entrate e uscite (es. entrate straordinarie)</label>
-      <label class="field"><span>Mese</span><input type="month" name="month" value="${ymVal(y, m)}"></label>
       <div class="detail-actions big-actions">
         <button type="button" class="btn ghost" data-dup>${isEdit ? 'Salva e duplica' : 'Aggiungi e duplica'}</button>
         ${rec?.data.ricId || rec?.data.rataId ? '' : '<button type="button" class="btn ghost" data-ric>Rendi ricorrente…</button>'}
@@ -180,10 +196,6 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
   const f = $('form', dlg);
   const prev = $('.amt-prev', f);
   const t = () => f.dataset.tipo;
-  const mese = () => {
-    const [yy, mm] = (f.month.value || ymVal(y, m)).split('-').map(Number);
-    return { y: yy || y, m: mm || m };
-  };
 
   // Sottocategorie della categoria scelta; il campo compare solo se ce ne sono
   function paintSub(sel) {
@@ -251,14 +263,6 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
     let p;
     try { p = parseAmount(f.amt.value); } catch (err) { f.amt.classList.add('err'); f.amt.focus(); toast(err.message); return null; }
     if (!p) { f.amt.classList.add('err'); f.amt.focus(); toast("Scrivi l'importo."); return null; }
-    const mm = mese();
-    let giorno = null;
-    const dv = f.d.value.trim();
-    if (dv) {
-      giorno = parseInt(dv, 10);
-      const max = daysIn(mm.y, mm.m);
-      if (!(giorno >= 1 && giorno <= max)) { f.d.classList.add('err'); f.d.focus(); toast(`Il giorno deve essere tra 1 e ${max}`); return null; }
-    }
     const tg = $('[data-tagin]', f);
     if (tg?.value.trim()) addTags(tg.value);
     const conti = f.acc.value === '__split' ? split : f.acc.value ? [{ c: f.acc.value }] : [];
@@ -266,7 +270,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
       f.acc.focus(); toast("L'importo è cambiato: ripeti la divisione tra i fondi."); return null;
     }
     return {
-      y: mm.y, m: mm.m, d: giorno, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
+      y: cur.y, m: cur.m, d: cur.d, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
       cat: f.cat.value || M.fallbackCat(t()), sub: f.sub.value || null, catAuto, conti, contoAuto,
       tags: [...tags], note: f.note.value.trim() || null, escl: f.escl.checked,
     };
@@ -374,19 +378,15 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
       f.acc.innerHTML = accOpts(conti.length === 1 ? conti[0].c : null);
     });
   });
-  // Toccando il giorno si apre l'elenco di tutti i giorni del mese scelto nella finestra
-  const scegliGiorno = () => dayPicker({
-    y: mese().y, m: mese().m, selected: f.d.value ? Number(f.d.value) : null,
-    onPick: (g) => { f.d.value = g ?? ''; f.d.classList.remove('err'); },
+  // Toccando la data si apre il calendario: si sceglie giorno e mese (con le frecce) in un colpo solo
+  const scegliData = () => dayPicker({
+    y: cur.y, m: cur.m, selected: cur.d,
+    onPick: (g, yy, mm) => { Object.assign(cur, { y: yy, m: mm, d: g }); f.d.value = dataTesto(); setTitle(); },
   });
-  f.d.addEventListener('click', scegliGiorno);
-  f.d.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scegliGiorno(); } });
-  f.month.addEventListener('change', () => {
-    if (Number(f.d.value) > daysIn(mese().y, mese().m)) f.d.value = ''; // il giorno scelto non esiste nel nuovo mese
-    setTitle();
-  });
+  f.d.addEventListener('click', scegliData);
+  f.d.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scegliData(); } });
   function setTitle() {
-    $('[data-title]', f).textContent = `${isEdit ? (t() === 'in' ? 'Modifica entrata' : 'Modifica uscita') : (t() === 'in' ? 'Nuova entrata' : 'Nuova uscita')} · ${M.MESI_BREVI[mese().m - 1]} ${mese().y}`;
+    $('[data-title]', f).textContent = `${isEdit ? (t() === 'in' ? 'Modifica entrata' : 'Modifica uscita') : (t() === 'in' ? 'Nuova entrata' : 'Nuova uscita')} · ${M.MESI_BREVI[cur.m - 1]} ${cur.y}`;
   }
 
   f.addEventListener('submit', (e) => {

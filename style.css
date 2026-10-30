@@ -269,8 +269,6 @@ a.tag:hover { color: var(--ink); border-color: var(--line-2); }
 .tags-edit:focus-within { border-color: var(--focus); }
 .warn-text { color: var(--out); font-size: .88rem; }
 .detail-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
-.move { position: relative; overflow: hidden; }
-.move input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
 .add-row { font: inherit; font-weight: 550; color: var(--muted); background: none; border: 0; border-top: 1px solid var(--line); padding: .8rem 1.1rem; cursor: pointer; text-align: left; width: 100%; }
 .add-row:hover { color: var(--ink); background: var(--hover); }
 .card .add-row, .dlg .add-row { border-top: 0; padding-left: 0; }
@@ -794,8 +792,6 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .opkeys-big { display: grid; grid-template-columns: repeat(6, 1fr); gap: .4rem; margin-bottom: .3rem; }
 .opkeys-big button { font: inherit; font-size: 1.3rem; min-height: 3rem; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); cursor: pointer; }
 .opkeys-big button:active { background: var(--hover); }
-.mov-dlg .form-grid { grid-template-columns: 6.5rem minmax(0, 1fr); gap: 0 .8rem; }
-.mov-dlg .form-grid .field input { text-align: center; }
 .sticky-actions {
   position: sticky; bottom: -1.2rem; margin: 1rem -1.25rem -1.2rem; padding: .8rem 1.25rem calc(.8rem + env(safe-area-inset-bottom));
   background: var(--surface); border-top: 1px solid var(--line); flex-wrap: nowrap;
@@ -946,8 +942,11 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .bud-hint { min-height: 1.2em; margin: .2rem 0 .6rem; font-size: .88rem; }
 
 /* Scelta del giorno nella finestra del movimento */
-.mov-dlg input[name="d"] { cursor: pointer; }
+.mov-dlg input[name="d"] { cursor: pointer; text-align: left; }
 .day-picker { min-width: min(320px, 100%); }
+.dp-head { margin-bottom: .4rem; }
+.dp-head h2 { flex: 1; text-align: center; }
+.dp-head .icon-btn { width: 48px; height: 48px; font-size: 1.7rem; }
 .dp-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin: .4rem 0 .2rem; }
 .dp-day {
   font: inherit; font-weight: 600; color: var(--ink); background: var(--hover); border: 1px solid transparent; border-radius: 10px;
