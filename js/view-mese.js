@@ -16,6 +16,10 @@ const ymHash = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
 const MODE_KEY = 'contabilita.meseView';
 const mode = () => { try { return localStorage.getItem(MODE_KEY) === 'cal' ? 'cal' : 'lista'; } catch { return 'lista'; } };
 const setMode = (m) => { try { localStorage.setItem(MODE_KEY, m); } catch {} };
+// Nell'elenco entrate e uscite si possono vedere in due riquadri separati ('split') oppure insieme ('all'), ordinate per data
+const LAYOUT_KEY = 'contabilita.meseElenco';
+const layout = () => { try { return localStorage.getItem(LAYOUT_KEY) === 'all' ? 'all' : 'split'; } catch { return 'split'; } };
+const setLayout = (v) => { try { localStorage.setItem(LAYOUT_KEY, v); } catch {} };
 let selDay = null;
 const openCal = new Set(); // movimenti del calendario con le voci extra aperte
 const budOpen = new Set(); // budget con l'elenco dei movimenti aperto
@@ -107,14 +111,19 @@ export function renderBody(highlight) {
   if (state.q.length >= 2) { renderSearch(body); updateSums(); return; }
   if (mode() === 'cal') { renderCalendar(body); updateSums(); return; }
   const list = M.movsOf(state.y, state.m);
-  const ins = list.filter((r) => r.data.tipo === 'in');
-  const outs = list.filter((r) => r.data.tipo === 'out');
+  const unico = layout() === 'all';
   body.innerHTML = `
     ${store.isEmpty() ? `<div class="empty-hint">
         <p>Non ci sono ancora movimenti. Puoi iniziare a scriverli qui sotto, oppure importare il tuo storico.</p>
         <a class="btn primary" href="#altro">Importa lo storico</a></div>` : ''}
-    ${ledger('in', 'Entrate', ins)}
-    ${ledger('out', 'Uscite', outs)}
+    <div class="list-opts">
+      <span class="muted">Entrate e uscite</span>
+      <div class="seg" role="group" aria-label="Disposizione dell'elenco">
+        <button data-layout="split" aria-pressed="${!unico}">Separate</button>
+        <button data-layout="all" aria-pressed="${unico}">Insieme</button>
+      </div>
+    </div>
+    ${unico ? ledgerAll(list) : ledger('in', 'Entrate', list.filter((r) => r.data.tipo === 'in')) + ledger('out', 'Uscite', list.filter((r) => r.data.tipo === 'out'))}
     ${footerHTML()}`;
   updateSums();
   if (highlight) {
@@ -163,6 +172,18 @@ function renderAlerts() {
   box.innerHTML = html;
   $$('[data-reint]', box).forEach((b) => b.addEventListener('click', () =>
     transferDialog({ a: b.dataset.reint, val: Number(b.dataset.val), onDone: () => renderBody() })));
+}
+
+// Un solo riquadro con entrate e uscite insieme, in ordine di data (il colore dell'importo distingue i due tipi)
+function ledgerAll(list) {
+  return `
+    <section class="ledger all" data-tipo="all">
+      <h2><span>Movimenti</span><span class="ledger-tot muted" data-tot="all"></span></h2>
+      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>Fondo</span><span></span></div>
+      <div class="rows">${list.map(rowHTML).join('')}</div>
+      <button class="add-row" data-add="in">+ Aggiungi entrata</button>
+      <button class="add-row" data-add="out">+ Aggiungi uscita</button>
+    </section>`;
 }
 
 function ledger(tipo, title, list) {
@@ -305,11 +326,11 @@ function updateSums() {
       <div><dt>Uscite</dt><dd class="out">${fmtEur(s.tout)}</dd></div>
       <div class="saldo"><dt>Saldo</dt><dd class="${saldoCls(s.saldo)}">${fmtSigned(s.saldo)}</dd></div>`;
   }
-  for (const t of ['in', 'out']) {
+  for (const t of ['in', 'out', 'all']) {
     const e = root.querySelector(`[data-tot="${t}"]`);
     if (!e) continue;
     // I totali sono già in alto: qui si conta quanti movimenti ci sono, come per "Senza giorno" nel calendario
-    e.textContent = list.filter((r) => r.data.tipo === t).length;
+    e.textContent = list.filter((r) => t === 'all' || r.data.tipo === t).length;
   }
   updateCats();
 }
@@ -337,6 +358,8 @@ function bindBody(body) {
   body.addEventListener('click', async (e) => {
     const cb = e.target.closest('.catbar');
     if (cb) { toggleCat(cb, cb.closest('.search-res') ? searchList : M.movsOf(state.y, state.m)); return; }
+    const lay = e.target.closest('[data-layout]');
+    if (lay) { setLayout(lay.dataset.layout); renderBody(); return; }
     const add = e.target.closest('[data-add]');
     if (add) { addRow(add.dataset.add); return; }
     if (e.target.closest('[data-addtr]')) {
