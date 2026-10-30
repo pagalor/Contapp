@@ -429,8 +429,9 @@ export function applyTheme() {
   const t = localStorage.getItem('contabilita.theme') || 'auto';
   if (t === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.dataset.theme = t;
-  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0F1012' : '#F4F5F7');
+  // Il colore della barra del browser segue lo sfondo del tema in uso (--bg di palette.css)
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+  if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
 }
 
 // --- Installazione come app ---

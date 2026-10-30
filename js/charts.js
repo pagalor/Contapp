@@ -208,13 +208,13 @@ export function donut({ size = 200, slices, center = '', toggle = false, key = '
     const frac = s.value / tot;
     const tip = `${s.label}: ${fmtEur(s.value)} (${(frac * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%)`;
     if (frac > 0.9999) {
-      g += `<circle cx="${cx}" cy="${cy}" r="${(R + r0) / 2}" fill="none" stroke="${s.color}" stroke-width="${R - r0}" data-tip="${esc(tip)}"/>`;
+      g += `<circle cx="${cx}" cy="${cy}" r="${(R + r0) / 2}" fill="none" style="stroke:${s.color}" stroke-width="${R - r0}" data-tip="${esc(tip)}"/>`;
       break;
     }
     const b = a + frac * 2 * Math.PI;
     const large = b - a > Math.PI ? 1 : 0;
     g += `<path class="slice" d="M${pt(R, a)} A${R},${R} 0 ${large} 1 ${pt(R, b)} L${pt(r0, b)} A${r0},${r0} 0 ${large} 0 ${pt(r0, a)} Z"
-      fill="${s.color}" data-tip="${esc(tip)}"/>`;
+      style="fill:${s.color}" data-tip="${esc(tip)}"/>`;
     a = b;
   }
   const mask = `<mask id="${maskId}"><circle class="donut-sweep" cx="${cx}" cy="${cy}" r="${R / 2}" fill="none" stroke="#fff"

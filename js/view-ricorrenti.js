@@ -30,7 +30,7 @@ function item(r) {
   const next = M.ricNext(r);
   const cat = M.catById(d.cat);
   return `<button class="ric ${d.tipo}${next ? '' : ' done'}" data-id="${r.id}">
-    <span class="ric-emoji" style="--c:${cat?.data.colore || '#999'}">${esc(cat?.data.emoji || '↻')}</span>
+    <span class="ric-emoji" style="--c:${cat?.data.colore || 'var(--text-3)'}">${esc(cat?.data.emoji || '↻')}</span>
     <span class="ric-desc">${esc(d.desc || '(senza descrizione)')}<small>${esc(frase(r))}${d.conti?.length === 1 ? ', ' + esc(M.accName(d.conti[0].c)) : ''}</small></span>
     <span class="ric-amt">${d.tipo === 'in' ? '+' : '−'}${fmt(d.val)}<small>${next ? 'prossima: ' + fmtD(next) : 'terminata'}</small></span>
   </button>`;

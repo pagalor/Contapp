@@ -8,7 +8,7 @@ export function catBars(list, tipo) {
   const rows = M.byCategory(list, tipo);
   const tot = rows.reduce((a, r) => a + r.tot, 0);
   if (!rows.length) return '<p class="muted">Nessun dato.</p>';
-  const slices = rows.map((r) => ({ label: M.catLabel(r.cat), value: r.tot, color: r.cat?.data.colore || '#999' }));
+  const slices = rows.map((r) => ({ label: M.catLabel(r.cat), value: r.tot, color: r.cat?.data.colore || 'var(--text-3)' }));
   const pie = C.donut({
     size: 190, center: fmtEur0(tot), toggle: true, slices,
     key: `${tipo}:${slices.map((s) => s.label).join('|')}`,
@@ -18,9 +18,9 @@ export function catBars(list, tipo) {
     const pct = tot ? (r.tot / tot) * 100 : 0;
     return `<li>
       <button class="catbar" data-cat="${r.id}" data-tipo="${tipo}" aria-expanded="false">
-        <span class="cb-name"><span class="cb-emoji" style="--c:${r.cat?.data.colore || '#999'}">${esc(r.cat?.data.emoji || '')}</span>${esc(r.cat?.data.nome || 'Senza categoria')}</span>
+        <span class="cb-name"><span class="cb-emoji" style="--c:${r.cat?.data.colore || 'var(--text-3)'}">${esc(r.cat?.data.emoji || '')}</span>${esc(r.cat?.data.nome || 'Senza categoria')}</span>
         <span class="cb-val">${fmtEur(r.tot)} <small>${pct.toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></span>
-        <span class="cb-track"><span style="width:${pct}%;background:${r.cat?.data.colore || '#999'}"></span></span>
+        <span class="cb-track"><span style="width:${pct}%;background:${r.cat?.data.colore || 'var(--text-3)'}"></span></span>
       </button>
       <div class="cb-detail" hidden></div>
     </li>`;
