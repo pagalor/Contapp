@@ -94,7 +94,7 @@ html.demo .topbar { padding-top: .6rem; }
 .sync-btn[data-state="pending"] .sync-pend { display: block; }
 
 .sync-dot, .target-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; background: var(--text-3); }
-.target-dot { background: var(--sal-neg); }
+.target-dot { background: var(--warn-bar); }
 .sync-dot[data-state="ok"], [data-state="ok"] > .sync-dot { background: var(--in-bar); }
 .sync-dot[data-state="pending"], .sync-dot[data-state="syncing"],
 [data-state="pending"] > .sync-dot, [data-state="syncing"] > .sync-dot { background: var(--warn-bar); }
@@ -135,7 +135,7 @@ main { max-width: 1180px; outline: none; }
   .nav a.on { color: var(--hero-text); }
   .nav a.on span { font-weight: 750; }
   .nav a.on svg { background: var(--hero-text); color: var(--hero); }
-  .nav .target-dot { position: absolute; top: 8px; left: calc(50% + 12px); box-shadow: 0 0 0 2px var(--dock); background: var(--hero-neg); }
+  .nav .target-dot { position: absolute; top: 8px; left: calc(50% + 12px); box-shadow: 0 0 0 2px var(--dock); }
   .nav a.on .target-dot { box-shadow: 0 0 0 2px var(--hero-text); }
   main { padding: .4rem .8rem calc(var(--nav-h) + env(safe-area-inset-bottom) + 2.5rem); }
   body.has-fab main { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 6.5rem); }
@@ -150,7 +150,10 @@ main { max-width: 1180px; outline: none; }
 }
 .fab:active { border-radius: var(--r-m); }
 .fab svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-@media (min-width: 900px) { .fab { display: none; } }
+@media (min-width: 900px) {
+  .fab { right: clamp(1.2rem, 3vw, 2.5rem); bottom: 1.6rem; }
+  body.has-fab main { padding-bottom: 7rem; }
+}
 
 /* ---------- Pannelli dell'account e della sincronizzazione (scendono dalla barra in alto) ---------- */
 .modal.panel {
@@ -265,19 +268,7 @@ button.back { font: inherit; font-size: .88rem; font-weight: 550; background: no
 @media (min-width: 900px) { .mese-title { font-size: 3rem; } .mese-title span { font-size: 1.5rem; } }
 .mese-title:hover { background: var(--surface-2); }
 .month-picker { position: absolute; left: 3rem; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-/* Totali del mese (computer): gruppo collegato Entrate | Uscite | Saldo, il saldo sul verde acqua */
-.sums { display: flex; gap: 2px; margin: 0; }
-.sums div { display: flex; flex-direction: column; background: var(--surface); padding: .6rem 1.2rem .7rem; min-width: 9rem; border-radius: var(--r-xs); }
-.sums div:first-child { border-radius: var(--r-l) var(--r-xs) var(--r-xs) var(--r-l); }
-.sums div:last-child { border-radius: var(--r-xs) var(--r-l) var(--r-l) var(--r-xs); }
-.sums dt { font-size: .85rem; color: var(--text-2); font-weight: 650; }
-.sums dd { margin: 0; font: 700 1.45rem/1.2 var(--font-title); letter-spacing: -0.01em; }
-.sums .saldo { background: var(--hero); }
-.sums .saldo dt { color: var(--hero-text-2); }
-.sums .saldo dd { color: var(--hero-text); }
-.sums .saldo dd.sal-pos { color: var(--hero-pos); }
-.sums .saldo dd.sal-neg { color: var(--hero-neg); }
-/* Telefono: riquadro verde acqua con il saldo in grande e le capsule del logo */
+/* Riquadro verde acqua del mese: il saldo in grande, entrate e uscite, e le capsule del logo calcolate sui totali */
 .mese-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding: 1.2rem 1.3rem; }
 .mh-text { min-width: 0; }
 .mese-hero .hb-num { font-size: 2.15rem; margin: .15rem 0 .35rem; }
@@ -293,14 +284,15 @@ button.back { font: inherit; font-size: .88rem; font-weight: 550; background: no
 .mh-caps .pos { background: var(--hero-pos); }
 .mh-caps .neg { background: var(--hero-neg); }
 @media (min-width: 900px) {
-  .mese-head { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
   .mese-nav { justify-content: flex-start; }
   .mese-tools { order: -1; }
   .mese-lente { display: none; }
-  .mese-hero { display: none; }
+  .mese-hero { padding: 1.4rem 1.8rem; }
+  .mese-hero .hb-num { font-size: 2.6rem; }
+  .mh-caps { height: 130px; }
+  .mh-caps i { width: 42px; }
 }
 @media (max-width: 899.98px) {
-  .sums { display: none; }
   .toolbar:not(.cerca-aperta) .search { display: none; }
 }
 @media (max-width: 380px) { .mh-caps i { width: 28px; } .mese-hero .hb-num { font-size: 1.8rem; } }
@@ -1225,7 +1217,5 @@ button.gr-head:focus-visible { outline: 2px solid var(--primary); outline-offset
 .gruppo .bud-legend { padding: .7rem .6rem 0; margin: 0; }
 .gr-link { display: inline-block; margin: .6rem .6rem .9rem; }
 .gruppo:not(.multi) .gr-link { margin-top: .2rem; }
-/* Pannello del giorno nel calendario: le righe a blocchi */
-.cal-panel .rows { display: grid; gap: 2px; background: var(--surface-2); border-radius: var(--r-m); overflow: hidden; }
-.cal-panel .rows > .row { border-top: 0; background: var(--surface); }
+.cal-hint { margin: 0 .3rem 1rem; }
 

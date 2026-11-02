@@ -21,9 +21,10 @@
   --hero-text-2: #B9DCDF;
   --hero-in: #4FD67E;  /* entrate su fondo verde acqua (anche nel logo) */
   --hero-out: #FF7484;  /* uscite su fondo verde acqua */
-  --hero-pos: #A9EDBE;  /* saldo positivo su fondo verde acqua */
-  --hero-neg: #FFB3BC;  /* saldo negativo su fondo verde acqua */
+  --hero-pos: #C9EE7E;  /* saldo positivo su fondo verde acqua (verde lime) */
+  --hero-neg: #FFAACB;  /* saldo negativo su fondo verde acqua (rosso lampone) */
   --dock: #055A63;  /* barra di navigazione su telefono */
+  --logo-saldo: #A9EDBE;  /* terza capsula del logo (colore del marchio, uguale nelle icone dell'app) */
   --dock-icon: #9CCBCF;
   --in: #13783A;  /* entrate: importi e testo */
   --in-bar: #22A653;  /* entrate: barre e grafici */
@@ -35,10 +36,10 @@
   --on-out-cont: #6E0F1D;
   --sal-pos: #4D7C0F;  /* saldo positivo (testo): verde lime, più giallo delle entrate */
   --sal-neg: #A3195B;  /* saldo negativo (testo): rosso lampone, diverso dalle uscite */
-  --sal-pos-bar: #74D394;  /* saldo positivo (barre) */
-  --sal-neg-bar: #FF9AA6;  /* saldo negativo (barre) */
-  --pos: var(--in);  /* indicatori positivi */
-  --neg: var(--out);  /* indicatori negativi */
+  --sal-pos-bar: #7FB02E;  /* saldo positivo (barre) */
+  --sal-neg-bar: #D9578F;  /* saldo negativo (barre) */
+  --pos: var(--sal-pos);  /* indicatori positivi: come il saldo positivo */
+  --neg: var(--sal-neg);  /* indicatori negativi: come il saldo negativo */
   --warn: #9A5800;  /* avvisi: testo */
   --warn-bar: #F5A524;  /* avvisi: barre e pallini */
   --warn-bg: #FFEBCC;  /* avvisi: riquadri */
@@ -99,8 +100,8 @@
     --hero-text-2: #A8CFD2;
     --hero-in: #4FD67E;  /* entrate su fondo verde acqua (anche nel logo) */
     --hero-out: #FF7484;  /* uscite su fondo verde acqua */
-    --hero-pos: #A9EDBE;  /* saldo positivo su fondo verde acqua */
-    --hero-neg: #FFB3BC;  /* saldo negativo su fondo verde acqua */
+    --hero-pos: #C9EE7E;  /* saldo positivo su fondo verde acqua (verde lime) */
+    --hero-neg: #FFAACB;  /* saldo negativo su fondo verde acqua (rosso lampone) */
     --dock: #0A4950;  /* barra di navigazione su telefono */
     --dock-icon: #8FBFC3;
     --in: #5EDC88;  /* entrate: importi e testo */
@@ -113,10 +114,10 @@
     --on-out-cont: #FFB3BC;
     --sal-pos: #B5E35C;  /* saldo positivo (testo): verde lime, più giallo delle entrate */
     --sal-neg: #FF8FB8;  /* saldo negativo (testo): rosso lampone, diverso dalle uscite */
-    --sal-pos-bar: #A9EDBE;  /* saldo positivo (barre) */
-    --sal-neg-bar: #FFB3BC;  /* saldo negativo (barre) */
-    --pos: var(--in);  /* indicatori positivi */
-    --neg: var(--out);  /* indicatori negativi */
+    --sal-pos-bar: #B5E35C;  /* saldo positivo (barre) */
+    --sal-neg-bar: #FF8FB8;  /* saldo negativo (barre) */
+    --pos: var(--sal-pos);  /* indicatori positivi: come il saldo positivo */
+    --neg: var(--sal-neg);  /* indicatori negativi: come il saldo negativo */
     --warn: #F5B041;  /* avvisi: testo */
     --warn-bar: #F5A524;  /* avvisi: barre e pallini */
     --warn-bg: #3A2A0D;  /* avvisi: riquadri */
@@ -159,8 +160,8 @@
   --hero-text-2: #A8CFD2;
   --hero-in: #4FD67E;  /* entrate su fondo verde acqua (anche nel logo) */
   --hero-out: #FF7484;  /* uscite su fondo verde acqua */
-  --hero-pos: #A9EDBE;  /* saldo positivo su fondo verde acqua */
-  --hero-neg: #FFB3BC;  /* saldo negativo su fondo verde acqua */
+  --hero-pos: #C9EE7E;  /* saldo positivo su fondo verde acqua (verde lime) */
+  --hero-neg: #FFAACB;  /* saldo negativo su fondo verde acqua (rosso lampone) */
   --dock: #0A4950;  /* barra di navigazione su telefono */
   --dock-icon: #8FBFC3;
   --in: #5EDC88;  /* entrate: importi e testo */
@@ -173,10 +174,10 @@
   --on-out-cont: #FFB3BC;
   --sal-pos: #B5E35C;  /* saldo positivo (testo): verde lime, più giallo delle entrate */
   --sal-neg: #FF8FB8;  /* saldo negativo (testo): rosso lampone, diverso dalle uscite */
-  --sal-pos-bar: #A9EDBE;  /* saldo positivo (barre) */
-  --sal-neg-bar: #FFB3BC;  /* saldo negativo (barre) */
-  --pos: var(--in);  /* indicatori positivi */
-  --neg: var(--out);  /* indicatori negativi */
+  --sal-pos-bar: #B5E35C;  /* saldo positivo (barre) */
+  --sal-neg-bar: #FF8FB8;  /* saldo negativo (barre) */
+  --pos: var(--sal-pos);  /* indicatori positivi: come il saldo positivo */
+  --neg: var(--sal-neg);  /* indicatori negativi: come il saldo negativo */
   --warn: #F5B041;  /* avvisi: testo */
   --warn-bar: #F5A524;  /* avvisi: barre e pallini */
   --warn-bg: #3A2A0D;  /* avvisi: riquadri */

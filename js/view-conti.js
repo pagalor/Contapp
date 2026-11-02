@@ -218,7 +218,7 @@ export function renderConto(el, id) {
           <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : x.kind === 'debt' ? '#debiti' : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
             ${alDate(x.date)}
             <span class="al-desc">${alDesc(x)}</span>
-            <span class="al-val ${x.val >= 0 ? 'in' : 'out'}">${fmtSigned(x.val)}</span>
+            <span class="al-val ${x.val >= 0 ? 'pos' : 'neg'}">${fmtSigned(x.val)}</span>
             <span class="al-run"><small>Saldo</small> ${fmt(x.run)}</span>
           </a>`).join('')}</div>` : '<p class="muted">Ancora nessun movimento su questo fondo dopo la data di partenza.</p>'}
         <p class="al-start">Saldo iniziale al ${fmtDateShort(inizio)}: <b>${fmtEur(c.data.saldoIniziale || 0)}</b></p>

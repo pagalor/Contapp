@@ -49,7 +49,6 @@ export function render(el, { y, m, q = '', highlight } = {}) {
             </div>
           </div>
         </div>
-        <dl class="sums" id="sums"></dl>
         ${isNow ? '' : '<button class="btn small mese-oggi" data-act="oggi">Oggi</button>'}
       </header>
       <div class="hero-box mese-hero" id="mese-hero"></div>
@@ -200,30 +199,28 @@ function renderAlerts() {
 }
 
 // Riga d'anteprima di un gruppo chiuso: descrizione, "giorno mese, categoria, fondo", importo senza segno
-function anteprimaMov(r) {
+function anteprimaMov(r, { senzaData = false } = {}) {
   const d = r.data;
-  const quando = (d.d ? d.d + ' ' : '') + M.MESI_BREVI[d.m - 1].toLowerCase();
+  const quando = senzaData ? '' : (d.d ? d.d + ' ' : '') + M.MESI_BREVI[d.m - 1].toLowerCase();
   const cat = M.catById(d.cat);
   return { desc: d.desc || 'Senza descrizione', det: [quando, cat?.data.nome, d.conti?.length ? M.contiLabel(r) : ''].filter(Boolean).join(', '),
     amt: fmt(d.val), cls: d.tipo === 'in' ? 'in' : 'out' };
 }
 
-// Entrate, Uscite (vista Separate) o Movimenti (vista Insieme, in ordine di data: il colore dell'importo distingue i tipi;
-// un solo pulsante per aggiungere, nella finestra si sceglie se è un'entrata o un'uscita): un gruppo espandibile ciascuno
+// Entrate, Uscite (vista Separate) o Movimenti (vista Insieme, in ordine di data: il colore dell'importo distingue i tipi):
+// un gruppo espandibile ciascuno. Si aggiunge con il pulsante «Nuovo» (nella finestra si sceglie entrata o uscita)
 const NOMI = { in: ['entrata', 'entrate'], out: ['uscita', 'uscite'], all: ['movimento', 'movimenti'] };
 const VUOTO = { in: 'Nessuna entrata in questo mese.', out: 'Nessuna uscita in questo mese.', all: 'Nessun movimento in questo mese.' };
 function ledger(tipo, title, list) {
   const s = M.sums(list);
   const fondo = tipo === 'in' ? 'Ricevuto su' : tipo === 'out' ? 'Pagato con' : 'Fondo';
-  const add = tipo === 'all' ? '<button class="add-row" data-add="out">+ Aggiungi movimento</button>'
-    : `<button class="add-row" data-add="${tipo}">+ Aggiungi ${tipo === 'in' ? 'entrata' : 'uscita'}</button>`;
   return G.gruppoHTML({
     id: 'mese-' + tipo, cls: `ledger ${tipo}`, attrs: `data-tipo="${tipo}"`, titolo: title, tono: tipo === 'all' ? 'prim' : tipo,
     totale: tipo === 'all' ? '' : fmtEur(tipo === 'in' ? s.tin : s.tout), totCls: tipo, n: list.length, nomi: NOMI[tipo],
     anteprima: list.map(anteprimaMov),
     corpo: `<div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>${fondo}</span><span></span><span></span></div>
       <div class="rows">${list.map((r) => rowHTML(r)).join('')}</div>`,
-    piede: add, vuoto: VUOTO[tipo],
+    vuoto: VUOTO[tipo],
   });
 }
 
@@ -369,14 +366,7 @@ function updateSums() {
   renderBudgets();
   const list = M.movsOf(state.y, state.m);
   const s = M.sums(list);
-  const el = $('#sums', root);
-  if (el) {
-    el.innerHTML = `
-      <div><dt>Entrate</dt><dd class="in">${fmtEur(s.tin)}</dd></div>
-      <div><dt>Uscite</dt><dd class="out">${fmtEur(s.tout)}</dd></div>
-      <div class="saldo"><dt>Saldo</dt><dd class="${saldoCls(s.saldo)}">${fmtSigned(s.saldo)}</dd></div>`;
-  }
-  // Telefono: il saldo in grande sul verde acqua e le tre capsule del logo calcolate su entrate, uscite e saldo
+  // Totali del mese: il saldo in grande sul verde acqua, entrate e uscite, e le tre capsule del logo calcolate sui totali
   const hero = $('#mese-hero', root);
   if (hero) {
     const max = Math.max(s.tin, s.tout, Math.abs(s.saldo)) || 1;
@@ -758,7 +748,7 @@ function renderCalendar(body) {
     <section class="cal-card">
       <div class="cal-grid">${cells}</div>
     </section>
-    <section class="cal-panel" id="cal-panel"></section>
+    <div id="cal-panel"></div>
     ${senza.length ? G.gruppoHTML({ id: 'mese-senza', cls: 'cal-senza', titolo: 'Senza giorno', n: senza.length, nomi: ['movimento', 'movimenti'],
       anteprima: senza.map(anteprimaMov), corpo: `<div class="rows">${senza.map(calItem).join('')}</div>` }) : ''}
     ${footerHTML()}`;
@@ -793,14 +783,16 @@ const calItem = (r) => rowHTML(r, { nodate: true, open: openCal.has(r.id) });
 function paintDay(per) {
   const panel = $('#cal-panel', root);
   if (!panel) return;
-  if (!selDay) { panel.innerHTML = '<p class="muted">Tocca un giorno per vedere i movimenti.</p>'; return; }
+  if (!selDay) { panel.innerHTML = '<p class="muted cal-hint">Tocca un giorno per vedere i movimenti.</p>'; return; }
   const o = per[selDay];
   const nome = new Date(state.y, state.m - 1, selDay).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-  panel.innerHTML = `
-    <h2>${nome.charAt(0).toUpperCase() + nome.slice(1)}
-      <span>${o.tin || o.tout ? `<b class="${saldoCls(o.tin - o.tout)}" title="Saldo del giorno">${fmtSigned(o.tin - o.tout)}</b>` : ''}</span></h2>
-    ${o.items.length ? `<div class="rows">${o.items.map(calItem).join('')}</div>` : '<p class="muted">Nessun movimento in questo giorno.</p>'}
-    <div class="btn-row"><button class="btn small" data-calnew>+ Aggiungi movimento</button></div>`;
+  // I movimenti del giorno sono un gruppo espandibile, con il saldo del giorno come totale
+  panel.innerHTML = G.gruppoHTML({
+    id: 'mese-giorno', cls: 'cal-giorno', titolo: nome.charAt(0).toUpperCase() + nome.slice(1), tono: 'prim',
+    totale: o.tin || o.tout ? fmtSigned(o.tin - o.tout) : '', totCls: saldoCls(o.tin - o.tout), n: o.items.length, nomi: ['movimento', 'movimenti'],
+    anteprima: o.items.map((r) => anteprimaMov(r, { senzaData: true })), corpo: `<div class="rows">${o.items.map(calItem).join('')}</div>`,
+    piede: '<button class="add-row" data-calnew>+ Aggiungi movimento</button>', vuoto: 'Nessun movimento in questo giorno.',
+  });
   $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {
     addRow('out', selDay); // il tipo si sceglie nella finestra
   }));

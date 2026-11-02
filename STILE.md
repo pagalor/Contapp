@@ -31,11 +31,13 @@ Le variabili già usate dall'app mantengono il nome e cambiano valore. Le princi
 | `--text`, `--text-2`, `--text-3` | testo principale, secondario, solo etichette brevi | `#0B2427` … | `#ECF4F4` … |
 | `--primary` / `--on-primary` | azione principale (verde acqua) | `#046C75` / bianco | `#5CC6CE` / `#032C30` |
 | `--hero` | riquadro di riepilogo, navigazione su telefono, fondo del logo | `#055A63` | `#0A4950` |
-| `--hero-in`, `--hero-out`, `--hero-pos`, `--hero-neg` | entrate, uscite e saldi sul verde acqua (anche nel logo) | `#4FD67E`, `#FF7484`, `#A9EDBE`, `#FFB3BC` | uguali |
+| `--hero-in`, `--hero-out`, `--hero-pos`, `--hero-neg` | entrate, uscite e saldi sul verde acqua | `#4FD67E`, `#FF7484`, `#C9EE7E`, `#FFAACB` | uguali |
+| `--logo-saldo` | terza capsula del logo (colore del marchio, come nelle icone dell'app) | `#A9EDBE` | uguale |
 | `--in` / `--in-bar` | entrate: testo / barre | `#13783A` / `#22A653` | `#5EDC88` / `#4FD67E` |
 | `--out` / `--out-bar` | uscite: testo / barre | `#C21A33` / `#EE4358` | `#FF7A88` / `#FF7484` |
 | `--sal-pos`, `--sal-neg` | saldo di un periodo (testo) | `#4D7C0F` (verde lime) / `#A3195B` (rosso lampone) | `#B5E35C` / `#FF8FB8` |
-| `--sal-pos-bar`, `--sal-neg-bar` | saldo nei grafici | `#74D394` / `#FF9AA6` | `#A9EDBE` / `#FFB3BC` |
+| `--sal-pos-bar`, `--sal-neg-bar` | saldo nei grafici | `#7FB02E` / `#D9578F` | `#B5E35C` / `#FF8FB8` |
+| `--pos`, `--neg` | variazioni e indicatori positivi/negativi | come `--sal-pos` / `--sal-neg` | idem |
 | `--cal-in-1…5`, `--cal-out-1…5` | sfondo delle caselle del calendario | da `#EEF9F1` a `#66CF88`, da `#FDEEF0` a `#EE6E81` | da `#10261A` a `#267A44`, da `#2A1519` a `#8E2F42` |
 | `--warn`, `--warn-bar`, `--warn-bg` | avvisi e target | `#9A5800`, `#F5A524`, `#FFEBCC` | `#F5B041`, `#F5A524`, `#3A2A0D` |
 | `--butt`, `--butt-bar`, `--butt-bg` | soldi buttati | viola | viola |
@@ -47,7 +49,7 @@ Regole:
 
 - **Verde e rosso.** Sono un verde foglia e un rosso cremisi, come la bandiera del Messico, scelti con la stessa luminosità perché nessuno dei due "pesi" più dell'altro. Il verde è spostato verso il giallo per distinguersi bene dal verde acqua.
 - **Testo e barre sono separati.** Per il testo servono tonalità più profonde, per i grafici più luminose: gli importi usano `--in` e `--out`, i grafici `--in-bar` e `--out-bar`. Sul verde acqua si usano le versioni `--hero-*`, più chiare.
-- **Saldi.** Nei grafici e sul verde acqua il saldo è una tinta più chiara di entrate (positivo) o uscite (negativo), come la terza barra del logo. Nel testo ha colori propri, distinti da quelli di entrate e uscite: verde lime se positivo, rosso lampone se negativo.
+- **Saldi.** Il saldo ha un solo verde (lime) e un solo rosso (lampone), distinti da entrate e uscite, in tutte le loro varianti: testo, barre dei grafici e versione chiara sul verde acqua. Lo stesso vale per le variazioni e gli indicatori positivi o negativi (`--pos`, `--neg`). Solo il logo conserva il verde menta del marchio (`--logo-saldo`).
 - **Saldo dei fondi neutro.** Il saldo dei fondi non è più blu: è neutro, perché non è né un'entrata né un'uscita. Il saldo di un periodo è verde o rosso secondo il segno.
 - **Riquadro verde acqua.** Dentro il riquadro di riepilogo e nella navigazione si usano sempre i colori `--hero-*`, gli stessi del logo, in entrambi i temi.
 - **Calendario.** Lo sfondo delle caselle usa una delle cinque tinte `--cal-in-N` o `--cal-out-N`, scelta in proporzione al saldo più grande del mese (come oggi l'intensità). Il testo resta `--text`, leggibile su tutte le tinte.
