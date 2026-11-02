@@ -255,6 +255,8 @@ export function genera(oggi) {
   add('cfg', 'cfg-patrimonio', { inizio: isoD(partenza), contoOut: F.conto, contoIn: F.conto });
   // un fondo archiviato (senza saldo): non compare tra i fondi selezionabili, ma si vede in Fondi
   add('cont', 'cont-demo-vecchio', { nome: 'Vecchia carta prepagata', gruppo: 'digitale', ord: FONDI.length, archiviato: true, saldoIniziale: 0, siEspr: null, obiettivo: null, obEspr: null });
+  // un secondo fondo tra i contanti, fermo: nel Patrimonio il gruppo ha due fondi e si vede chiuso (anteprima) e aperto
+  add('cont', 'cont-demo-salvadanaio', { nome: 'Salvadanaio', gruppo: 'contanti', ord: FONDI.length + 1, archiviato: false, saldoIniziale: 85, siEspr: null, obiettivo: null, obEspr: null });
   add('cat', C.casa, { nome: 'Casa e bollette', tipo: 'out', colore: '#6B7F99', emoji: '🏠', ord: 1.5 });
   add('cat', C.stip, { nome: 'Stipendio', tipo: 'in', colore: '#12805C', emoji: '💼', ord: -1 });
   SUBS.forEach(([id, nome, cat], i) => add('sub', id, { nome, cat, ord: i % 3 }));
