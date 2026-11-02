@@ -15,6 +15,7 @@ import * as vRate from './view-rate.js';
 import * as vBudget from './view-budget.js';
 import * as demo from './demo.js';
 import * as pannelli from './pannelli.js';
+import * as gruppi from './gruppi.js';
 import { $, $$, setupTooltips, debounce, toast } from './ui.js';
 import { fmtEur } from './expr.js';
 
@@ -170,6 +171,7 @@ async function boot() {
     if (pendingRemote) setTimeout(() => { if (!view().contains(document.activeElement)) refreshAfterRemote(); }, 50);
   });
   pannelli.avvia();
+  gruppi.avvia();
   $('#fab')?.addEventListener('click', () => vMese.nuovoMovimento());
   if (!demo.attiva) sync.start();
   addEventListener('hashchange', route);

@@ -4,6 +4,7 @@ import { fmt, fmtEur, fmtSigned, saldoCls } from './expr.js';
 import { esc, $, $$, toast, confirmBox, promptBox, debounce } from './ui.js';
 import { catBars, toggleCat, setPieOpen } from './catstats.js';
 import * as B from './budgetui.js';
+import * as G from './gruppi.js';
 import { monthPicker } from './datepick.js';
 import { splitEditor, transferDialog, tagEditorHTML, tagsDatalist, ricDialog, ricSeedFromMov, movDialog } from './dialogs.js';
 
@@ -104,6 +105,8 @@ export function renderBody(highlight) {
   if (mode() === 'cal') { renderCalendar(body); updateSums(); return; }
   const list = M.movsOf(state.y, state.m);
   const unico = layout() === 'all';
+  // il gruppo che contiene il movimento da evidenziare (appena aggiunto, modificato o cercato) si apre da solo
+  if (highlight && store.get(highlight)?.data.tipo === 'out') G.ricorda('mese-out', true);
   body.innerHTML = `
     ${store.isEmpty() ? `<div class="empty-hint">
         <p>Non ci sono ancora movimenti. Puoi iniziare a scriverli qui sotto, oppure importare il tuo storico.</p>
@@ -172,17 +175,35 @@ function ledgerAll(list) {
   return `
     <section class="ledger all" data-tipo="all">
       <h2><span>Movimenti</span><span class="ledger-tot muted" data-tot="all"></span></h2>
-      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>Fondo</span><span></span></div>
+      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>Fondo</span><span></span><span></span></div>
       <div class="rows">${list.map(rowHTML).join('')}</div>
       <button class="add-row" data-add="out">+ Aggiungi movimento</button>
     </section>`;
 }
 
+// Riga d'anteprima di un gruppo chiuso: descrizione, "giorno mese, categoria, fondo", importo senza segno
+function anteprimaMov(r) {
+  const d = r.data;
+  const quando = (d.d ? d.d + ' ' : '') + M.MESI_BREVI[d.m - 1].toLowerCase();
+  const cat = M.catById(d.cat);
+  return { desc: d.desc || 'Senza descrizione', det: [quando, cat?.data.nome, d.conti?.length ? M.contiLabel(r) : ''].filter(Boolean).join(', '),
+    amt: fmt(d.val), cls: d.tipo === 'in' ? 'in' : 'out' };
+}
+
 function ledger(tipo, title, list) {
+  if (tipo === 'out') {
+    return G.gruppoHTML({
+      id: 'mese-out', cls: 'ledger out', attrs: 'data-tipo="out"', titolo: title, tono: 'out',
+      totale: fmtEur(M.sums(list).tout), totCls: 'out', n: list.length, nomi: ['uscita', 'uscite'], anteprima: list.map(anteprimaMov),
+      corpo: `<div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>Pagato con</span><span></span><span></span></div>
+        <div class="rows">${list.map(rowHTML).join('')}</div>`,
+      piede: '<button class="add-row" data-add="out">+ Aggiungi uscita</button>', vuoto: 'Nessuna uscita in questo mese.',
+    });
+  }
   return `
     <section class="ledger ${tipo}" data-tipo="${tipo}">
       <h2><span>${title}</span><span class="ledger-tot muted" data-tot="${tipo}"></span></h2>
-      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>${tipo === 'in' ? 'Ricevuto su' : 'Pagato con'}</span><span></span></div>
+      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>${tipo === 'in' ? 'Ricevuto su' : 'Pagato con'}</span><span></span><span></span></div>
       <div class="rows">${list.map(rowHTML).join('')}</div>
       <button class="add-row" data-add="${tipo}">+ Aggiungi ${tipo === 'in' ? 'entrata' : 'uscita'}</button>
     </section>`;
@@ -202,6 +223,7 @@ function tagLine(d) {
 }
 
 const RUOLI_RATA = { acquisto: 'Acquisto a rate', anticipo: 'Anticipo', rata: 'Rata', interessi: 'Interessi della rata', saldo: 'Saldo delle rate', reso: 'Reso' };
+const CHEV = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6.5 9.5l5.5 5.5 5.5-5.5"/></svg>';
 const PENCIL = '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
 
 // Icona della categoria: quadrato con la tinta del colore scelto e l'emoji
@@ -221,6 +243,7 @@ function rowHTML(r, { nodate = false, open = false } = {}) {
       <span class="c-cat">${catIco(cat)}<span class="c-lbl">${esc(cat ? cat.data.nome : '(categoria eliminata)')}${M.subOf(r) ? `<small class="c-sub"> · ${esc(M.subOf(r).data.nome)}</small>` : ''}</span></span>
       <span class="c-acc"><span class="c-lbl">${esc(fondo)}</span></span>
       <button class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
+      <button class="c-exp" data-act="exp" aria-label="Voci extra" aria-expanded="${open}" title="Voci extra">${CHEV}</button>
       <div class="tagline">${tagLine(d)}</div>
       <div class="details"${open ? '' : ' hidden'}>${open ? detailsHTML(r) : ''}</div>
     </div>`;
@@ -258,6 +281,7 @@ function toggleDetails(row, force) {
   if (open) det.innerHTML = detailsHTML(store.get(row.dataset.id));
   det.hidden = !open;
   row.setAttribute('aria-expanded', String(open));
+  row.querySelector('.c-exp')?.setAttribute('aria-expanded', String(open));
   row.classList.toggle('open', open);
   if (row.classList.contains('nodate')) { if (open) openCal.add(row.dataset.id); else openCal.delete(row.dataset.id); }
 }
@@ -326,6 +350,8 @@ function updateSums() {
     // I totali sono già in alto: qui si conta quanti movimenti ci sono, come per "Senza giorno" nel calendario
     e.textContent = list.filter((r) => t === 'all' || r.data.tipo === t).length;
   }
+  const grTot = root.querySelector('#gr-mese-out [data-gr-tot]');
+  if (grTot) grTot.textContent = fmtEur(s.tout);
   updateCats();
 }
 
@@ -377,6 +403,7 @@ function bindBody(body) {
     // Un tocco sulla riga (fuori dai pulsanti e dai link) apre o chiude le voci extra
     if (row && !act && !e.target.closest('.details, button, a, input, select, textarea, label')) { toggleDetails(row); return; }
     if (!row || !act) return;
+    if (act === 'exp') { toggleDetails(row); return; }
     const r = rec(row);
     if (act === 'edit' && r) {
       movDialog({

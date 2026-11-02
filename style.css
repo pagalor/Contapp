@@ -318,8 +318,8 @@ details.alert summary { cursor: pointer; }
 
 .row {
   display: grid; position: relative; border-top: 1px solid var(--surface-2); align-items: center;
-  grid-template-columns: 2.4rem minmax(0, 1.3fr) minmax(0, .2fr) 6.8rem 2.4rem;
-  grid-template-areas: "day desc desc amt more" "day cat acc acc more" "tags tags tags tags tags" "det det det det det";
+  grid-template-columns: 2.4rem minmax(0, 1.3fr) minmax(0, .2fr) 6.8rem 2.4rem 2.6rem;
+  grid-template-areas: "day desc desc amt more exp" "day cat acc acc more exp" "tags tags tags tags tags tags" "det det det det det det";
   padding: .15rem .25rem;
 }
 .row:hover { background: var(--surface-2); }
@@ -347,6 +347,16 @@ details.alert summary { cursor: pointer; }
 .c-more { grid-area: more; background: none; border: 0; color: var(--text-3); cursor: pointer; position: relative; height: 34px; border-radius: 8px; }
 .c-more svg { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .c-more:hover { color: var(--text); }
+/* Freccia a capsula delle voci extra (come la freccia di ogni notifica) */
+.c-exp {
+  grid-area: exp; align-self: center; justify-self: center; width: 36px; height: 30px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+  background: var(--surface-2); color: var(--text); display: grid; place-items: center; transition: background-color .2s;
+}
+.c-exp svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .35s var(--spring); }
+.c-exp[aria-expanded="true"] svg { transform: rotate(180deg); }
+.c-exp:hover { background: color-mix(in srgb, var(--text) 7%, var(--surface-2)); }
+.row.open .c-exp { background: var(--surface); }
+@media (pointer: coarse) { .c-exp { width: 40px; height: 36px; } }
 .row.has-note .c-more::after { content: ""; position: absolute; top: 6px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
 .row.excluded .c-amt, .row.excluded .c-desc { text-decoration: line-through; opacity: .55; }
 .row.flash { animation: flash 1.6s ease-out; }
@@ -392,8 +402,8 @@ a.tag:hover { color: var(--text); border-color: var(--outline); }
 
 @container ledger (min-width: 680px) {
   .row {
-    grid-template-columns: 3rem 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem;
-    grid-template-areas: "day amt desc cat acc more" "tags tags tags tags tags tags" "det det det det det det";
+    grid-template-columns: 3rem 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem 2.8rem;
+    grid-template-areas: "day amt desc cat acc more exp" "tags tags tags tags tags tags tags" "det det det det det det det";
     padding: .1rem .35rem;
   }
   .trow {
@@ -404,7 +414,7 @@ a.tag:hover { color: var(--text); border-color: var(--outline); }
   .trf-k { display: none; }
   .tagline { padding-left: 11.2rem; }
   .cols {
-    display: grid; grid-template-columns: 3rem 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem; padding: 0 .35rem .35rem;
+    display: grid; grid-template-columns: 3rem 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem 2.8rem; padding: 0 .35rem .35rem;
     font-size: .74rem; color: var(--text-3); font-weight: 550;
   }
   .cols span { padding: 0 .45rem; }
@@ -412,6 +422,7 @@ a.tag:hover { color: var(--text); border-color: var(--outline); }
   .cols span:nth-child(2) { text-align: right; }
   .cols span:nth-child(4) { padding-left: 1.4rem; }
   .trasf .cols span:nth-child(4) { padding-left: .45rem; }
+  .trasf .cols { grid-template-columns: 3rem 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem; }
 }
 
 .empty-hint { background: var(--surface); border: 0; border-radius: var(--r-l); padding: 1.2rem; margin-bottom: 1rem; }
@@ -968,14 +979,14 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
 
 /* Voci del calendario: come le righe dell'elenco, ma senza la colonna del giorno */
 .row.nodate {
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, .2fr) 6.8rem 2.4rem;
-  grid-template-areas: "desc desc amt more" "cat acc acc more" "tags tags tags tags" "det det det det";
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, .2fr) 6.8rem 2.4rem 2.6rem;
+  grid-template-areas: "desc desc amt more exp" "cat acc acc more exp" "tags tags tags tags tags" "det det det det det";
 }
 .row.nodate .tagline { padding-left: .45rem; }
 @container ledger (min-width: 680px) {
   .row.nodate {
-    grid-template-columns: 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem;
-    grid-template-areas: "amt desc cat acc more" "tags tags tags tags tags" "det det det det det";
+    grid-template-columns: 7.6rem minmax(0, 1fr) 10.5rem 10.5rem 2.6rem 2.8rem;
+    grid-template-areas: "amt desc cat acc more exp" "tags tags tags tags tags tags" "det det det det det det";
   }
   .row.nodate .tagline { padding-left: 8.2rem; }
 }
@@ -1110,3 +1121,51 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
 .hero-box .hb-out { color: var(--hero-out); }
 .hero-box .hb-pos { color: var(--hero-pos); }
 .hero-box .hb-neg { color: var(--hero-neg); }
+
+/* ---------- Gruppi espandibili (gruppi.js; STILE.md, "Gruppi espandibili") ---------- */
+/* Chiuso: riquadro --surface con capsula, titolo, totale, contatore e anteprima. Aperto: fondo tonale e righe a blocchi. */
+.gruppo { background: var(--surface); color: var(--text); border-radius: var(--r-l); margin-bottom: 1rem; overflow: hidden; transition: background-color .25s; }
+.gruppo.multi.aperto { background: var(--surface-2); }
+.gruppo.gr-anim { transition: height .42s var(--spring), background-color .25s; }
+.gr-head {
+  display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 64px; padding: .8rem 1rem .5rem 1.1rem; margin: 0;
+  font: inherit; color: var(--text); background: none; border: 0; text-align: left;
+}
+button.gr-head { cursor: pointer; }
+.gr-tit { font: 700 1.25rem/1.2 var(--font-title); letter-spacing: -0.01em; }
+.gr-tot { font-weight: 750; font-size: 1.05rem; white-space: nowrap; }
+.gr-tot.in { color: var(--in); }
+.gr-tot.out { color: var(--out); }
+.gr-count {
+  margin-left: auto; display: inline-flex; align-items: center; gap: .3rem; min-height: 40px; padding: 0 .7rem 0 1rem; border-radius: var(--r-pill);
+  background: var(--surface-2); font-weight: 750; font-variant-numeric: tabular-nums; flex: none; transition: background-color .25s;
+}
+.gruppo.aperto .gr-count { background: transparent; }
+.gr-chev { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .4s var(--spring); }
+.gruppo.aperto .gr-chev { transform: rotate(180deg); }
+button.gr-head:focus-visible { outline: 2px solid var(--primary); outline-offset: -4px; border-radius: var(--r-l); }
+.gr-prev { display: grid; gap: .3rem; padding: .1rem 1.1rem 1.1rem; cursor: pointer; }
+.gr-pr { display: flex; align-items: baseline; gap: .55rem; min-width: 0; }
+.gr-pr b { font-weight: 700; white-space: nowrap; flex: none; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
+.gr-det { color: var(--text-2); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gr-amt { font-weight: 750; white-space: nowrap; margin-left: auto; font-variant-numeric: tabular-nums; }
+.gr-amt.in { color: var(--in); }
+.gr-amt.out { color: var(--out); }
+.gr-amt.warn { color: var(--warn); }
+.gr-more { color: var(--text-2); font-weight: 650; margin-top: .2rem; }
+.gr-body { container: ledger / inline-size; padding: 0 .5rem; }
+.gr-vuoto { padding: 0 1.1rem; margin: 0 0 .4rem; }
+.gr-foot { padding: 0 .5rem .2rem; }
+.gruppo .gr-foot .add-row { margin: .6rem .5rem 1rem; }
+.gruppo.multi.aperto .gr-foot .add-row { background: var(--surface); }
+.gruppo:not(.multi) .gr-body { padding-bottom: .5rem; }
+/* Le righe complete, ciascuna un blocco --surface separato di 2 px */
+.gruppo .rows { display: grid; gap: 2px; border-radius: var(--r-m); overflow: hidden; }
+.gruppo .rows > .row { border-top: 0; background: var(--surface); border-radius: var(--r-xs); }
+.gruppo .rows > .row:hover { background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
+.gruppo .rows > .row.open { background: color-mix(in srgb, var(--text) 5%, var(--surface)); }
+.gruppo:not(.multi) .rows > .row { background: var(--surface); }
+/* Righe in cascata all'apertura (30 ms l'una dall'altra) */
+.gr-entra { animation: gr-entra .35s var(--spring) both; animation-delay: calc(var(--i, 0) * 30ms); }
+@keyframes gr-entra { from { opacity: 0; transform: translateY(-6px); } }
+

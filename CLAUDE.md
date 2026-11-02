@@ -87,6 +87,7 @@ Il titolo della scheda è «<titolo> · Rationes» (con «(demo)» in modalità 
 | `contabilita.riepilogo-periodo` | Riepilogo «Tutti gli anni»: intervallo `{ from, to }` in `AAAA-MM` |
 | `contabilita.patrimonio-periodo` | Patrimonio, grafico Andamento: intervallo `{ from, to }` in `AAAA-MM-GG` |
 | `contabilita.debitiFiltro` | Debiti: `aperti` (predefinito), `saldati` o `tutti` |
+| `contabilita.gruppi` | Gruppi espandibili (`js/gruppi.js`): `{ idGruppo: true/false }`, aperto o chiuso; senza una scelta chiuso sotto i 900 px e aperto sopra |
 | `contabilita.theme` | Tema: `auto`, `light`, `dark` |
 | `contabilita.demo`, `contabilita.demo.dati` | Modalità demo (vedi sotto) |
 | `contabilita.sync.cfg`, `.session`, `.lastPull`, `.lastOk`, `.prevUser` | Configurazione Supabase, sessione e ultimi esiti della sincronizzazione |
