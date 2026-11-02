@@ -107,6 +107,7 @@ html.demo .topbar { padding-top: .6rem; }
   transition: background-color .2s, color .2s; }
 .nav a svg { width: 23px; height: 23px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 main { max-width: 1180px; outline: none; }
+main:focus-visible { outline: none; }
 
 @media (min-width: 900px) {
   body { display: grid; grid-template-columns: 252px minmax(0, 1fr); grid-template-rows: auto auto 1fr; align-items: start; }
@@ -1082,7 +1083,9 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
   display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; width: 100%;
   font: inherit; color: var(--text); background: none; border: 0; padding: .2rem 0; text-align: left; cursor: pointer;
 }
-.bud-name { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.bud-name { font-weight: 650; min-width: 0; overflow-wrap: anywhere; flex: 1; }
+.bud-head { align-items: center; gap: .8rem; }
+.bud-ico { width: 40px; height: 40px; font-weight: 750; color: var(--text); }
 .bud-name small, .bud-fig small { display: block; color: var(--text-2); font-weight: 400; font-size: .78rem; }
 .bud-fig { text-align: right; flex: none; }
 .bud-fig b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
@@ -1295,4 +1298,8 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .gr-tot.muted { color: var(--text-2); font-weight: 600; }
 .gruppo.person .gr-tot { font-size: .95rem; }
 .rate-box { margin-bottom: 1rem; }
+
+/* ---------- Budget ---------- */
+.bud-bar { margin: .7rem 0 .45rem; }
+.bud-list.card .bud:hover { background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
 

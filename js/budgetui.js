@@ -2,6 +2,7 @@
 import * as M from './model.js';
 import { fmt, fmtEur } from './expr.js';
 import { esc } from './ui.js';
+import * as store from './store.js';
 
 export function statoTesto(s) {
   if (s.stato === 'sforato') return `Sforato di ${fmtEur(s.ecc)}`;
@@ -31,12 +32,28 @@ function barHTML(s) {
   </div>`;
 }
 
+// Icona del budget: quella della categoria (anche per una sottocategoria), «#» per un tag, «∑» per tutte le uscite.
+// Accanto all'icona il nome senza l'emoji, che è già nell'icona.
+function icona(b) {
+  const su = M.budgetSu(b);
+  const r = b.data.rif ? store.get(b.data.rif) : null;
+  const cat = su === 'cat' ? r : su === 'sub' && r ? M.catById(r.data.cat) : null;
+  const segno = su === 'tag' ? '#' : su === 'tot' ? '∑' : cat?.data.emoji || '';
+  return `<span class="cat-ico bud-ico" style="--c:${cat?.data.colore || 'var(--primary)'}" aria-hidden="true">${esc(segno)}</span>`;
+}
+function nome(b) {
+  const su = M.budgetSu(b);
+  const r = b.data.rif ? store.get(b.data.rif) : null;
+  if (su === 'cat' && r) return r.data.nome;
+  return M.budgetLabel(b);
+}
+
 // `movs`: elenco dei movimenti da mostrare aperto sotto la riga; null = riga senza dettaglio
 export function rowHTML(s, { open = false, movs = null } = {}) {
   const linea = s.anno && s.inCorso ? ` · In linea a oggi: ${fmtEur(s.inLinea)}` : '';
   return `<div class="bud" data-id="${s.b.id}" data-stato="${s.stato}">
     <button class="bud-head" type="button"${movs === null ? '' : ` aria-expanded="${open}"`}>
-      <span class="bud-name">${esc(M.budgetLabel(s.b))}<small>${esc(importoTesto(s))}</small></span>
+      ${icona(s.b)}<span class="bud-name">${esc(nome(s.b))}<small>${esc(importoTesto(s))}</small></span>
       <span class="bud-fig"><b>${fmtEur(s.speso)}</b><small>su ${fmtEur(s.disp)}</small></span>
     </button>
     ${barHTML(s)}
@@ -49,7 +66,7 @@ export function rowHTML(s, { open = false, movs = null } = {}) {
 export function rowVuotaHTML(b, nota) {
   return `<div class="bud" data-id="${b.id}" data-stato="vuoto">
     <button class="bud-head" type="button">
-      <span class="bud-name">${esc(M.budgetLabel(b))}<small>${esc(nota)}</small></span>
+      ${icona(b)}<span class="bud-name">${esc(nome(b))}<small>${esc(nota)}</small></span>
     </button></div>`;
 }
 
