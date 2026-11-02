@@ -5,6 +5,7 @@ import { parseAmount, fmt, fmtEur, fmtEur0, fmtSigned, plain, round2 } from './e
 import { esc, $, $$, toast, modal, confirmBox } from './ui.js';
 import { transferDialog } from './dialogs.js';
 import { dateInput, setPick } from './datepick.js';
+import * as G from './gruppi.js';
 
 let root;
 export const fmtDate = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -57,29 +58,58 @@ function autoHTML() {
   const dt = M.debtTotals();
   const rt = M.rateTotali();
   const netto = round2(tot.tot + dt.netto - rt.residuo); // patrimonio netto: fondi + crediti − debiti − rate da pagare
+  const varPart = round2(tot.tot - start.tot);
+  const quando = (r) => `${r.data.d ? r.data.d + ' ' : ''}${M.MESI_BREVI[r.data.m - 1].toLowerCase()} ${r.data.y}`;
   return `
-    <div class="hero">
-      <p class="hero-label">Patrimonio oggi</p>
-      <p class="hero-num">${fmtEur(tot.tot)}</p>
-      <p class="hero-sub"><span class="${tot.tot - start.tot >= 0 ? 'pos' : 'neg'}">${fmtSigned(tot.tot - start.tot)}</span> dalla partenza del ${fmtDateShort(inizio)}</p>
-      <dl class="hero-split">
-        ${groups.map((g) => `<div><dt><i class="sw ${g}"></i>${M.gruppoNome(g)}</dt><dd>${fmtEur(tot.gruppi[g] || 0)}</dd></div>`).join('')}
-      </dl>
+    <section class="hero-box pat-hero">
+      <p class="hb-label">Patrimonio oggi</p>
+      <p class="hb-num">${fmtEur(tot.tot)}</p>
+      <p class="pat-var"><span class="hb-chip ${varPart >= 0 ? 'hb-pos' : 'hb-neg'}">${fmtSigned(varPart)}</span> dalla partenza del ${fmtDateShort(inizio)}</p>
       ${dt.crediti || dt.debiti || rt.residuo ? `<p class="hero-debt"><a href="#debiti">Contando anche ${elenco([dt.crediti ? `i crediti (+${fmtEur(dt.crediti)})` : '',
         dt.debiti ? `i debiti (−${fmtEur(dt.debiti)})` : '', rt.residuo ? `le rate da pagare (−${fmtEur(rt.residuo)})` : ''])}</a>:
         <b>${fmtEur(netto)}</b></p>` : ''}
       ${autonomiaHTML(netto)}
-    </div>
-    ${senza.length ? `<details class="alert"><summary>${senza.length === 1 ? 'Un movimento non ha' : senza.length + ' movimenti non hanno'} il fondo indicato:
-      finché non lo scegli, non entrano nei saldi.</summary>
-      <div class="mini-list">${senza.slice(0, 30).map((r) => `<a href="#mese/${r.data.y}-${String(r.data.m).padStart(2, '0')}/${r.id}">
-        <span>${r.data.d ?? '–'} ${M.MESI_BREVI[r.data.m - 1]}</span><span>${esc(r.data.desc || '(senza descrizione)')}</span>
-        <span class="${r.data.tipo}">${r.data.tipo === 'in' ? '+' : '−'}${fmt(r.data.val)}</span></a>`).join('')}</div></details>` : ''}
-    ${groups.map((g) => `
-      <section class="acc-group">
-        <h2><i class="sw ${g}"></i>${M.gruppoNome(g)}<span>${fmtEur(tot.gruppi[g] || 0)}</span></h2>
-        <div class="acc-list">${accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0)).map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>
-      </section>`).join('')}`;
+    </section>
+    ${ripartizione(groups, tot)}
+    ${senza.length ? G.gruppoHTML({
+      id: 'pat-senza', titolo: 'Movimenti senza fondo', tono: 'warn', n: senza.length, nomi: ['movimento', 'movimenti'],
+      anteprima: senza.slice(0, 30).map((r) => ({ desc: r.data.desc || '(senza descrizione)', det: quando(r), amt: (r.data.tipo === 'in' ? '+' : '−') + fmt(r.data.val), cls: r.data.tipo })),
+      corpo: `<p class="muted gr-nota">${senza.length === 1 ? 'Un movimento non ha' : senza.length + ' movimenti non hanno'} il fondo indicato: finché non lo scegli, non entrano nei saldi.</p>
+        <div class="gr-blocchi">${senza.slice(0, 30).map((r) => `<a class="gr-blk" href="#mese/${r.data.y}-${String(r.data.m).padStart(2, '0')}/${r.id}">
+          <span><b>${esc(r.data.desc || '(senza descrizione)')}</b><small>${esc(quando(r))}</small></span>
+          <span class="num ${r.data.tipo}">${r.data.tipo === 'in' ? '+' : '−'}${fmt(r.data.val)}</span></a>`).join('')}</div>`,
+    }) : ''}
+    ${(() => {
+      // Tutti i fondi in un gruppo: in ordine di gruppo (dal più ricco) e, dentro il gruppo, di saldo
+      const lista = groups.flatMap((g) => accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0)));
+      return G.gruppoHTML({
+        id: 'pat-fondi', cls: 'acc-group', titolo: 'Fondi', tono: 'prim', totale: fmtEur(tot.tot), n: lista.length, nomi: ['fondo', 'fondi'],
+        anteprima: lista.map((c) => ({ desc: c.data.nome, det: [M.gruppoNome(c.data.gruppo), statoTarget(c, bal.get(c.id) || 0).testo].filter(Boolean).join(', '), amt: fmt(bal.get(c.id) || 0) })),
+        corpo: `<div class="acc-list">${lista.map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>`,
+        piede: '<a class="add-row" href="#conti">Gestisci</a>',
+      });
+    })()}`;
+}
+
+// Barra della ripartizione per gruppo (capsule colorate in proporzione) con la legenda
+function ripartizione(groups, tot) {
+  const totPos = groups.reduce((a, g) => a + Math.max(0, tot.gruppi[g] || 0), 0);
+  if (!totPos) return '';
+  const pct = (g) => Math.max(0, tot.gruppi[g] || 0) / totPos * 100;
+  return `<section class="pat-rip" aria-label="Ripartizione per gruppo">
+    <div class="pat-bar" aria-hidden="true">${groups.filter((g) => pct(g) > 0).map((g) => `<i class="${g}" style="flex-grow:${pct(g).toFixed(2)}" data-tip="${esc(`${M.gruppoNome(g)}: ${fmtEur(tot.gruppi[g] || 0)}`)}"></i>`).join('')}</div>
+    <dl class="pat-leg">${groups.map((g) => `<div><dt><i class="sw ${g}"></i>${M.gruppoNome(g)} <small>${Math.round(pct(g)).toLocaleString('it-IT')}%</small></dt><dd>${fmtEur(tot.gruppi[g] || 0)}</dd></div>`).join('')}</dl>
+  </section>`;
+}
+
+// Stato rispetto al target, per la scheda del fondo e l'anteprima del gruppo
+function statoTarget(c, v) {
+  const t = c.data.obiettivo;
+  if (typeof t !== 'number') return { testo: '', cls: '' };
+  const diff = round2(v - t);
+  if (diff < -0.005) return { testo: `${fmtEur(-diff)} sotto il target`, cls: 'below' };
+  if (diff > 0.005) return { testo: `${fmtEur(diff)} oltre il target`, cls: 'over' };
+  return { testo: 'al target', cls: '' };
 }
 
 // "a, b e c"
@@ -111,8 +141,8 @@ function accCard(c, v) {
       tp = v > 0 ? Math.max(0, Math.min(100, (t / v) * 100)) : 100;
     } else status = 'Al target';
   }
-  return `<a class="acc ${cls}" href="#conto/${c.id}">
-    <span class="acc-name">${esc(c.data.nome)}</span>
+  return `<a class="acc ${cls}" href="#conto/${c.id}" style="--gc:var(--g-${c.data.gruppo || 'altro'})">
+    <span class="acc-name">${esc(c.data.nome)}<small>${esc(M.gruppoNome(c.data.gruppo))}</small></span>
     <span class="acc-bal">${fmtEur(v)}</span>
     ${typeof t === 'number' ? `<span class="acc-track"><span style="width:${cls ? 100 : pct}%${cls ? `;--tp:${tp.toFixed(1)}%` : ''}"></span></span>
       <span class="acc-target">Target ${fmtEur(t)}</span><span class="acc-status">${status}</span>` : ''}
@@ -206,18 +236,21 @@ function updateChart() {
 function historyHTML() {
   const snaps = M.snapshots();
   if (!snaps.length) return '';
-  return `<details class="card history">
-    <summary><h2>Rilevazioni storiche</h2><span class="muted">${snaps.length}</span></summary>
-    <p class="muted">Le fotografie del patrimonio: quelle dell'Excel (restano nel grafico per il periodo prima del calcolo automatico) e le rilevazioni manuali che aggiungi tu.</p>
-    <table class="tbl clickable"><thead><tr><th>Data</th><th class="num">Totale</th><th class="num">Variazione</th></tr></thead><tbody>
-    ${snaps.slice().reverse().map((s, i, arr) => {
-      const t = M.snapTotals(s).tot;
-      const p = arr[i + 1] ? M.snapTotals(arr[i + 1]).tot : null;
-      const tag = s.data.scelta === 'manuale' ? 'saldi allineati alla rilevazione' : s.data.scelta === 'auto' ? 'solo confronto' : '';
-      return `<tr data-snap="${s.id}" tabindex="0"><td>${fmtDateShort(s.data.date)}${tag ? `<small class="snap-tag">${tag}</small>` : ''}</td>
-        <td class="num">${fmt(t)}</td><td class="num ${p == null ? '' : t - p >= 0 ? 'pos' : 'neg'}">${p == null ? '' : fmtSigned(t - p)}</td></tr>`;
-    }).join('')}
-    </tbody></table></details>`;
+  const righe = snaps.slice().reverse().map((s, i, arr) => {
+    const t = M.snapTotals(s).tot;
+    const p = arr[i + 1] ? M.snapTotals(arr[i + 1]).tot : null;
+    const tag = s.data.scelta === 'manuale' ? 'saldi allineati alla rilevazione' : s.data.scelta === 'auto' ? 'solo confronto' : '';
+    return { s, t, p, tag };
+  });
+  return G.gruppoHTML({
+    id: 'pat-storiche', cls: 'history', titolo: 'Rilevazioni storiche', n: righe.length, nomi: ['rilevazione', 'rilevazioni'],
+    anteprima: righe.map((o) => ({ desc: fmtDateShort(o.s.data.date), det: o.tag, amt: fmt(o.t) })),
+    corpo: `<p class="muted gr-nota">Le fotografie del patrimonio: quelle dell'Excel (restano nel grafico per il periodo prima del calcolo automatico) e le rilevazioni manuali che aggiungi tu.</p>
+      <div class="gr-tab"><table class="tbl clickable"><thead><tr><th>Data</th><th class="num">Totale</th><th class="num">Variazione</th></tr></thead><tbody>
+      ${righe.map(({ s, t, p, tag }) => `<tr data-snap="${s.id}" tabindex="0"><td>${fmtDateShort(s.data.date)}${tag ? `<small class="snap-tag">${tag}</small>` : ''}</td>
+        <td class="num">${fmt(t)}</td><td class="num ${p == null ? '' : t - p >= 0 ? 'pos' : 'neg'}">${p == null ? '' : fmtSigned(t - p)}</td></tr>`).join('')}
+      </tbody></table></div>`,
+  });
 }
 
 function bind() {

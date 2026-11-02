@@ -583,7 +583,7 @@ a.tag:hover { color: var(--text); border-color: var(--outline); }
 .lg.out::before { background: var(--out); }
 .lg.sal-bar::before { background: linear-gradient(90deg, var(--sal-pos) 50%, var(--sal-neg) 50%); }
 .lg.contanti::before, .sw.contanti { background: var(--g-contanti); }
-.lg.corrente::before, .sw.corrente { background: var(--primary); }
+.lg.corrente::before, .sw.corrente { background: var(--g-corrente); }
 .lg.deposito::before, .sw.deposito { background: var(--g-deposito); }
 .lg.digitale::before, .sw.digitale { background: var(--g-digitale); }
 .lg.crypto::before, .sw.crypto { background: var(--g-crypto); }
@@ -652,18 +652,16 @@ a.tag:hover { color: var(--text); border-color: var(--outline); }
 .hero-split dt { font-size: .82rem; color: var(--text-2); }
 .hero-split dd { margin: .1rem 0 0; font-size: 1.1rem; font-weight: 650; }
 
-.acc-group { margin: 1.4rem 0 1rem; }
-.acc-group > h2 { display: flex; align-items: center; margin-bottom: .6rem; }
-.acc-group > h2 span { margin-left: auto; color: var(--text-2); font-weight: 600; }
 .acc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .6rem; }
 .acc {
   display: grid; grid-template-columns: 1fr auto; gap: .25rem .6rem; align-content: start;
   background: var(--surface); border: 0; border-radius: var(--r-m); padding: .95rem 1rem;
 }
 .acc:hover { background: color-mix(in srgb, var(--text) 4%, var(--surface)); }
-.acc-name { font-weight: 600; }
+.acc-name { font-weight: 650; }
+.acc-name small { display: block; color: var(--text-2); font-weight: 400; font-size: .85rem; }
 .acc-bal { font-weight: 700; font-size: 1.05rem; text-align: right; }
-.acc-track { grid-column: 1 / -1; height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; margin: .4rem 0 .1rem; }
+.acc-track { grid-column: 1 / -1; height: 8px; background: var(--surface-2); border-radius: var(--r-pill); overflow: hidden; margin: .4rem 0 .1rem; }
 .acc-track span { display: block; height: 100%; background: var(--text); border-radius: 2px; }
 .acc-target, .acc-status { font-size: .78rem; color: var(--text-2); white-space: nowrap; }
 .acc-status { text-align: right; }
@@ -1240,4 +1238,50 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .gr-nota { padding: 0 .6rem .6rem; margin: 0; font-size: .9rem; }
 .rie-butt .butt-row { margin: .4rem 0; }
 .rie-butt .butt-foot { padding: .4rem 0 .3rem; }
+
+/* ---------- Patrimonio, dettaglio del fondo ---------- */
+.cap.g-contanti { background: var(--g-contanti); }
+.cap.g-corrente { background: var(--g-corrente); }
+.cap.g-deposito { background: var(--g-deposito); }
+.cap.g-digitale { background: var(--g-digitale); }
+.cap.g-crypto { background: var(--g-crypto); }
+.cap.g-altro { background: var(--g-altro); }
+.pat-hero .hb-num, .conto-hero .hb-num { font-size: 2.3rem; }
+@media (min-width: 900px) { .pat-hero .hb-num, .conto-hero .hb-num { font-size: 2.8rem; } }
+.pat-var { margin: 0 0 .4rem; color: var(--hero-text-2); }
+.hb-chip { display: inline-block; padding: .2rem .75rem; border-radius: var(--r-pill); background: color-mix(in srgb, var(--hero-text) 14%, transparent); font-weight: 750; }
+.hero-box .hero-debt, .hero-box .hero-auto, .hero-box .hero-sub { color: var(--hero-text-2); }
+.hero-box .hero-debt a { text-decoration-color: color-mix(in srgb, var(--hero-text) 40%, transparent); }
+.hero-box .hero-debt b, .hero-box .hero-auto b { color: var(--hero-text); }
+.hero-box .hero-sub { margin: 0; }
+.hero-box .hero-sub.under b { color: var(--hero-neg); }
+.hero-box .hero-sub.over b { color: var(--hero-pos); }
+/* Ripartizione per gruppo: capsule affiancate in proporzione, come le barre del logo */
+.pat-rip { margin: 0 0 1.2rem; }
+.pat-bar { display: flex; gap: 4px; height: 16px; margin: .2rem 0 .7rem; }
+.pat-bar i { min-width: 16px; border-radius: var(--r-pill); }
+.pat-bar .contanti { background: var(--g-contanti); }
+.pat-bar .corrente { background: var(--g-corrente); }
+.pat-bar .deposito { background: var(--g-deposito); }
+.pat-bar .digitale { background: var(--g-digitale); }
+.pat-bar .crypto { background: var(--g-crypto); }
+.pat-bar .altro { background: var(--g-altro); }
+.pat-leg { display: flex; flex-wrap: wrap; gap: .4rem 1.4rem; margin: 0; }
+.pat-leg div { display: flex; align-items: baseline; gap: .5rem; }
+.pat-leg dt { color: var(--text-2); font-size: .92rem; }
+.pat-leg dt small { font-size: .85rem; }
+.pat-leg dd { margin: 0; font-weight: 700; }
+.pat-leg .sw { width: 8px; height: 16px; border-radius: var(--r-pill); vertical-align: -3px; }
+.gruppo.acc-group { margin-bottom: 1rem; }
+.gruppo .acc-list { gap: 2px; border-radius: var(--r-m); overflow: hidden; }
+.gruppo .acc { border-radius: var(--r-xs); }
+/* Scheda di un fondo: capsula del colore del gruppo a sinistra */
+.acc { position: relative; padding-left: 1.7rem; }
+.acc::before { content: ""; position: absolute; left: .75rem; top: 1rem; bottom: 1rem; width: 6px; max-height: 2.2rem; border-radius: var(--r-pill); background: var(--gc, var(--g-altro)); }
+.conto-hero .hb-label .cap { width: 8px; height: 16px; background: var(--gc); margin-right: .5rem; vertical-align: -2px; }
+.conto-azioni { margin: 0 0 1rem; }
+.gruppo .acc-ledger { display: grid; gap: 2px; border-radius: var(--r-m); overflow: hidden; }
+.gruppo .al-row { background: var(--surface); border-bottom: 0; padding: .7rem .9rem; border-radius: var(--r-xs); }
+.gruppo .al-row:hover { background: color-mix(in srgb, var(--text) 4%, var(--surface)); }
+.al-start { margin: -.4rem .4rem 1rem; }
 

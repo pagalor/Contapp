@@ -6,6 +6,7 @@ import { esc, $, $$, toast, confirmBox } from './ui.js';
 import { transferDialog, adjustDialog } from './dialogs.js';
 import { dateInput } from './datepick.js';
 import { fmtDate, fmtDateShort } from './view-patrimonio.js';
+import * as G from './gruppi.js';
 
 let root;
 
@@ -178,6 +179,15 @@ function alDesc(x) {
   return esc(x.desc) + (x.kind === 'mov' ? '' : `<small>${x.kind === 'debt' ? 'Debiti e crediti' : 'Correzione'}</small>`);
 }
 
+// Descrizione in testo semplice, per l'anteprima del gruppo chiuso
+function alDescTesto(x) {
+  if (x.kind === 'trasf') {
+    const t = store.get(x.id)?.data;
+    return `${t?.note || 'Trasferimento'} (${x.val >= 0 ? 'da' : 'a'} ${M.accName(x.val >= 0 ? t?.da : t?.a)})`;
+  }
+  return x.desc + (x.kind === 'mov' ? '' : x.kind === 'debt' ? ' (debiti e crediti)' : ' (correzione)');
+}
+
 // =============================================================== dettaglio conto
 export function renderConto(el, id) {
   root = el;
@@ -200,29 +210,31 @@ export function renderConto(el, id) {
         <a class="btn ghost" href="#conti">Modifica fondi</a>
       </header>
       ${auto ? `
-      <div class="hero">
-        <p class="hero-label">Saldo attuale</p>
-        <p class="hero-num">${fmtEur(bal)}</p>
+      <section class="hero-box conto-hero" style="--gc:var(--g-${c.data.gruppo || 'altro'})">
+        <p class="hb-label"><i class="cap"></i>Saldo attuale · ${esc(M.gruppoNome(c.data.gruppo))}</p>
+        <p class="hb-num">${fmtEur(bal)}</p>
         ${typeof t === 'number' ? `<p class="hero-sub ${diff < -0.005 ? 'under' : diff > 0.005 ? 'over' : ''}">Target ${fmtEur(t)}:
           ${diff < -0.005 ? `<b>▼ ${fmtEur(-diff)}</b> sotto il target` : diff > 0.005 ? `<b>▲ ${fmtEur(diff)}</b> oltre il target` : 'al target'}</p>` : ''}
-        <div class="btn-row">
-          ${diff != null && diff < -0.005 ? '<button class="btn primary small" data-act="reint">Reintegra</button>' : ''}
-          <button class="btn small" data-act="tr-in">Trasferisci qui</button>
-          <button class="btn small" data-act="tr-out">Trasferisci da qui</button>
-          <button class="btn small" data-act="adj">Correggi il saldo</button>
-        </div>
+      </section>
+      <div class="btn-row conto-azioni">
+        ${diff != null && diff < -0.005 ? '<button class="btn primary" data-act="reint">Reintegra</button>' : ''}
+        <button class="btn" data-act="tr-in">Trasferisci qui</button>
+        <button class="btn" data-act="tr-out">Trasferisci da qui</button>
+        <button class="btn" data-act="adj">Correggi il saldo</button>
       </div>
-      <section class="card">
-        <h2>Movimenti</h2>
-        ${rows.length ? `<div class="acc-ledger">${rows.map((x) => `
+      ${G.gruppoHTML({
+        id: 'conto-mov', titolo: 'Movimenti', tono: 'prim', n: rows.length, nomi: ['movimento', 'movimenti'],
+        anteprima: rows.map((x) => ({ desc: alDescTesto(x), det: fmtDateShort(x.date), amt: fmtSigned(x.val), cls: x.val >= 0 ? 'pos' : 'neg' })),
+        corpo: `<div class="acc-ledger">${rows.map((x) => `
           <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : x.kind === 'debt' ? '#debiti' : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
             ${alDate(x.date)}
             <span class="al-desc">${alDesc(x)}</span>
             <span class="al-val ${x.val >= 0 ? 'pos' : 'neg'}">${fmtSigned(x.val)}</span>
             <span class="al-run"><small>Saldo</small> ${fmt(x.run)}</span>
-          </a>`).join('')}</div>` : '<p class="muted">Ancora nessun movimento su questo fondo dopo la data di partenza.</p>'}
-        <p class="al-start">Saldo iniziale al ${fmtDateShort(inizio)}: <b>${fmtEur(c.data.saldoIniziale || 0)}</b></p>
-      </section>` : `<div class="card intro"><p>Il calcolo automatico dei saldi non è attivo.</p><a class="btn primary" href="#conti">Configura i fondi</a></div>`}
+          </a>`).join('')}</div>`,
+        vuoto: 'Ancora nessun movimento su questo fondo dopo la data di partenza.',
+      })}
+      <p class="al-start">Saldo iniziale al ${fmtDateShort(inizio)}: <b>${fmtEur(c.data.saldoIniziale || 0)}</b></p>` : `<div class="card intro"><p>Il calcolo automatico dei saldi non è attivo.</p><a class="btn primary" href="#conti">Configura i fondi</a></div>`}
     </section>`;
 
   el.querySelector('[data-act="reint"]')?.addEventListener('click', () => transferDialog({ a: id, val: -diff, onDone: draw }));
