@@ -40,14 +40,20 @@ export function render(el, { y, m, q = '', highlight } = {}) {
     <section class="mese">
       <header class="mese-head">
         <div class="mese-nav">
-          <button class="icon-btn" data-act="prev" aria-label="Mese precedente">${chevron('l')}</button>
           <button class="mese-title" data-act="pick" aria-label="Scegli il mese">${M.MESI[state.m - 1]} <span>${state.y}</span></button>
-          <button class="icon-btn" data-act="next" aria-label="Mese successivo">${chevron('r')}</button>
-          ${isNow ? '' : '<button class="btn ghost small" data-act="oggi">Oggi</button>'}
+          <div class="mese-tools">
+            <button class="icon-btn mese-lente" data-act="cerca" aria-label="Cerca nei movimenti" aria-expanded="${!!q}" aria-controls="q">${LENTE}</button>
+            <div class="seg mese-frecce" role="group" aria-label="Cambia mese">
+              <button data-act="prev" aria-label="Mese precedente">${chevron('l')}</button>
+              <button data-act="next" aria-label="Mese successivo">${chevron('r')}</button>
+            </div>
+          </div>
         </div>
         <dl class="sums" id="sums"></dl>
+        ${isNow ? '' : '<button class="btn small mese-oggi" data-act="oggi">Oggi</button>'}
       </header>
-      <div class="toolbar">
+      <div class="hero-box mese-hero" id="mese-hero"></div>
+      <div class="toolbar${q ? ' cerca-aperta' : ''}">
         <div class="search">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
           <input type="search" id="q" placeholder="Cerca in tutti i movimenti, oppure #tag" value="${esc(q)}" autocomplete="off">
@@ -70,6 +76,8 @@ export function render(el, { y, m, q = '', highlight } = {}) {
   renderBody(highlight);
 }
 
+const LENTE = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
 function chevron(dir) {
   return `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="${dir === 'l' ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
@@ -77,19 +85,30 @@ function chevron(dir) {
 function go(y, m) { location.hash = `#mese/${ymHash(y, m)}`; }
 
 function bindHead() {
-  root.querySelector('.mese-nav').addEventListener('click', (e) => {
+  root.querySelector('.mese-head').addEventListener('click', (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
     let { y, m } = state;
+    // Telefono: la lente apre e chiude il campo di ricerca (chiudendolo la ricerca si azzera)
+    if (act === 'cerca') {
+      const bar = $('.toolbar', root);
+      const apri = !bar.classList.contains('cerca-aperta');
+      bar.classList.toggle('cerca-aperta', apri);
+      e.target.closest('[data-act]').setAttribute('aria-expanded', String(apri));
+      const q = $('#q', root);
+      if (apri) q.focus();
+      else if (q.value) { q.value = ''; state.q = ''; renderBody(); }
+      return;
+    }
     if (act === 'prev') { m--; if (m < 1) { m = 12; y--; } go(y, m); }
     if (act === 'next') { m++; if (m > 12) { m = 1; y++; } go(y, m); }
     if (act === 'oggi') { const t = today(); go(t.y, t.m); }
     if (act === 'pick') monthPicker({ y: state.y, m: state.m, onPick: (yy, mm) => go(yy, mm) });
   });
-  root.querySelector('.seg').addEventListener('click', (e) => {
+  root.querySelector('.toolbar .seg').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mode]');
     if (!b) return;
     setMode(b.dataset.mode);
-    $$('.seg [data-mode]', root).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    $$('.toolbar [data-mode]', root).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     renderBody();
   });
   const q = $('#q', root);
@@ -106,7 +125,8 @@ export function renderBody(highlight) {
   const list = M.movsOf(state.y, state.m);
   const unico = layout() === 'all';
   // il gruppo che contiene il movimento da evidenziare (appena aggiunto, modificato o cercato) si apre da solo
-  if (highlight && store.get(highlight)?.data.tipo === 'out') G.ricorda('mese-out', true);
+  const hl = highlight && store.get(highlight);
+  if (hl?.kind === 'mov') G.ricorda(unico ? 'mese-all' : 'mese-' + hl.data.tipo, true);
   body.innerHTML = `
     ${store.isEmpty() ? `<div class="empty-hint">
         <p>Non ci sono ancora movimenti. Puoi iniziare a scriverli qui sotto, oppure importare il tuo storico.</p>
@@ -118,7 +138,7 @@ export function renderBody(highlight) {
         <button data-layout="all" aria-pressed="${unico}">Insieme</button>
       </div>
     </div>
-    ${unico ? ledgerAll(list) : ledger('in', 'Entrate', list.filter((r) => r.data.tipo === 'in')) + ledger('out', 'Uscite', list.filter((r) => r.data.tipo === 'out'))}
+    ${unico ? ledger('all', 'Movimenti', list) : ledger('in', 'Entrate', list.filter((r) => r.data.tipo === 'in')) + ledger('out', 'Uscite', list.filter((r) => r.data.tipo === 'out'))}
     ${footerHTML()}`;
   updateSums();
   if (highlight) {
@@ -131,8 +151,8 @@ export function renderBody(highlight) {
 function footerHTML() {
   const trs = M.trasfOf(state.y, state.m);
   return `${M.autoAttivo() || trs.length ? transfers(trs) : ''}
-    <section class="card"><h2>Entrate per categoria</h2><div id="mese-cat-in"></div></section>
-    <section class="card"><h2>Uscite per categoria</h2><div id="mese-cat-out"></div></section>`;
+    <section class="card"><h2 class="cap-title"><span class="cap in"></span>Entrate per categoria</h2><div id="mese-cat-in"></div></section>
+    <section class="card"><h2 class="cap-title"><span class="cap out"></span>Uscite per categoria</h2><div id="mese-cat-out"></div></section>`;
 }
 
 function renderAlerts() {
@@ -142,15 +162,18 @@ function renderAlerts() {
   const oltre = M.oltreTarget();
   const senza = M.senzaConto().filter((r) => r.data.y === state.y && r.data.m === state.m);
   let html = '';
+  const voci = []; // anteprima del gruppo chiuso: una riga per fondo, rata o segnalazione
   if (sotto.length) {
     html += `<div class="alert warn"><span>${sotto.length === 1 ? 'Sotto il target' : sotto.length + ' fondi sotto il target'}:</span>
       <span class="alert-items">${sotto.map((s) => `<button class="pill" data-reint="${s.c.id}" data-val="${s.manca}"
         title="Reintegra ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>−${fmt(s.manca)}</b></button>`).join('')}</span></div>`;
+    for (const x of sotto) voci.push({ desc: x.c.data.nome, det: 'sotto il target', amt: '−' + fmt(x.manca), cls: 'warn' });
   }
   if (oltre.length) {
     html += `<div class="alert good"><span>${oltre.length === 1 ? 'Oltre il target' : oltre.length + ' fondi oltre il target'}:</span>
       <span class="alert-items">${oltre.map((s) => `<a class="pill" href="#conto/${s.c.id}"
         title="Apri ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>+${fmt(s.extra)}</b></a>`).join('')}</span></div>`;
+    for (const x of oltre) voci.push({ desc: x.c.data.nome, det: 'oltre il target', amt: '+' + fmt(x.extra), cls: 'in' });
   }
   const rate = M.rateInScadenza(7);
   if (rate.length) {
@@ -159,26 +182,18 @@ function renderAlerts() {
     html += `<div class="alert rate-alert"><span>${rate.length === 1 ? 'Una rata in scadenza' : rate.length + ' rate in scadenza'} nei prossimi 7 giorni:</span>
       <span class="alert-items">${rate.map((x) => `<a class="pill" href="#rate" title="${esc(x.p.data.desc || '')}, rata ${x.n} di ${M.nRateOf(x.p)}">${esc(x.p.data.desc || 'Rata')}
         <b>${fmt(x.val)}</b> <small>${quando(x.date)}</small></a>`).join('')}</span></div>`;
+    for (const x of rate) voci.push({ desc: x.p.data.desc || 'Rata', det: 'rata ' + quando(x.date), amt: fmt(x.val), cls: 'out' });
   }
   if (senza.length && state.q.length < 2) {
     html += `<div class="alert"><span>${senza.length === 1 ? 'Un movimento' : senza.length + ' movimenti'} di questo mese non ${senza.length === 1 ? 'indica' : 'indicano'} il fondo:
       scegli da dove sono passati i soldi per tenere aggiornato il patrimonio.</span></div>`;
+    voci.push({ desc: senza.length === 1 ? 'Un movimento' : `${senza.length} movimenti`, det: 'senza il fondo indicato' });
   }
+  html = voci.length ? G.gruppoHTML({ id: 'mese-avvisi', titolo: 'Avvisi', tono: 'warn', n: voci.length, nomi: ['avviso', 'avvisi'],
+    anteprima: voci, corpo: `<div class="alerts-grid">${html}</div>` }) : '';
   box.innerHTML = html;
   $$('[data-reint]', box).forEach((b) => b.addEventListener('click', () =>
     transferDialog({ a: b.dataset.reint, val: Number(b.dataset.val), onDone: () => renderBody() })));
-}
-
-// Un solo riquadro con entrate e uscite insieme, in ordine di data (il colore dell'importo distingue i due tipi)
-// Un solo pulsante per aggiungere: nella finestra si sceglie se è un'entrata o un'uscita (si apre su Uscita)
-function ledgerAll(list) {
-  return `
-    <section class="ledger all" data-tipo="all">
-      <h2><span>Movimenti</span><span class="ledger-tot muted" data-tot="all"></span></h2>
-      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>Fondo</span><span></span><span></span></div>
-      <div class="rows">${list.map(rowHTML).join('')}</div>
-      <button class="add-row" data-add="out">+ Aggiungi movimento</button>
-    </section>`;
 }
 
 // Riga d'anteprima di un gruppo chiuso: descrizione, "giorno mese, categoria, fondo", importo senza segno
@@ -190,23 +205,23 @@ function anteprimaMov(r) {
     amt: fmt(d.val), cls: d.tipo === 'in' ? 'in' : 'out' };
 }
 
+// Entrate, Uscite (vista Separate) o Movimenti (vista Insieme, in ordine di data: il colore dell'importo distingue i tipi;
+// un solo pulsante per aggiungere, nella finestra si sceglie se è un'entrata o un'uscita): un gruppo espandibile ciascuno
+const NOMI = { in: ['entrata', 'entrate'], out: ['uscita', 'uscite'], all: ['movimento', 'movimenti'] };
+const VUOTO = { in: 'Nessuna entrata in questo mese.', out: 'Nessuna uscita in questo mese.', all: 'Nessun movimento in questo mese.' };
 function ledger(tipo, title, list) {
-  if (tipo === 'out') {
-    return G.gruppoHTML({
-      id: 'mese-out', cls: 'ledger out', attrs: 'data-tipo="out"', titolo: title, tono: 'out',
-      totale: fmtEur(M.sums(list).tout), totCls: 'out', n: list.length, nomi: ['uscita', 'uscite'], anteprima: list.map(anteprimaMov),
-      corpo: `<div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>Pagato con</span><span></span><span></span></div>
-        <div class="rows">${list.map(rowHTML).join('')}</div>`,
-      piede: '<button class="add-row" data-add="out">+ Aggiungi uscita</button>', vuoto: 'Nessuna uscita in questo mese.',
-    });
-  }
-  return `
-    <section class="ledger ${tipo}" data-tipo="${tipo}">
-      <h2><span>${title}</span><span class="ledger-tot muted" data-tot="${tipo}"></span></h2>
-      <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>${tipo === 'in' ? 'Ricevuto su' : 'Pagato con'}</span><span></span><span></span></div>
-      <div class="rows">${list.map(rowHTML).join('')}</div>
-      <button class="add-row" data-add="${tipo}">+ Aggiungi ${tipo === 'in' ? 'entrata' : 'uscita'}</button>
-    </section>`;
+  const s = M.sums(list);
+  const fondo = tipo === 'in' ? 'Ricevuto su' : tipo === 'out' ? 'Pagato con' : 'Fondo';
+  const add = tipo === 'all' ? '<button class="add-row" data-add="out">+ Aggiungi movimento</button>'
+    : `<button class="add-row" data-add="${tipo}">+ Aggiungi ${tipo === 'in' ? 'entrata' : 'uscita'}</button>`;
+  return G.gruppoHTML({
+    id: 'mese-' + tipo, cls: `ledger ${tipo}`, attrs: `data-tipo="${tipo}"`, titolo: title, tono: tipo === 'all' ? 'prim' : tipo,
+    totale: tipo === 'all' ? '' : fmtEur(tipo === 'in' ? s.tin : s.tout), totCls: tipo, n: list.length, nomi: NOMI[tipo],
+    anteprima: list.map(anteprimaMov),
+    corpo: `<div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Categoria</span><span>${fondo}</span><span></span><span></span></div>
+      <div class="rows">${list.map((r) => rowHTML(r)).join('')}</div>`,
+    piede: add, vuoto: VUOTO[tipo],
+  });
 }
 
 function rowFlags(r) {
@@ -235,13 +250,21 @@ function rowHTML(r, { nodate = false, open = false } = {}) {
   const cat = M.catById(d.cat);
   const flags = rowFlags(r);
   const fondo = d.conti?.length ? M.contiLabel(r) : flags.includes('no-acc') ? 'Scegli il fondo' : M.fondoNonServe(r) ? 'A rate' : '—';
+  // Telefono: sotto la descrizione "giorno mese, categoria · sottocategoria, fondo" (sul computer sono colonne)
+  const info = [
+    nodate ? '' : esc(d.d ? `${d.d} ${M.MESI_BREVI[d.m - 1].toLowerCase()}` : 'senza giorno'),
+    esc((cat ? cat.data.nome : '(categoria eliminata)') + (M.subOf(r) ? ' · ' + M.subOf(r).data.nome : '')),
+    fondo === '—' ? '' : `<span class="c-info-acc">${esc(fondo)}</span>`,
+  ].filter(Boolean).join(', ');
   return `
     <div class="row t-${d.tipo}${nodate ? ' nodate' : ''}${flags}${open ? ' open' : ''}" data-id="${r.id}" tabindex="0" aria-expanded="${open}">
+      <span class="c-ico">${catIco(cat)}</span>
       ${nodate ? '' : `<span class="c-day">${d.d ?? '–'}</span>`}
       <span class="c-amt"${d.espr ? ` title="${esc(d.espr)}"` : ''}>${fmt(d.val)}</span>
       <span class="c-desc${d.desc ? '' : ' empty'}">${esc(d.desc || 'Senza descrizione')}</span>
       <span class="c-cat">${catIco(cat)}<span class="c-lbl">${esc(cat ? cat.data.nome : '(categoria eliminata)')}${M.subOf(r) ? `<small class="c-sub"> · ${esc(M.subOf(r).data.nome)}</small>` : ''}</span></span>
       <span class="c-acc"><span class="c-lbl">${esc(fondo)}</span></span>
+      <span class="c-info">${info}</span>
       <button class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
       <button class="c-exp" data-act="exp" aria-label="Voci extra" aria-expanded="${open}" title="Voci extra">${CHEV}</button>
       <div class="tagline">${tagLine(d)}</div>
@@ -287,9 +310,11 @@ function toggleDetails(row, force) {
 }
 
 function transfers(list) {
-  return `
-    <section class="ledger trasf">
-      <h2><span>Trasferimenti tra fondi</span><span class="ledger-hint">non contano come entrate o uscite</span></h2>
+  const quando = (d) => (d.d ? `${d.d} ${M.MESI_BREVI[d.m - 1].toLowerCase()}` : 'senza giorno');
+  return G.gruppoHTML({
+    id: 'mese-trasf', cls: 'ledger trasf', titolo: 'Trasferimenti tra fondi', n: list.length, nomi: ['trasferimento', 'trasferimenti'],
+    anteprima: list.map((r) => ({ desc: r.data.note || 'Trasferimento', det: `${quando(r.data)}, ${M.accName(r.data.da)} → ${M.accName(r.data.a)}`, amt: fmt(r.data.val) })),
+    corpo: `<p class="ledger-hint">Non contano come entrate o uscite.</p>
       <div class="cols" aria-hidden="true"><span>Giorno</span><span>Importo</span><span>Descrizione</span><span>Da</span><span>A</span><span></span></div>
       <div class="rows">${list.map((r) => `
         <div class="trow" data-trasf="${r.id}" role="button" tabindex="0">
@@ -299,9 +324,10 @@ function transfers(list) {
           <span class="c-cat"><span class="c-lbl"><b class="trf-k">Da</b> ${esc(M.accName(r.data.da))}</span></span>
           <span class="c-acc"><span class="c-lbl"><b class="trf-k">A</b> ${esc(M.accName(r.data.a))}</span></span>
           <span class="c-more" aria-hidden="true">${PENCIL}</span>
-        </div>`).join('')}</div>
-      <button class="add-row" data-addtr>+ Aggiungi trasferimento</button>
-    </section>`;
+        </div>`).join('')}</div>`,
+    piede: '<button class="add-row" data-addtr>+ Aggiungi trasferimento</button>',
+    vuoto: 'Nessun trasferimento in questo mese. I trasferimenti non contano come entrate o uscite.',
+  });
 }
 
 // Riquadro dei budget: una barra per ognuno; toccandolo si apre l'elenco dei movimenti che lo compongono
@@ -311,11 +337,14 @@ function renderBudgets() {
   const list = state.q.length >= 2 ? [] : M.budgetsStato(state.y, state.m);
   if (!list.length) { box.innerHTML = ''; return; }
   const aperto = (s) => budOpen.has(s.b.id);
-  box.innerHTML = `<section class="card bud-card">
-    <h2><span>Budget</span><a class="link-btn" href="#budget">Gestisci</a></h2>
-    <div class="bud-list">${list.map((s) => B.rowHTML(s, { open: aperto(s), movs: aperto(s) ? M.budgetMovs(s.b, state.y, state.m) : [] })).join('')}</div>
-    ${list.some((s) => s.inCorso) ? '<p class="bud-legend muted">Il segno sulla barra indica a che punto è il periodo.</p>' : ''}
-  </section>`;
+  const avviso = (s) => s.stato === 'ritmo' || s.stato === 'vicino' || s.stato === 'sforato';
+  box.innerHTML = G.gruppoHTML({
+    id: 'mese-budget', cls: 'bud-card', titolo: 'Budget', n: list.length, nomi: ['budget', 'budget'],
+    anteprima: list.map((s) => ({ desc: M.budgetLabel(s.b), det: B.statoTesto(s).toLowerCase(), amt: `${fmt(s.speso)} / ${fmt(s.disp)}`, cls: avviso(s) ? 'warn' : '' })),
+    corpo: `<div class="bud-list">${list.map((s) => B.rowHTML(s, { open: aperto(s), movs: aperto(s) ? M.budgetMovs(s.b, state.y, state.m) : [] })).join('')}</div>
+      ${list.some((s) => s.inCorso) ? '<p class="bud-legend muted">Il segno sulla barra indica a che punto è il periodo.</p>' : ''}`,
+    piede: '<a class="link-btn gr-link" href="#budget">Gestisci</a>',
+  });
 }
 
 function bindBudgets(box) {
@@ -344,14 +373,23 @@ function updateSums() {
       <div><dt>Uscite</dt><dd class="out">${fmtEur(s.tout)}</dd></div>
       <div class="saldo"><dt>Saldo</dt><dd class="${saldoCls(s.saldo)}">${fmtSigned(s.saldo)}</dd></div>`;
   }
-  for (const t of ['in', 'out', 'all']) {
-    const e = root.querySelector(`[data-tot="${t}"]`);
-    if (!e) continue;
-    // I totali sono già in alto: qui si conta quanti movimenti ci sono, come per "Senza giorno" nel calendario
-    e.textContent = list.filter((r) => t === 'all' || r.data.tipo === t).length;
+  // Telefono: il saldo in grande sul verde acqua e le tre capsule del logo calcolate su entrate, uscite e saldo
+  const hero = $('#mese-hero', root);
+  if (hero) {
+    const max = Math.max(s.tin, s.tout, Math.abs(s.saldo)) || 1;
+    const h = (v) => Math.max(0, Math.abs(v) / max * 100).toFixed(1);
+    hero.innerHTML = `
+      <div class="mh-text">
+        <p class="hb-label">Saldo del mese</p>
+        <p class="hb-num ${s.saldo > 0.004 ? 'hb-pos' : s.saldo < -0.004 ? 'hb-neg' : ''}">${fmtSigned(s.saldo)}</p>
+        <p class="mh-io"><span><i class="cap in"></i><span class="sr">Entrate </span>${fmtEur(s.tin)}</span><span><i class="cap out"></i><span class="sr">Uscite </span>${fmtEur(s.tout)}</span></p>
+      </div>
+      <div class="mh-caps" aria-hidden="true"><i class="in" style="--h:${h(s.tin)}%"></i><i class="out" style="--h:${h(s.tout)}%"></i><i class="${s.saldo < 0 ? 'neg' : 'pos'}" style="--h:${h(s.saldo)}%"></i></div>`;
   }
-  const grTot = root.querySelector('#gr-mese-out [data-gr-tot]');
-  if (grTot) grTot.textContent = fmtEur(s.tout);
+  for (const [t, v] of [['in', s.tin], ['out', s.tout]]) {
+    const e = root.querySelector(`#gr-mese-${t} [data-gr-tot]`);
+    if (e) e.textContent = fmtEur(v);
+  }
   updateCats();
 }
 
@@ -702,10 +740,10 @@ function renderCalendar(body) {
   for (let i = 0; i < first; i++) cells += '<div class="cal-pad"></div>';
   for (let d = 1; d <= n; d++) {
     const o = per[d];
-    // Sfondo: verde se il saldo del giorno è positivo, rosso se negativo; più è grande, più è scuro
+    // Sfondo: una delle cinque tinte verdi (saldo del giorno positivo) o rosse (negativo), più intensa quanto più è grande
     const sal = Math.round((o.tin - o.tout) * 100) / 100;
-    const heat = sal ? (0.08 + 0.3 * Math.sqrt(Math.abs(sal) / max)).toFixed(3) : 0;
-    cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}" style="--heat:${heat};--tint:var(${sal > 0 ? '--in' : '--out'})">
+    const liv = sal ? Math.min(5, Math.max(1, Math.ceil(Math.sqrt(Math.abs(sal) / max) * 5))) : 0;
+    cells += `<button class="cal-day${isNow && d === t.d ? ' today' : ''}${d === selDay ? ' sel' : ''}" data-day="${d}"${liv ? ` style="--cal:var(--cal-${sal > 0 ? 'in' : 'out'}-${liv})"` : ''}>
       <span class="cal-n">${d}</span>
       ${o.tin ? `<span class="cal-in">${calAmt('+', o.tin)}</span>` : ''}
       ${o.tout ? `<span class="cal-out">${calAmt('−', o.tout)}</span>` : ''}
@@ -718,10 +756,8 @@ function renderCalendar(body) {
       <div class="cal-grid">${cells}</div>
     </section>
     <section class="cal-panel" id="cal-panel"></section>
-    ${senza.length ? `<section class="cal-panel">
-      <h2>Senza giorno <span class="muted">${senza.length}</span></h2>
-      ${senza.map(calItem).join('')}
-    </section>` : ''}
+    ${senza.length ? G.gruppoHTML({ id: 'mese-senza', cls: 'cal-senza', titolo: 'Senza giorno', n: senza.length, nomi: ['movimento', 'movimenti'],
+      anteprima: senza.map(anteprimaMov), corpo: `<div class="rows">${senza.map(calItem).join('')}</div>` }) : ''}
     ${footerHTML()}`;
   paintDay(per);
   body.querySelector('.cal-grid').addEventListener('click', (e) => {
@@ -760,7 +796,7 @@ function paintDay(per) {
   panel.innerHTML = `
     <h2>${nome.charAt(0).toUpperCase() + nome.slice(1)}
       <span>${o.tin || o.tout ? `<b class="${saldoCls(o.tin - o.tout)}" title="Saldo del giorno">${fmtSigned(o.tin - o.tout)}</b>` : ''}</span></h2>
-    ${o.items.length ? o.items.map(calItem).join('') : '<p class="muted">Nessun movimento in questo giorno.</p>'}
+    ${o.items.length ? `<div class="rows">${o.items.map(calItem).join('')}</div>` : '<p class="muted">Nessun movimento in questo giorno.</p>'}
     <div class="btn-row"><button class="btn small" data-calnew>+ Aggiungi movimento</button></div>`;
   $$('[data-calnew]', panel).forEach((b) => b.addEventListener('click', () => {
     addRow('out', selDay); // il tipo si sceglie nella finestra
