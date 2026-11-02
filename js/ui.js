@@ -24,8 +24,11 @@ export function modal(html, { onClose, wide, sheet, cls } = {}) {
   dlg.className = 'modal' + (wide ? ' wide' : '') + (sheet ? ' sheet' : '') + (cls ? ' ' + cls : '');
   dlg.innerHTML = html;
   document.body.appendChild(dlg);
-  const vv = sheet ? window.visualViewport : null;
-  const fit = () => { dlg.style.height = vv.height + 'px'; dlg.style.top = vv.offsetTop + 'px'; };
+  // Sul telefono le finestre salgono dal basso (CSS): --kb è l'altezza della tastiera, così il foglio resta sopra
+  const vv = window.visualViewport;
+  const fit = sheet
+    ? () => { dlg.style.height = vv.height + 'px'; dlg.style.top = vv.offsetTop + 'px'; }
+    : () => { dlg.style.setProperty('--kb', Math.max(0, innerHeight - vv.height - vv.offsetTop) + 'px'); };
   if (vv) { vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); fit(); }
   dlg.addEventListener('close', () => {
     if (vv) { vv.removeEventListener('resize', fit); vv.removeEventListener('scroll', fit); }
@@ -45,7 +48,7 @@ export function confirmBox(msg, { ok = 'Conferma', danger = false } = {}) {
         <p>${esc(msg)}</p>
         <div class="actions">
           <button value="no" class="btn ghost">Annulla</button>
-          <button value="ok" class="btn ${danger ? 'danger' : 'primary'}">${esc(ok)}</button>
+          <button value="ok" class="btn primary${danger ? ' danger' : ''}">${esc(ok)}</button>
         </div>
       </form>`, { onClose: () => resolve(result) });
     dlg.querySelector('form').addEventListener('submit', (e) => { result = e.submitter?.value === 'ok'; });

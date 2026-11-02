@@ -204,6 +204,9 @@ function tagLine(d) {
 const RUOLI_RATA = { acquisto: 'Acquisto a rate', anticipo: 'Anticipo', rata: 'Rata', interessi: 'Interessi della rata', saldo: 'Saldo delle rate', reso: 'Reso' };
 const PENCIL = '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
 
+// Icona della categoria: quadrato con la tinta del colore scelto e l'emoji
+const catIco = (cat) => `<span class="cat-ico" style="--c:${cat?.data.colore || 'var(--text-3)'}" aria-hidden="true">${esc(cat?.data.emoji || '')}</span>`;
+
 // `nodate`: nel calendario il giorno è già indicato dalla data scelta; `open`: voci extra già aperte
 function rowHTML(r, { nodate = false, open = false } = {}) {
   const d = r.data;
@@ -211,11 +214,11 @@ function rowHTML(r, { nodate = false, open = false } = {}) {
   const flags = rowFlags(r);
   const fondo = d.conti?.length ? M.contiLabel(r) : flags.includes('no-acc') ? 'Scegli il fondo' : M.fondoNonServe(r) ? 'A rate' : '—';
   return `
-    <div class="row t-${d.tipo}${nodate ? ' nodate' : ''}${flags}${open ? ' open' : ''}" data-id="${r.id}" style="--cat:${cat?.data.colore || 'transparent'}" tabindex="0" aria-expanded="${open}">
+    <div class="row t-${d.tipo}${nodate ? ' nodate' : ''}${flags}${open ? ' open' : ''}" data-id="${r.id}" tabindex="0" aria-expanded="${open}">
       ${nodate ? '' : `<span class="c-day">${d.d ?? '–'}</span>`}
       <span class="c-amt"${d.espr ? ` title="${esc(d.espr)}"` : ''}>${fmt(d.val)}</span>
       <span class="c-desc${d.desc ? '' : ' empty'}">${esc(d.desc || 'Senza descrizione')}</span>
-      <span class="c-cat"><i></i><span class="c-lbl">${esc(cat ? M.catLabel(cat) : '(categoria eliminata)')}${M.subOf(r) ? `<small class="c-sub"> · ${esc(M.subOf(r).data.nome)}</small>` : ''}</span></span>
+      <span class="c-cat">${catIco(cat)}<span class="c-lbl">${esc(cat ? cat.data.nome : '(categoria eliminata)')}${M.subOf(r) ? `<small class="c-sub"> · ${esc(M.subOf(r).data.nome)}</small>` : ''}</span></span>
       <span class="c-acc"><span class="c-lbl">${esc(fondo)}</span></span>
       <button class="c-more" data-act="edit" aria-label="Modifica" title="Modifica">${PENCIL}</button>
       <div class="tagline">${tagLine(d)}</div>
