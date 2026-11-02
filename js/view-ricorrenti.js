@@ -4,6 +4,7 @@ import { fmt, fmtEur } from './expr.js';
 import { esc } from './ui.js';
 import { ricDialog } from './dialogs.js';
 import * as store from './store.js';
+import * as G from './gruppi.js';
 
 let root;
 const fmtD = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -37,6 +38,13 @@ function item(r) {
   </button>`;
 }
 
+// Riga d'anteprima nel gruppo chiuso: descrizione, ripetizione e prossima scadenza, importo con il segno
+function anteprima(r) {
+  const next = M.ricNext(r);
+  return { desc: r.data.desc || '(senza descrizione)', det: `${frase(r)}${next ? ', prossima ' + fmtD(next) : ', terminata'}`,
+    amt: (r.data.tipo === 'in' ? '+' : '−') + fmt(r.data.val), cls: r.data.tipo };
+}
+
 function draw() {
   const list = M.rics().filter((r) => typeof r.data.val === 'number')
     .sort((a, b) => (M.ricNext(a) || '9').localeCompare(M.ricNext(b) || '9') || (a.data.desc || '').localeCompare(b.data.desc || ''));
@@ -51,14 +59,19 @@ function draw() {
       </header>
       <p class="muted intro-note">Abbonamenti, affitto, stipendio: li imposti una volta e il movimento viene aggiunto da solo nel giorno della scadenza.
         L'app lo registra quando la apri: se non la apri per qualche giorno, trovi i movimenti arrivati nel frattempo.</p>
-      ${attive.length ? `<dl class="stats">
+      ${attive.length ? `<dl class="stats stats-sub">
         <div><dt>Entrate fisse al mese (circa)</dt><dd class="in">${fmtEur(inn)}</dd></div>
         <div><dt>Uscite fisse al mese (circa)</dt><dd class="out">${fmtEur(out)}</dd></div>
       </dl>` : ''}
-      ${attive.length ? `<div class="ric-list">${attive.map(item).join('')}</div>` : `
-        <div class="empty-hint"><p>Nessun movimento ricorrente. Per esempio: Netflix da 12,99 € ogni mese il giorno 5.
-          Puoi anche aprire un movimento dal mese e scegliere "Rendi ricorrente".</p></div>`}
-      ${finite.length ? `<h2 class="ric-h">Terminati</h2><div class="ric-list">${finite.map(item).join('')}</div>` : ''}`;
+      ${G.gruppoHTML({
+        id: 'ric-attivi', titolo: 'Attivi', tono: 'prim', n: attive.length, nomi: ['movimento', 'movimenti'],
+        anteprima: attive.map(anteprima), corpo: `<div class="ric-list">${attive.map(item).join('')}</div>`,
+        vuoto: 'Nessun movimento ricorrente. Per esempio: Netflix da 12,99 € ogni mese il giorno 5. Puoi anche aprire un movimento dal mese e scegliere "Rendi ricorrente".',
+      })}
+      ${finite.length ? G.gruppoHTML({
+        id: 'ric-terminati', titolo: 'Terminati', n: finite.length, nomi: ['movimento', 'movimenti'],
+        anteprima: finite.map(anteprima), corpo: `<div class="ric-list">${finite.map(item).join('')}</div>`,
+      }) : ''}`;
 }
 
 function bind() {
