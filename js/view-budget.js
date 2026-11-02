@@ -1,4 +1,5 @@
 import * as M from './model.js';
+import { titoloConRitorno } from './pannelli.js';
 import * as store from './store.js';
 import { fmt, fmtEur } from './expr.js';
 import { esc, $, modal, toast, confirmBox } from './ui.js';
@@ -29,7 +30,7 @@ function draw() {
   });
   root.innerHTML = `
     <header class="page-head">
-      <h1>Budget</h1>
+      ${titoloConRitorno('Budget')}
       <button class="btn primary" data-act="new">Nuovo</button>
     </header>
     <p class="muted intro-note">Quanto vuoi spendere al massimo per una categoria, una sottocategoria, un tag o per tutte le uscite.

@@ -1,4 +1,5 @@
 import * as M from './model.js';
+import { titoloConRitorno } from './pannelli.js';
 import { fmt, fmtEur, round2 } from './expr.js';
 import { esc } from './ui.js';
 import { rateDialog } from './dialogs.js';
@@ -45,7 +46,7 @@ function draw() {
   const costi = round2(aperti.reduce((s, p) => s + Math.max(0, M.costoFinanziamento(p)), 0));
   root.innerHTML = `
       <header class="page-head">
-        <h1>Pagamenti a rate</h1>
+        ${titoloConRitorno('Pagamenti a rate', { href: '#debiti', nome: 'Debiti' })}
         <button class="btn primary" data-act="new">Nuovo</button>
       </header>
       <p class="muted intro-note">Acquisti pagati a rate, per esempio con PayPal, Klarna o un finanziamento: le rate vengono aggiunte da sole ai movimenti

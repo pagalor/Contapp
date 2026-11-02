@@ -1,5 +1,6 @@
 import * as store from './store.js';
 import * as M from './model.js';
+import { titoloConRitorno } from './pannelli.js';
 import { parseAmount, fmt, fmtEur, fmtSigned, plain, round2 } from './expr.js';
 import { esc, $, $$, toast, confirmBox } from './ui.js';
 import { transferDialog, adjustDialog } from './dialogs.js';
@@ -17,7 +18,7 @@ export function renderConfig(el) {
   el.innerHTML = `
     <section class="conti">
       <header class="page-head">
-        <div><a class="back" href="#patrimonio">Patrimonio</a><h1>Fondi</h1></div>
+        ${titoloConRitorno('Fondi', { href: '#patrimonio', nome: 'Patrimonio' })}
       </header>
 
       <section class="card">

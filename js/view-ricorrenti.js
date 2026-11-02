@@ -1,4 +1,5 @@
 import * as M from './model.js';
+import { titoloConRitorno } from './pannelli.js';
 import { fmt, fmtEur } from './expr.js';
 import { esc } from './ui.js';
 import { ricDialog } from './dialogs.js';
@@ -45,7 +46,7 @@ function draw() {
   for (const r of attive) { if (r.data.tipo === 'in') inn += M.ricMensile(r); else out += M.ricMensile(r); }
   root.innerHTML = `
       <header class="page-head">
-        <h1>Movimenti ricorrenti</h1>
+        ${titoloConRitorno('Movimenti ricorrenti')}
         <button class="btn primary" data-act="new">Nuovo</button>
       </header>
       <p class="muted intro-note">Abbonamenti, affitto, stipendio: li imposti una volta e il movimento viene aggiunto da solo nel giorno della scadenza.

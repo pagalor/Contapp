@@ -132,13 +132,40 @@ export function apriAccount() {
     </div>`, 'right', btn);
   numeroVersione().then((v) => { const el = $('[data-ver]', dlg); if (v && el) el.textContent = `, versione ${v}`; });
   dlg.addEventListener('click', (e) => {
-    if (e.target.closest('[data-pan-chiudi]') || e.target.closest('a.blk')) dlg.close();
+    if (e.target.closest('[data-pan-chiudi]')) { dlg.close(); return; }
+    const a = e.target.closest('a.blk');
+    if (!a) return;
+    e.preventDefault();
+    dlg.close();
+    vaiDaAccount(a.getAttribute('href'));
   });
 }
 
-// Intestazione delle pagine aperte dal pannello: «‹ Account» riapre il pannello
-export function testataAccount(titolo) {
-  return `<header class="page-head"><div><button type="button" class="back" data-account>Account</button><h1>${esc(titolo)}</h1></div></header>`;
+// Pagine aperte dal pannello dell'account. Le due voci della cronologia vengono segnate:
+// la pagina di partenza con riapriAccount (tornandoci con Indietro si riapre il pannello)
+// e la pagina aperta con daAccount (il suo «‹» porta all'account). Le route non cambiano.
+function vaiDaAccount(dest) {
+  if (location.hash === dest) return;
+  history.replaceState({ ...(history.state || {}), riapriAccount: true }, '');
+  history.pushState({ daAccount: true }, '', dest);
+  dispatchEvent(new HashChangeEvent('hashchange'));
+}
+
+// Titolo delle pagine che si aprono dal pannello, con il ritorno sopra: «‹ Account» se la pagina è stata aperta
+// dal pannello (o non ha un'altra pagina madre), altrimenti la pagina madre (per esempio Fondi → Patrimonio)
+export function titoloConRitorno(titolo, madre = null) {
+  const back = !madre || history.state?.daAccount
+    ? '<button type="button" class="back" data-account>Account</button>'
+    : `<a class="back" href="${madre.href}">${esc(madre.nome)}</a>`;
+  return `<div>${back}<h1>${esc(titolo)}</h1></div>`;
+}
+export const testataAccount = (titolo) => `<header class="page-head">${titoloConRitorno(titolo)}</header>`;
+
+// «‹ Account»: se la pagina è stata aperta dal pannello si torna indietro (e il pannello si riapre sulla pagina di prima),
+// altrimenti il pannello si apre sulla pagina attuale
+function tornaAccount() {
+  if (history.state?.daAccount) history.back();
+  else apriAccount();
 }
 
 // La versione è il numero della cache del service worker (VERSION in sw.js, "contabilita-vN"):
@@ -163,7 +190,11 @@ function pannello(html, lato, btn) {
 export function avvia() {
   $('#sync-ind')?.addEventListener('click', apriSync);
   $('#account-btn')?.addEventListener('click', apriAccount);
-  document.addEventListener('click', (e) => { if (e.target.closest('[data-account]')) apriAccount(); });
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-account]')) tornaAccount(); });
+  // Indietro (anche il tasto del telefono) da una pagina aperta dal pannello: si torna alla pagina di prima con il pannello aperto
+  addEventListener('popstate', () => {
+    if (history.state?.riapriAccount && !document.querySelector('dialog.panel[open]')) setTimeout(apriAccount, 0);
+  });
   sync.onStatus(paintSync);
   // "Sincronizzato 2 min fa" va aggiornato anche senza cambi di stato
   setInterval(() => { if (!document.hidden) paintSync(); }, 60 * 1000);
