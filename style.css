@@ -1225,25 +1225,8 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .rie-anni button:disabled { opacity: .4; cursor: default; }
 .rie-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
 .rie-chips .chip { min-height: 44px; padding: 0 1.2rem; font-size: 1rem; }
-/* Riquadro verde acqua: saldo del periodo e capsule di entrate e uscite mese per mese */
-.rie-hero { display: grid; gap: 1rem 2rem; padding: 1.2rem 1.3rem 1rem; }
-.rie-hero .hb-num { font-size: 2.15rem; margin: .15rem 0 .35rem; }
-.rie-hero .cap { width: 8px; height: 18px; }
-.rie-hero .cap.in { background: var(--hero-in); }
-.rie-hero .cap.out { background: var(--hero-out); }
-.rie-barre { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; min-width: 0; }
-.rb { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: .35rem; cursor: pointer; }
-.rb-pair { display: flex; align-items: flex-end; height: 120px; }
-.rb-pair i { width: 9px; height: max(9px, var(--h)); border-radius: var(--r-pill); }
-.rb-pair .in { background: var(--hero-in); }
-.rb-pair .out { background: var(--hero-out); }
-.rb small { color: var(--hero-text-2); font-size: .8rem; font-weight: 600; }
-.rb.on small { color: var(--hero-text); font-weight: 800; }
-@media (min-width: 900px) {
-  .rie-hero { grid-template-columns: auto minmax(0, 1fr); align-items: end; padding: 1.4rem 1.8rem 1.1rem; }
-  .rie-hero .hb-num { font-size: 2.6rem; }
-  .rb-pair i { width: 14px; }
-}
+/* Riquadro verde acqua del Riepilogo: lo stesso del Mese (.mese-hero) */
+.rie-hero { margin-bottom: .6rem; }
 .cap.butt { background: var(--butt-bar); }
 .gr-amt.butt { color: var(--butt); }
 /* Contenuti dei gruppi: blocchi con link, tabelle e note */

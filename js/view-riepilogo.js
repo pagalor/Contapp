@@ -155,24 +155,18 @@ function draw() {
     : M.monthly(sel).filter((o) => o.n).length;
   const butt = tutto ? round2(ysButt.reduce((a, y) => a + M.buttTot(y), 0)) : M.buttTot(sel);
 
-  // Riquadro verde acqua: saldo del periodo, entrate e uscite, e le capsule di entrate e uscite mese per mese (o anno per anno)
-  const maxIO = Math.max(1, ...vin, ...vout);
-  const nowD = new Date();
-  const barre = labels.map((l, i) => {
-    const corrente = tutto ? Number(l) === nowD.getFullYear() : sel === nowD.getFullYear() && i === nowD.getMonth();
-    const nome = tutto ? l : M.MESI[i];
-    return `<div class="rb${corrente ? ' on' : ''}" data-tip="${esc(`${nome}: entrate ${fmtEur(vin[i])}, uscite ${fmtEur(vout[i])}`)}">
-      <span class="rb-pair"><i class="in" style="--h:${(vin[i] / maxIO * 100).toFixed(1)}%"></i><i class="out" style="--h:${(vout[i] / maxIO * 100).toFixed(1)}%"></i></span>
-      <small>${tutto ? "'" + String(l).slice(2) : M.MESI_BREVI[i].charAt(0)}</small></div>`;
-  }).join('');
+  // Riquadro verde acqua: saldo del periodo, entrate e uscite, e le tre capsule del logo calcolate sui totali (come nel Mese).
+  // Il dettaglio mese per mese (o anno per anno) è nel grafico "Entrate e uscite" con la tabella.
+  const maxT = Math.max(s.tin, s.tout, Math.abs(s.saldo)) || 1;
+  const h = (v) => (Math.abs(v) / maxT * 100).toFixed(1);
   body.innerHTML = `
-    <section class="hero-box rie-hero">
+    <section class="hero-box mese-hero rie-hero">
       <div class="mh-text">
         <p class="hb-label">${tutto ? (filtrato ? 'Saldo del periodo' : 'Saldo di tutti gli anni') : `Saldo del ${sel}`}</p>
         <p class="hb-num ${s.saldo > 0.004 ? 'hb-pos' : s.saldo < -0.004 ? 'hb-neg' : ''}">${fmtSigned(s.saldo)}</p>
         <p class="mh-io"><span><i class="cap in"></i><span class="sr">Entrate </span>${fmtEur(s.tin)}</span><span><i class="cap out"></i><span class="sr">Uscite </span>${fmtEur(s.tout)}</span></p>
       </div>
-      <div class="rie-barre" aria-hidden="true">${barre}</div>
+      <div class="mh-caps" aria-hidden="true"><i class="in" style="--h:${h(s.tin)}%"></i><i class="out" style="--h:${h(s.tout)}%"></i><i class="${s.saldo < 0 ? 'neg' : 'pos'}" style="--h:${h(s.saldo)}%"></i></div>
     </section>
     <dl class="stats stats-sub">
       <div><dt>Entrate medie al mese</dt><dd class="in">${fmtEur(mesiAttivi ? s.tin / mesiAttivi : 0)}</dd></div>
