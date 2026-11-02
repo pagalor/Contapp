@@ -42,7 +42,7 @@ Le variabili già usate dall'app mantengono il nome e cambiano valore. Le princi
 | `--butt`, `--butt-bar`, `--butt-bg` | soldi buttati | viola | viola |
 | `--saldo` | saldo dei fondi | neutro (`--text`) | neutro |
 | `--bud-ok`, `--bud-warn`, `--bud-over` | budget | grigio, ambra, ambra intenso | idem |
-| `--g-<gruppo>` | gruppi dei fondi | oro, blu, azzurro, lavanda, arancio, grigio | uguali |
+| `--g-<gruppo>` | gruppi dei fondi | marrone (contanti, non oro: si confonderebbe con l'ambra degli avvisi), blu, azzurro, lavanda, arancio, grigio | uguali |
 
 Regole:
 
