@@ -543,46 +543,52 @@ a.tag:hover { color: var(--text); border-color: var(--outline); }
 .chart .grid.zero { stroke: var(--outline); }
 .chart .grid.year { stroke-dasharray: 2 4; }
 .chart .axis { fill: var(--text-3); font-size: 11px; font-family: var(--font); }
-.chart .bar.in { fill: var(--in); }
-.chart .bar.out { fill: var(--out); }
-.chart .bar.sal-pos { fill: var(--sal-pos); }
-.chart .bar.sal-neg { fill: var(--sal-neg); }
-.chart .bar.sal-zero { fill: var(--text); }
+.chart .bar.in { fill: var(--in-bar); }
+.chart .bar.out { fill: var(--out-bar); }
+.chart .bar.sal-pos { fill: var(--sal-pos-bar); }
+.chart .bar.sal-neg { fill: var(--sal-neg-bar); }
+.chart .bar.sal-zero { fill: var(--text-3); }
 .chart .bar:hover { opacity: .75; }
-.chart .stroke { fill: none; stroke-width: 2; stroke-linejoin: round; }
+/* Le barre crescono dalla linea dello zero, una dopo l'altra (istantanee con prefers-reduced-motion) */
+.chart .bar { transform-box: fill-box; transform-origin: 50% 100%; animation: bar-su .55s var(--spring) both; animation-delay: calc(var(--i, 0) * 18ms); }
+.chart .bar.giu { transform-origin: 50% 0; }
+@keyframes bar-su { from { transform: scaleY(0); } }
+/* Linee spesse 3 px con le estremità tonde; il punto scelto è un cerchio bordato con lo sfondo */
+.chart .stroke { fill: none; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
 .chart .stroke.line-in { stroke: var(--text); }
-.chart .stroke.line-saldo { stroke: var(--saldo); }
-.chart .area.line-saldo { fill: var(--saldo); opacity: .08; }
-.chart .dot.line-saldo { fill: var(--surface); stroke: var(--saldo); stroke-width: 1.8; }
+.chart .stroke.line-saldo { stroke: var(--sal-pos); }
+.chart .area.line-saldo { fill: var(--sal-pos); opacity: .1; }
 .chart .area.line-in { fill: var(--text); opacity: .05; }
-.chart .dot.line-in { fill: var(--surface); stroke: var(--text); stroke-width: 1.8; }
-.chart .stack.contanti { fill: var(--g-contanti); opacity: .2; }
+/* Aree impilate del patrimonio: i colori dei gruppi al 35%, con la linea piena sopra */
+.chart .stack.contanti { fill: var(--g-contanti); opacity: .35; }
 .chart .stroke.contanti { stroke: var(--g-contanti); }
-.chart .stack.corrente { fill: var(--g-corrente); opacity: .2; }
+.chart .stack.corrente { fill: var(--g-corrente); opacity: .35; }
 .chart .stroke.corrente { stroke: var(--g-corrente); }
-.chart .stack.deposito { fill: var(--g-deposito); opacity: .2; }
+.chart .stack.deposito { fill: var(--g-deposito); opacity: .35; }
 .chart .stroke.deposito { stroke: var(--g-deposito); }
-.chart .stack.digitale { fill: var(--g-digitale); opacity: .2; }
+.chart .stack.digitale { fill: var(--g-digitale); opacity: .35; }
 .chart .stroke.digitale { stroke: var(--g-digitale); }
-.chart .stack.crypto { fill: var(--g-crypto); opacity: .2; }
+.chart .stack.crypto { fill: var(--g-crypto); opacity: .35; }
 .chart .stroke.crypto { stroke: var(--g-crypto); }
-.chart .stack.altro { fill: var(--g-altro); opacity: .2; }
+.chart .stack.altro { fill: var(--g-altro); opacity: .35; }
 .chart .stroke.altro { stroke: var(--g-altro); }
-.chart .dot.total { fill: var(--text); }
+.chart .stack + .stroke { stroke-width: 2.5; }
+.chart .dot.total { fill: var(--text); stroke: var(--bg); stroke-width: 3; }
+.chart .dot.total.line-saldo { fill: var(--sal-pos); }
 .chart .marker { stroke: var(--text-2); stroke-dasharray: 4 3; }
 .chart .marker-label { fill: var(--text-2); }
 .chart [data-tip] { cursor: pointer; }
 .chart.interactive { touch-action: pan-y; cursor: crosshair; outline: none; -webkit-tap-highlight-color: transparent; }
-.chart.interactive:focus-visible { outline: 2px solid var(--saldo); outline-offset: 2px; border-radius: 4px; }
-.chart .cross { stroke: var(--text-2); stroke-width: 1; }
+.chart.interactive:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-xs); }
+.chart .cross { stroke: var(--text-3); stroke-width: 1.5; stroke-dasharray: 3 3; }
 .chart .cross[hidden], .chart .dot[hidden] { display: none; }
 .chart-info { font-size: .92rem; margin: .2rem 0 .5rem; min-height: 1.4em; font-variant-numeric: tabular-nums; }
 .legend b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 .legend { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .82rem; color: var(--text-2); margin: -.3rem 0 .6rem; }
-.lg::before, .sw { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: .4rem; vertical-align: 0; }
-.lg.in::before { background: var(--in); }
-.lg.out::before { background: var(--out); }
-.lg.sal-bar::before { background: linear-gradient(90deg, var(--sal-pos) 50%, var(--sal-neg) 50%); }
+.lg::before, .sw { content: ""; display: inline-block; width: 8px; height: 14px; border-radius: var(--r-pill); margin-right: .4rem; vertical-align: -2px; }
+.lg.in::before { background: var(--in-bar); }
+.lg.out::before { background: var(--out-bar); }
+.lg.sal-bar::before { background: linear-gradient(90deg, var(--sal-pos-bar) 50%, var(--sal-neg-bar) 50%); }
 .lg.contanti::before, .sw.contanti { background: var(--g-contanti); }
 .lg.corrente::before, .sw.corrente { background: var(--g-corrente); }
 .lg.deposito::before, .sw.deposito { background: var(--g-deposito); }
@@ -868,7 +874,7 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
 .cat-split { display: grid; gap: 1rem 2rem; align-items: start; }
 .pie { display: grid; place-items: center; }
 .donut { max-width: 100%; height: auto; }
-.donut .slice { stroke: var(--surface); stroke-width: 1.5; cursor: pointer; }
+.donut .slice { cursor: pointer; }
 .donut .slice:hover { opacity: .8; }
 .donut-tot { font-family: var(--font-title); font-weight: 700; font-size: 17px; fill: var(--text); pointer-events: none; }
 .donut-chev { font-size: 12px; fill: var(--text-2); pointer-events: none; }
@@ -1314,4 +1320,10 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .gruppo.gr-attenuato { opacity: .62; transition: opacity .2s; }
 .gruppo.gr-attenuato:hover, .gruppo.gr-attenuato:focus-within { opacity: .85; }
 .gr-attenuato .ric.done, .gr-attenuato .piano.done { opacity: 1; }
+
+/* ---------- Movimento ---------- */
+@media (min-width: 900px) {
+  .modal:not(.panel) { animation: dlg-in .34s var(--spring); }
+}
+@keyframes dlg-in { from { opacity: 0; transform: translateY(14px) scale(.98); } }
 
