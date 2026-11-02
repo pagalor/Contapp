@@ -79,16 +79,17 @@ function autoHTML() {
           <span><b>${esc(r.data.desc || '(senza descrizione)')}</b><small>${esc(quando(r))}</small></span>
           <span class="num ${r.data.tipo}">${r.data.tipo === 'in' ? '+' : '−'}${fmt(r.data.val)}</span></a>`).join('')}</div>`,
     }) : ''}
-    ${(() => {
-      // Tutti i fondi in un gruppo: in ordine di gruppo (dal più ricco) e, dentro il gruppo, di saldo
-      const lista = groups.flatMap((g) => accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0)));
+    <div class="sez-head"><h2>Fondi</h2><a class="add-row" href="#conti">Gestisci</a></div>
+    ${groups.map((g) => {
+      // un gruppo espandibile per ogni gruppo di fondi, in ordine di importo; dentro, i fondi per saldo
+      const lista = accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0));
       return G.gruppoHTML({
-        id: 'pat-fondi', cls: 'acc-group', titolo: 'Fondi', tono: 'prim', totale: fmtEur(tot.tot), n: lista.length, nomi: ['fondo', 'fondi'],
-        anteprima: lista.map((c) => ({ desc: c.data.nome, det: [M.gruppoNome(c.data.gruppo), statoTarget(c, bal.get(c.id) || 0).testo].filter(Boolean).join(', '), amt: fmt(bal.get(c.id) || 0) })),
+        id: 'pat-g-' + g, cls: 'acc-group', titolo: M.gruppoNome(g), tono: 'g-' + g, totale: fmtEur(tot.gruppi[g] || 0),
+        n: lista.length, nomi: ['fondo', 'fondi'],
+        anteprima: lista.map((c) => ({ desc: c.data.nome, det: statoTarget(c, bal.get(c.id) || 0).testo, amt: fmt(bal.get(c.id) || 0) })),
         corpo: `<div class="acc-list">${lista.map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>`,
-        piede: '<a class="add-row" href="#conti">Gestisci</a>',
       });
-    })()}`;
+    }).join('')}`;
 }
 
 // Barra della ripartizione per gruppo (capsule colorate in proporzione) con la legenda
@@ -142,7 +143,7 @@ function accCard(c, v) {
     } else status = 'Al target';
   }
   return `<a class="acc ${cls}" href="#conto/${c.id}" style="--gc:var(--g-${c.data.gruppo || 'altro'})">
-    <span class="acc-name">${esc(c.data.nome)}<small>${esc(M.gruppoNome(c.data.gruppo))}</small></span>
+    <span class="acc-name">${esc(c.data.nome)}</span>
     <span class="acc-bal">${fmtEur(v)}</span>
     ${typeof t === 'number' ? `<span class="acc-track"><span style="width:${cls ? 100 : pct}%${cls ? `;--tp:${tp.toFixed(1)}%` : ''}"></span></span>
       <span class="acc-target">Target ${fmtEur(t)}</span><span class="acc-status">${status}</span>` : ''}

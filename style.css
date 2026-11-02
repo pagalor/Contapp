@@ -652,7 +652,7 @@ a.tag:hover { color: var(--text); border-color: var(--outline); }
 .hero-split dt { font-size: .82rem; color: var(--text-2); }
 .hero-split dd { margin: .1rem 0 0; font-size: 1.1rem; font-weight: 650; }
 
-.acc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .6rem; }
+.acc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: .6rem; }
 .acc {
   display: grid; grid-template-columns: 1fr auto; gap: .25rem .6rem; align-content: start;
   background: var(--surface); border: 0; border-radius: var(--r-m); padding: .95rem 1rem;
@@ -1272,6 +1272,8 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .pat-leg dt small { font-size: .85rem; }
 .pat-leg dd { margin: 0; font-weight: 700; }
 .pat-leg .sw { width: 8px; height: 16px; border-radius: var(--r-pill); vertical-align: -3px; }
+.sez-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1.4rem .2rem .6rem; }
+.sez-head .add-row { margin: 0; }
 .gruppo.acc-group { margin-bottom: 1rem; }
 .gruppo .acc-list { gap: 2px; border-radius: var(--r-m); overflow: hidden; }
 .gruppo .acc { border-radius: var(--r-xs); }
