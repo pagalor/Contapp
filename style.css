@@ -1275,6 +1275,12 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .pat-leg dd { margin: 0; font-weight: 700; }
 .pat-leg .sw { width: 8px; height: 16px; border-radius: var(--r-pill); vertical-align: -3px; }
 .gruppo.acc-group { margin-bottom: 1rem; }
+/* Gruppi dei fondi: sui grandi schermi affiancati, così sfruttano la larghezza; dentro, le schede una sotto l'altra */
+@media (min-width: 900px) {
+  .pat-gruppi { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 1rem; align-items: start; margin-bottom: 1rem; }
+  .pat-gruppi > .gruppo.acc-group { margin-bottom: 0; min-width: 0; }
+  .pat-gruppi .acc-list { grid-template-columns: 1fr; }
+}
 .gruppo .acc-list { gap: 2px; border-radius: var(--r-m); overflow: hidden; }
 .gruppo .acc { border-radius: var(--r-xs); }
 /* Scheda di un fondo: capsula del colore del gruppo a sinistra */

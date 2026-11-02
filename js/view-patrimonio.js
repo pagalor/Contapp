@@ -79,7 +79,7 @@ function autoHTML() {
           <span><b>${esc(r.data.desc || '(senza descrizione)')}</b><small>${esc(quando(r))}</small></span>
           <span class="num ${r.data.tipo}">${r.data.tipo === 'in' ? '+' : '−'}${fmt(r.data.val)}</span></a>`).join('')}</div>`,
     }) : ''}
-    ${groups.map((g) => {
+    <div class="pat-gruppi">${groups.map((g) => {
       // un gruppo espandibile per ogni gruppo di fondi, in ordine di importo; dentro, i fondi per saldo
       const lista = accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0));
       return G.gruppoHTML({
@@ -88,7 +88,7 @@ function autoHTML() {
         anteprima: lista.map((c) => ({ desc: c.data.nome, det: statoTarget(c, bal.get(c.id) || 0).testo, amt: fmt(bal.get(c.id) || 0) })),
         corpo: `<div class="acc-list">${lista.map((c) => accCard(c, bal.get(c.id) || 0)).join('')}</div>`,
       });
-    }).join('')}`;
+    }).join('')}</div>`;
 }
 
 // Barra della ripartizione per gruppo (capsule colorate in proporzione) con la legenda
