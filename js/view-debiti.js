@@ -3,6 +3,7 @@ import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, saldoCls, plain, round2 } from './expr.js';
 import { esc, $, $$, modal, toast, confirmBox } from './ui.js';
 import { dateInput } from './datepick.js';
+import * as G from './gruppi.js';
 
 let root;
 const FILTER_KEY = 'contabilita.debitiFiltro';
@@ -24,15 +25,20 @@ function draw() {
     if (!byP.has(k)) byP.set(k, []);
     byP.get(k).push(r);
   }
+  // quante persone ti devono soldi e a quante ne devi (saldo per persona, solo sulle voci aperte)
+  const netti = new Map();
+  for (const r of all) { const k = r.data.persona || '(senza nome)'; netti.set(k, (netti.get(k) || 0) + (r.data.tipo === 'credito' ? 1 : -1) * M.residuo(r)); }
+  const nCred = [...netti.values()].filter((v) => v > 0.005).length, nDeb = [...netti.values()].filter((v) => v < -0.005).length;
+  const persone = (n) => (n === 1 ? '1 persona' : `${n} persone`);
   root.innerHTML = `
     <section class="debiti">
       <header class="page-head">
         <h1>Debiti e crediti</h1>
         <button class="btn primary" data-act="new">Nuovo</button>
       </header>
-      <dl class="stats">
-        <div><dt>Ti devono</dt><dd class="in">${fmtEur(t.crediti)}</dd></div>
-        <div><dt>Devi</dt><dd class="out">${fmtEur(t.debiti)}</dd></div>
+      <dl class="stats stats-sub debiti-stats">
+        <div class="st-in"><dt>Ti devono</dt><dd class="in">${fmtEur(t.crediti)}</dd><small>${persone(nCred)}</small></div>
+        <div class="st-out"><dt>Devi</dt><dd class="out">${fmtEur(t.debiti)}</dd><small>${persone(nDeb)}</small></div>
         <div><dt>Saldo</dt><dd class="${saldoCls(t.netto)}">${t.netto >= 0 ? '+' : '−'}${fmtEur(Math.abs(t.netto))}</dd></div>
       </dl>
       ${rateBox()}
@@ -58,15 +64,20 @@ function rateBox() {
   </a>`;
 }
 
+// Una persona è un gruppo espandibile: nel titolo il nome e quanto ti deve (o gli devi), sotto le sue voci
+const slug = (p) => p.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'senza-nome';
 function personBlock(p, items) {
   let net = 0;
   for (const r of items) net += (r.data.tipo === 'credito' ? 1 : -1) * M.residuo(r);
   net = round2(net);
-  return `<section class="person">
-    <h2>${esc(p)}<span class="${net > 0.005 ? 'in' : net < -0.005 ? 'out' : 'muted'}">${
-      net > 0.005 ? `ti deve ${fmtEur(net)}` : net < -0.005 ? `gli devi ${fmtEur(-net)}` : 'in pari'}</span></h2>
-    <div class="debt-list">${items.map(item).join('')}</div>
-  </section>`;
+  return G.gruppoHTML({
+    id: 'debiti-p-' + slug(p), cls: 'person', titolo: p, tono: net > 0.005 ? 'in' : net < -0.005 ? 'out' : '',
+    totale: net > 0.005 ? `ti deve ${fmtEur(net)}` : net < -0.005 ? `gli devi ${fmtEur(-net)}` : 'in pari',
+    totCls: net > 0.005 ? 'in' : net < -0.005 ? 'out' : 'muted', n: items.length, nomi: ['voce', 'voci'],
+    anteprima: items.map((r) => { const res = M.residuo(r); return { desc: r.data.desc || '(senza descrizione)', det: fmtD(r.data.data),
+      amt: res <= 0.005 ? 'Saldato' : fmt(res), cls: res <= 0.005 ? '' : r.data.tipo === 'credito' ? 'in' : 'out' }; }),
+    corpo: `<div class="debt-list">${items.map(item).join('')}</div>`,
+  });
 }
 
 function item(r) {

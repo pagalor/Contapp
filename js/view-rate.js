@@ -4,6 +4,7 @@ import { fmt, fmtEur, round2 } from './expr.js';
 import { esc } from './ui.js';
 import { rateDialog } from './dialogs.js';
 import * as store from './store.js';
+import * as G from './gruppi.js';
 
 let root;
 const fmtD = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -36,6 +37,16 @@ function item(p) {
   </button>`;
 }
 
+// Riga d'anteprima di un piano nel gruppo chiuso: descrizione, stato, importo ancora da pagare (o pagato)
+function anteprima(p) {
+  const st = M.statoPiano(p);
+  const fine = st.chiuso || st.finita;
+  const stato = st.chiuso ? (p.data.chiusura?.tipo === 'reso' ? 'annullato per reso' : 'saldato')
+    : st.prossima ? `prossima ${fmtD(st.prossima.date)}` : 'tutte pagate';
+  return { desc: p.data.desc || '(senza descrizione)', det: `${st.pagate} di ${st.totale}, ${stato}`,
+    amt: fmt(fine ? round2(st.pagato) : st.residuo), cls: fine ? '' : 'out' };
+}
+
 function draw() {
   const list = M.piani().filter(M.pianoValido)
     .sort((a, b) => (M.statoPiano(a).prossima?.date || '9').localeCompare(M.statoPiano(b).prossima?.date || '9') || (b.data.dataAcquisto || '').localeCompare(a.data.dataAcquisto || ''));
@@ -51,15 +62,20 @@ function draw() {
       </header>
       <p class="muted intro-note">Acquisti pagati a rate, per esempio con PayPal, Klarna o un finanziamento: le rate vengono aggiunte da sole ai movimenti
         a ogni scadenza, e quanto resta da pagare conta come un debito nel patrimonio.</p>
-      ${aperti.length ? `<dl class="stats">
+      ${aperti.length ? `<dl class="stats stats-sub">
         <div><dt>Ancora da pagare</dt><dd class="out">${fmtEur(tot.residuo)}</dd></div>
         <div><dt>Nei prossimi 30 giorni</dt><dd>${fmtEur(mese)}</dd></div>
         <div><dt>Costo dei finanziamenti</dt><dd>${fmtEur(costi)}</dd></div>
       </dl>` : ''}
-      ${aperti.length ? `<div class="ric-list">${aperti.map(item).join('')}</div>` : `
-        <div class="empty-hint"><p>Nessun pagamento a rate in corso. Per esempio: un telefono da 300 € pagato con PayPal in 3 rate da 100 €.
-          Puoi anche scegliere "Pagato a rate" quando aggiungi un'uscita.</p></div>`}
-      ${conclusi.length ? `<h2 class="ric-h">Conclusi</h2><div class="ric-list">${conclusi.map(item).join('')}</div>` : ''}`;
+      ${G.gruppoHTML({
+        id: 'rate-aperti', titolo: 'In corso', tono: 'out', totale: aperti.length ? fmtEur(tot.residuo) : '', totCls: 'out', n: aperti.length, nomi: ['piano', 'piani'],
+        anteprima: aperti.map(anteprima), corpo: `<div class="ric-list">${aperti.map(item).join('')}</div>`,
+        vuoto: 'Nessun pagamento a rate in corso. Per esempio: un telefono da 300 € pagato con PayPal in 3 rate da 100 €. Puoi anche scegliere "Pagato a rate" quando aggiungi un\'uscita.',
+      })}
+      ${conclusi.length ? G.gruppoHTML({
+        id: 'rate-conclusi', titolo: 'Conclusi', n: conclusi.length, nomi: ['piano', 'piani'],
+        anteprima: conclusi.map(anteprima), corpo: `<div class="ric-list">${conclusi.map(item).join('')}</div>`,
+      }) : ''}`;
 }
 
 function bind() {

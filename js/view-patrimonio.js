@@ -79,7 +79,6 @@ function autoHTML() {
           <span><b>${esc(r.data.desc || '(senza descrizione)')}</b><small>${esc(quando(r))}</small></span>
           <span class="num ${r.data.tipo}">${r.data.tipo === 'in' ? '+' : '−'}${fmt(r.data.val)}</span></a>`).join('')}</div>`,
     }) : ''}
-    <div class="sez-head"><h2>Fondi</h2><a class="add-row" href="#conti">Gestisci</a></div>
     ${groups.map((g) => {
       // un gruppo espandibile per ogni gruppo di fondi, in ordine di importo; dentro, i fondi per saldo
       const lista = accs.filter((c) => c.data.gruppo === g).sort((a, b) => (bal.get(b.id) || 0) - (bal.get(a.id) || 0));

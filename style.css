@@ -534,7 +534,7 @@ a.tag:hover { color: var(--text); border-color: var(--outline); }
 .stats-sub .st-butt { background: var(--butt-bg); }
 .stats-sub .st-butt dt { color: var(--on-butt-bg); font-weight: 650; }
 .stats-sub > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
-@media (min-width: 900px) { .stats.stats-sub { grid-template-columns: repeat(5, minmax(0, 1fr)); } .stats-sub > div:last-child:nth-child(odd) { grid-column: auto; } }
+@media (min-width: 900px) { .stats.stats-sub { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); } .stats-sub > div:last-child:nth-child(odd) { grid-column: auto; } }
 
 .chart-box { width: 100%; overflow: hidden; }
 .chart { display: block; max-width: 100%; height: auto; }
@@ -895,9 +895,6 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
 .debiti .chip:last-child { border-radius: var(--r-xs) var(--r-pill) var(--r-pill) var(--r-xs); }
 .debiti .chip { font: inherit; font-weight: 550; font-size: .9rem; cursor: pointer; color: var(--text); }
 .debiti .chip.on { color: var(--on-primary); }
-.person { margin-bottom: 1.2rem; }
-.person > h2 { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: .5rem; }
-.person > h2 span { font-size: .92rem; font-weight: 600; }
 .debt-list, .ric-list { display: grid; gap: 2px; border-radius: var(--r-m); overflow: hidden; }
 .debt {
   display: grid; grid-template-columns: 4.6rem minmax(0, 1fr) auto; gap: .2rem .8rem; align-items: center; width: 100%;
@@ -912,8 +909,10 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
 .debt-amt { font-weight: 700; text-align: right; }
 .debt.done { opacity: .6; }
 .debt.done .debt-amt { font-weight: 600; color: var(--text-2); }
-.debt-track { grid-column: 2 / -1; height: 3px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
-.debt-track span { display: block; height: 100%; background: var(--text); }
+.debt-track { grid-column: 2 / -1; height: 8px; background: var(--surface-2); border-radius: var(--r-pill); overflow: hidden; margin-top: .3rem; }
+.debt-track span { display: block; height: 100%; background: var(--primary); border-radius: var(--r-pill); }
+.debt.credito .debt-track span { background: var(--in-bar); }
+.debt.debito .debt-track span { background: var(--out-bar); }
 .rimborsi { border-top: 1px solid var(--surface-2); margin-top: 1rem; padding-top: .8rem; }
 .rimborsi h3 { margin-bottom: .5rem; }
 .rimb-row { display: grid; grid-template-columns: 9.5rem 7rem minmax(0, 1fr) 30px; gap: .4rem; align-items: center; margin-bottom: .4rem; }
@@ -1272,8 +1271,6 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .pat-leg dt small { font-size: .85rem; }
 .pat-leg dd { margin: 0; font-weight: 700; }
 .pat-leg .sw { width: 8px; height: 16px; border-radius: var(--r-pill); vertical-align: -3px; }
-.sez-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1.4rem .2rem .6rem; }
-.sez-head .add-row { margin: 0; }
 .gruppo.acc-group { margin-bottom: 1rem; }
 .gruppo .acc-list { gap: 2px; border-radius: var(--r-m); overflow: hidden; }
 .gruppo .acc { border-radius: var(--r-xs); }
@@ -1286,4 +1283,16 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .gruppo .al-row { background: var(--surface); border-bottom: 0; padding: .7rem .9rem; border-radius: var(--r-xs); }
 .gruppo .al-row:hover { background: color-mix(in srgb, var(--text) 4%, var(--surface)); }
 .al-start { margin: -.4rem .4rem 1rem; }
+
+/* ---------- Debiti e Pagamenti a rate ---------- */
+.debiti-stats .st-in { background: var(--in-cont); }
+.debiti-stats .st-out { background: var(--out-cont); }
+.debiti-stats .st-in dt { color: var(--on-in-cont); font-weight: 650; }
+.debiti-stats .st-out dt { color: var(--on-out-cont); font-weight: 650; }
+.debiti-stats small { display: block; color: var(--text-2); font-size: .85rem; margin-top: .1rem; }
+.debiti-stats .st-in small { color: var(--on-in-cont); }
+.debiti-stats .st-out small { color: var(--on-out-cont); }
+.gr-tot.muted { color: var(--text-2); font-weight: 600; }
+.gruppo.person .gr-tot { font-size: .95rem; }
+.rate-box { margin-bottom: 1rem; }
 
