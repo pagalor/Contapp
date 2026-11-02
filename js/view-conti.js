@@ -196,7 +196,7 @@ export function renderConto(el, id) {
   el.innerHTML = `
     <section class="conto">
       <header class="page-head">
-        <div><a class="back" href="#patrimonio">Patrimonio</a><h1>${esc(c.data.nome)}</h1></div>
+        ${titoloConRitorno(c.data.nome, { href: '#patrimonio', nome: 'Patrimonio' })}
         <a class="btn ghost" href="#conti">Modifica fondi</a>
       </header>
       ${auto ? `

@@ -164,16 +164,16 @@ function renderAlerts() {
   let html = '';
   const voci = []; // anteprima del gruppo chiuso: una riga per fondo, rata o segnalazione
   if (sotto.length) {
-    html += `<div class="alert warn"><span>${sotto.length === 1 ? 'Sotto il target' : sotto.length + ' fondi sotto il target'}:</span>
+    html += `<div class="alert sotto"><span>${sotto.length === 1 ? 'Sotto il target' : sotto.length + ' fondi sotto il target'}:</span>
       <span class="alert-items">${sotto.map((s) => `<button class="pill" data-reint="${s.c.id}" data-val="${s.manca}"
         title="Reintegra ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>−${fmt(s.manca)}</b></button>`).join('')}</span></div>`;
-    for (const x of sotto) voci.push({ desc: x.c.data.nome, det: 'sotto il target', amt: '−' + fmt(x.manca), cls: 'warn' });
+    for (const x of sotto) voci.push({ desc: x.c.data.nome, det: 'sotto il target', amt: '−' + fmt(x.manca), cls: 'neg' });
   }
   if (oltre.length) {
-    html += `<div class="alert good"><span>${oltre.length === 1 ? 'Oltre il target' : oltre.length + ' fondi oltre il target'}:</span>
-      <span class="alert-items">${oltre.map((s) => `<a class="pill" href="#conto/${s.c.id}"
-        title="Apri ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>+${fmt(s.extra)}</b></a>`).join('')}</span></div>`;
-    for (const x of oltre) voci.push({ desc: x.c.data.nome, det: 'oltre il target', amt: '+' + fmt(x.extra), cls: 'in' });
+    html += `<div class="alert oltre"><span>${oltre.length === 1 ? 'Oltre il target' : oltre.length + ' fondi oltre il target'}:</span>
+      <span class="alert-items">${oltre.map((s) => `<button class="pill" data-sposta="${s.c.id}" data-val="${s.extra}"
+        title="Sposta l'eccedenza di ${esc(s.c.data.nome)}">${esc(s.c.data.nome)} <b>+${fmt(s.extra)}</b></button>`).join('')}</span></div>`;
+    for (const x of oltre) voci.push({ desc: x.c.data.nome, det: 'oltre il target', amt: '+' + fmt(x.extra), cls: 'pos' });
   }
   const rate = M.rateInScadenza(7);
   if (rate.length) {
@@ -192,8 +192,11 @@ function renderAlerts() {
   html = voci.length ? G.gruppoHTML({ id: 'mese-avvisi', titolo: 'Avvisi', tono: 'warn', n: voci.length, nomi: ['avviso', 'avvisi'],
     anteprima: voci, corpo: `<div class="alerts-grid">${html}</div>` }) : '';
   box.innerHTML = html;
+  // Sotto il target: trasferimento verso il fondo (reintegra); oltre il target: trasferimento dal fondo (sposta l'eccedenza)
   $$('[data-reint]', box).forEach((b) => b.addEventListener('click', () =>
     transferDialog({ a: b.dataset.reint, val: Number(b.dataset.val), onDone: () => renderBody() })));
+  $$('[data-sposta]', box).forEach((b) => b.addEventListener('click', () =>
+    transferDialog({ da: b.dataset.sposta, val: Number(b.dataset.val), onDone: () => renderBody() })));
 }
 
 // Riga d'anteprima di un gruppo chiuso: descrizione, "giorno mese, categoria, fondo", importo senza segno

@@ -151,12 +151,16 @@ function vaiDaAccount(dest) {
   dispatchEvent(new HashChangeEvent('hashchange'));
 }
 
-// Titolo delle pagine che si aprono dal pannello, con il ritorno sopra: «‹ Account» se la pagina è stata aperta
-// dal pannello (o non ha un'altra pagina madre), altrimenti la pagina madre (per esempio Fondi → Patrimonio)
+// Titolo di una pagina con il ritorno sopra, che porta sempre alla schermata precedente:
+// «‹ Account» se la pagina è stata aperta dal pannello (si torna indietro e il pannello si riapre),
+// «‹ <pagina di prima>» se ci si è arrivati da un'altra pagina, altrimenti (pagina aperta da un indirizzo)
+// la pagina madre (per esempio Fondi → Patrimonio) o, se non ce n'è una, l'account
 export function titoloConRitorno(titolo, madre = null) {
-  const back = !madre || history.state?.daAccount
-    ? '<button type="button" class="back" data-account>Account</button>'
-    : `<a class="back" href="${madre.href}">${esc(madre.nome)}</a>`;
+  const st = history.state || {};
+  const back = st.daAccount ? '<button type="button" class="back" data-account>Account</button>'
+    : st.da ? `<button type="button" class="back" data-indietro>${esc(st.da.titolo)}</button>`
+    : madre ? `<a class="back" href="${madre.href}">${esc(madre.nome)}</a>`
+    : '<button type="button" class="back" data-account>Account</button>';
   return `<div>${back}<h1>${esc(titolo)}</h1></div>`;
 }
 export const testataAccount = (titolo) => `<header class="page-head">${titoloConRitorno(titolo)}</header>`;
@@ -186,14 +190,25 @@ function pannello(html, lato, btn) {
   return dlg;
 }
 
+// Stato della voce di cronologia mostrata: main.js lo aggiorna dopo ogni cambio di pagina
+let statoMostrato = null;
+export function ricordaStato() { statoMostrato = history.state; }
+
 // Da chiamare una volta all'avvio
 export function avvia() {
   $('#sync-ind')?.addEventListener('click', apriSync);
   $('#account-btn')?.addEventListener('click', apriAccount);
-  document.addEventListener('click', (e) => { if (e.target.closest('[data-account]')) tornaAccount(); });
-  // Indietro (anche il tasto del telefono) da una pagina aperta dal pannello: si torna alla pagina di prima con il pannello aperto
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-account]')) tornaAccount();
+    if (e.target.closest('[data-indietro]')) history.back();
+  });
+  // Indietro (anche il tasto del telefono) da una pagina aperta dal pannello: si torna alla pagina di prima con il pannello aperto.
+  // Vale solo per il passo indietro da quella pagina, non quando ci si ritorna in altri modi.
   addEventListener('popstate', () => {
-    if (history.state?.riapriAccount && !document.querySelector('dialog.panel[open]')) setTimeout(apriAccount, 0);
+    const lasciato = statoMostrato;
+    statoMostrato = history.state;
+    if (lasciato?.daAccount && history.state?.riapriAccount && history.state.n === lasciato.n - 1 &&
+      !document.querySelector('dialog.panel[open]')) setTimeout(apriAccount, 0);
   });
   sync.onStatus(paintSync);
   // "Sincronizzato 2 min fa" va aggiornato anche senza cambi di stato

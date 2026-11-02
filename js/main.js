@@ -28,6 +28,15 @@ let pendingRemote = false;
 const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', rate: 'debiti', ricorrenti: 'account', budget: 'account', sincronizzazione: 'account', categorie: 'account', dati: 'account', aspetto: 'account' };
 const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', rate: 'Pagamenti a rate', ricorrenti: 'Movimenti ricorrenti', budget: 'Budget', sincronizzazione: 'Sincronizzazione', categorie: 'Categorie', dati: 'Importa ed esporta', aspetto: 'Aspetto' };
 
+// Cronologia: ogni pagina aperta andando avanti ricorda da quale pagina si arrivava (history.state.da, con il titolo),
+// così il pulsante «‹» in cima alle pagine torna alla schermata precedente. n numera le voci della cronologia.
+let ultimo = null; // { titolo, n } dell'ultima pagina mostrata
+function titoloDi(name, a) {
+  if (name === 'mese' && a) { const [y, m] = a.split('-').map(Number); if (m >= 1 && m <= 12) return `${M.MESI[m - 1]} ${y}`; }
+  if (name === 'conto') return store.get(a)?.data.nome || 'Fondo';
+  return TITLES[name] || 'Mese';
+}
+
 function route() {
   const h = location.hash.replace(/^#/, '');
   const [name, a, b] = h.split('/').map((x) => (x == null ? x : decodeURIComponent(x)));
@@ -39,6 +48,11 @@ function route() {
     return;
   }
   current = NAV_OF[name || 'mese'] ? (name || 'mese') : 'mese';
+  const st = history.state || {};
+  if (st.n == null) {
+    // pagina nuova (non un passo indietro o avanti nella cronologia)
+    history.replaceState({ ...st, n: (ultimo?.n ?? -1) + 1, da: ultimo ? { titolo: ultimo.titolo } : null }, '');
+  }
   $$('.nav a').forEach((l) => {
     const on = l.dataset.view === NAV_OF[current];
     l.classList.toggle('on', on);
@@ -69,6 +83,8 @@ function route() {
   else if (current === 'dati') vDati.render(view());
   else if (current === 'aspetto') vAspetto.render(view());
   document.title = TITLES[current] + ' · Rationes' + (demo.attiva ? ' (demo)' : '');
+  ultimo = { titolo: titoloDi(current, a), n: history.state?.n ?? 0 };
+  pannelli.ricordaStato();
   paintTargetDot();
 }
 
