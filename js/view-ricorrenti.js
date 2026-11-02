@@ -69,7 +69,7 @@ function draw() {
         vuoto: 'Nessun movimento ricorrente. Per esempio: Netflix da 12,99 € ogni mese il giorno 5. Puoi anche aprire un movimento dal mese e scegliere "Rendi ricorrente".',
       })}
       ${finite.length ? G.gruppoHTML({
-        id: 'ric-terminati', titolo: 'Terminati', n: finite.length, nomi: ['movimento', 'movimenti'],
+        id: 'ric-terminati', cls: 'gr-attenuato', titolo: 'Terminati', n: finite.length, nomi: ['movimento', 'movimenti'],
         anteprima: finite.map(anteprima), corpo: `<div class="ric-list">${finite.map(item).join('')}</div>`,
       }) : ''}`;
 }

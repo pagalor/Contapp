@@ -1303,3 +1303,9 @@ a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
 .bud-bar { margin: .7rem 0 .45rem; }
 .bud-list.card .bud:hover { background: color-mix(in srgb, var(--text) 3%, var(--surface)); }
 
+/* Gruppi di elementi conclusi (rate concluse, ricorrenze terminate): tutto il gruppo attenuato;
+   le righe dentro non si attenuano una seconda volta */
+.gruppo.gr-attenuato { opacity: .62; transition: opacity .2s; }
+.gruppo.gr-attenuato:hover, .gruppo.gr-attenuato:focus-within { opacity: .85; }
+.gr-attenuato .ric.done, .gr-attenuato .piano.done { opacity: 1; }
+

@@ -73,7 +73,7 @@ function draw() {
         vuoto: 'Nessun pagamento a rate in corso. Per esempio: un telefono da 300 € pagato con PayPal in 3 rate da 100 €. Puoi anche scegliere "Pagato a rate" quando aggiungi un\'uscita.',
       })}
       ${conclusi.length ? G.gruppoHTML({
-        id: 'rate-conclusi', titolo: 'Conclusi', n: conclusi.length, nomi: ['piano', 'piani'],
+        id: 'rate-conclusi', cls: 'gr-attenuato', titolo: 'Conclusi', n: conclusi.length, nomi: ['piano', 'piani'],
         anteprima: conclusi.map(anteprima), corpo: `<div class="ric-list">${conclusi.map(item).join('')}</div>`,
       }) : ''}`;
 }
