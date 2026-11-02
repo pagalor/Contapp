@@ -4,7 +4,10 @@ import * as sync from './sync.js';
 import * as vMese from './view-mese.js';
 import * as vRie from './view-riepilogo.js';
 import * as vPat from './view-patrimonio.js';
-import * as vAltro from './view-altro.js';
+import * as vSync from './view-sync.js';
+import * as vCat from './view-categorie.js';
+import * as vDati from './view-dati.js';
+import * as vAspetto from './view-aspetto.js';
 import * as vConti from './view-conti.js';
 import * as vDebiti from './view-debiti.js';
 import * as vRic from './view-ricorrenti.js';
@@ -21,20 +24,27 @@ const view = () => $('#view');
 let current = '';
 let pendingRemote = false;
 
-const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', rate: 'debiti', ricorrenti: 'altro', budget: 'altro', altro: 'altro' };
-const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', rate: 'Pagamenti a rate', ricorrenti: 'Movimenti ricorrenti', budget: 'Budget', altro: 'Altro' };
+const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', rate: 'debiti', ricorrenti: 'account', budget: 'account', sincronizzazione: 'account', categorie: 'account', dati: 'account', aspetto: 'account' };
+const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', rate: 'Pagamenti a rate', ricorrenti: 'Movimenti ricorrenti', budget: 'Budget', sincronizzazione: 'Sincronizzazione', categorie: 'Categorie', dati: 'Importa ed esporta', aspetto: 'Aspetto' };
 
 function route() {
   const h = location.hash.replace(/^#/, '');
   const [name, a, b] = h.split('/').map((x) => (x == null ? x : decodeURIComponent(x)));
+  // La vecchia pagina Altro non c'è più: il suo indirizzo apre il Mese con il pannello dell'account
+  if (name === 'altro') {
+    history.replaceState(null, '', location.pathname + location.search + '#mese');
+    route();
+    pannelli.apriAccount();
+    return;
+  }
   current = NAV_OF[name || 'mese'] ? (name || 'mese') : 'mese';
   $$('.nav a').forEach((l) => {
     const on = l.dataset.view === NAV_OF[current];
     l.classList.toggle('on', on);
     if (on) l.setAttribute('aria-current', 'page'); else l.removeAttribute('aria-current');
   });
-  // Altro, Ricorrenti e Budget si aprono dal pannello dell'account: evidenziato l'avatar
-  $('#account-btn')?.classList.toggle('on', NAV_OF[current] === 'altro');
+  // Le pagine che si aprono dal pannello dell'account evidenziano l'avatar
+  $('#account-btn')?.classList.toggle('on', NAV_OF[current] === 'account');
   // Pulsante "Nuovo" (solo telefono) nelle pagine del mese
   const fab = $('#fab');
   if (fab) fab.hidden = NAV_OF[current] !== 'mese';
@@ -53,7 +63,10 @@ function route() {
   else if (current === 'ricorrenti') vRic.render(view());
   else if (current === 'rate') vRate.render(view());
   else if (current === 'budget') vBudget.render(view());
-  else if (current === 'altro') vAltro.render(view());
+  else if (current === 'sincronizzazione') vSync.render(view());
+  else if (current === 'categorie') vCat.render(view());
+  else if (current === 'dati') vDati.render(view());
+  else if (current === 'aspetto') vAspetto.render(view());
   document.title = TITLES[current] + ' · Rationes' + (demo.attiva ? ' (demo)' : '');
   paintTargetDot();
 }
@@ -132,8 +145,8 @@ function avvisoScadenze(n, rate) {
 }
 
 async function boot() {
-  vAltro.applyTheme();
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', vAltro.applyTheme);
+  vAspetto.applyTheme();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', vAspetto.applyTheme);
   if (demo.attiva) {
     demo.mostraAvviso();
     await demo.controllaVersione().catch(() => {});

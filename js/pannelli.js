@@ -1,10 +1,9 @@
 // Barra in alto: icona della sincronizzazione (con il suo pannello) e avatar (con il pannello dell'account).
-// Il pannello dell'account sostituisce la voce Altro della navigazione: ogni voce apre la sua pagina
-// o la sezione corrispondente della pagina Altro (#altro), che resta raggiungibile.
+// Il pannello dell'account raccoglie le impostazioni: ogni voce apre solo la sua pagina
+// (#sincronizzazione, #conti, #categorie, #ricorrenti, #rate, #budget, #dati, #aspetto).
 import * as M from './model.js';
 import * as sync from './sync.js';
 import * as demo from './demo.js';
-import * as vAltro from './view-altro.js';
 import { esc, $, modal } from './ui.js';
 
 const ICO = {
@@ -16,7 +15,6 @@ const ICO = {
   budget: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12l6 6"/>',
   dati: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/>',
   aspetto: '<circle cx="12" cy="12" r="3.6"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
-  altro: '<circle cx="5.5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.5" cy="12" r="1.5"/>',
   utente: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.8 20c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6"/>',
   lucchetto: '<rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
   chiudi: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -70,7 +68,7 @@ function apriSync() {
   paintSyncPanel();
   dlg.addEventListener('click', (e) => {
     if (e.target.closest('[data-pan-sync]')) sync.syncNow();
-    if (e.target.closest('[data-pan-impost]')) { dlg.close(); vAltro.vaiA('sync'); }
+    if (e.target.closest('[data-pan-impost]')) { dlg.close(); location.hash = '#sincronizzazione'; }
     if (e.target.closest('[data-pan-chiudi]')) dlg.close();
   });
 }
@@ -107,17 +105,17 @@ function sottotitoloAccount() {
 function voci() {
   const n = (x) => (x ? ` (${x})` : '');
   return [
-    ['sync', 'sync', 'Sincronizzazione e cifratura', demo.attiva ? 'Non disponibile nella demo' : 'Supabase, frase segreta'],
+    ['sync', '#sincronizzazione', 'Sincronizzazione e cifratura', demo.attiva ? 'Non disponibile nella demo' : 'Supabase, frase segreta'],
     ['fondi', '#conti', 'Fondi', 'Gruppi, saldi iniziali, target'],
-    ['cat', 'categorie', 'Categorie', 'Colori, emoji, sottocategorie'],
+    ['cat', '#categorie', 'Categorie', 'Colori, emoji, sottocategorie'],
     ['ric', '#ricorrenti', 'Movimenti ricorrenti' + n(M.rics().length), 'Abbonamenti, affitto, stipendio'],
-    ['rate', 'rate', 'Pagamenti a rate' + n(M.piani().length), 'Piani e modo di contarli'],
+    ['rate', '#rate', 'Pagamenti a rate' + n(M.piani().length), 'Acquisti pagati a rate'],
     ['budget', '#budget', 'Budget' + n(M.budgets({ tutti: true }).length), 'Limiti di spesa'],
-    ['dati', 'dati', 'Importa ed esporta', 'Backup e file per Excel'],
-    ['aspetto', 'aspetto', 'Aspetto', 'Tema chiaro, scuro o di sistema'],
+    ['dati', '#dati', 'Importa ed esporta', 'Backup e file per Excel'],
+    ['aspetto', '#aspetto', 'Aspetto', 'Tema chiaro, scuro o di sistema'],
   ];
 }
-function apriAccount() {
+export function apriAccount() {
   const btn = $('#account-btn');
   const dlg = pannello(`
     <div class="pan-body">
@@ -127,23 +125,29 @@ function apriAccount() {
         <button type="button" class="icon-btn" data-pan-chiudi aria-label="Chiudi">${svg('chiudi')}</button>
       </div>
       <ul class="blocks pan-list">${voci().map(([ico, dest, tit, sub]) => `
-        <li><a class="blk" href="${dest.startsWith('#') ? dest : '#altro'}" data-dest="${dest}">
+        <li><a class="blk" href="${dest}">
           <span class="blk-ico">${svg(ico)}</span><span><b>${esc(tit)}</b><small>${esc(sub)}</small></span>${svg('freccia')}</a></li>`).join('')}
       </ul>
-      <p class="pan-foot"><span>Rationes<span data-ver></span></span><a class="link-btn" href="#altro" data-dest="altro">Tutte le impostazioni</a></p>
+      <p class="pan-foot">Rationes<span data-ver></span>. I dati sono salvati su questo dispositivo${sync.session() ? ' e sincronizzati, cifrati, sul tuo progetto Supabase' : ''}.</p>
     </div>`, 'right', btn);
-  vAltro.numeroVersione().then((v) => { const el = $('[data-ver]', dlg); if (v && el) el.textContent = `, versione ${v}`; });
+  numeroVersione().then((v) => { const el = $('[data-ver]', dlg); if (v && el) el.textContent = `, versione ${v}`; });
   dlg.addEventListener('click', (e) => {
-    if (e.target.closest('[data-pan-chiudi]')) { dlg.close(); return; }
-    const a = e.target.closest('[data-dest]');
-    if (!a) return;
-    e.preventDefault();
-    dlg.close();
-    const dest = a.dataset.dest;
-    if (dest.startsWith('#')) location.hash = dest;
-    else if (dest === 'altro') location.hash = '#altro';
-    else vAltro.vaiA(dest);
+    if (e.target.closest('[data-pan-chiudi]') || e.target.closest('a.blk')) dlg.close();
   });
+}
+
+// Intestazione delle pagine aperte dal pannello: «‹ Account» riapre il pannello
+export function testataAccount(titolo) {
+  return `<header class="page-head"><div><button type="button" class="back" data-account>Account</button><h1>${esc(titolo)}</h1></div></header>`;
+}
+
+// La versione è il numero della cache del service worker (VERSION in sw.js, "contabilita-vN"):
+// è quella dei file che l'app sta davvero usando. Se non è disponibile, il numero è null.
+async function numeroVersione() {
+  try {
+    const nums = (await caches.keys()).map((k) => /^contabilita-v(\d+)$/.exec(k)).filter(Boolean).map((m) => +m[1]);
+    return nums.length ? Math.max(...nums) : null;
+  } catch { return null; /* cache non disponibile (es. navigazione privata) */ }
 }
 
 // Pannello che scende dalla barra in alto, accanto al pulsante che lo apre (lato: left o right)
@@ -159,6 +163,7 @@ function pannello(html, lato, btn) {
 export function avvia() {
   $('#sync-ind')?.addEventListener('click', apriSync);
   $('#account-btn')?.addEventListener('click', apriAccount);
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-account]')) apriAccount(); });
   sync.onStatus(paintSync);
   // "Sincronizzato 2 min fa" va aggiornato anche senza cambi di stato
   setInterval(() => { if (!document.hidden) paintSync(); }, 60 * 1000);

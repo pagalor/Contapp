@@ -107,7 +107,7 @@ export function renderBody(highlight) {
   body.innerHTML = `
     ${store.isEmpty() ? `<div class="empty-hint">
         <p>Non ci sono ancora movimenti. Puoi iniziare a scriverli qui sotto, oppure importare il tuo storico.</p>
-        <a class="btn primary" href="#altro">Importa lo storico</a></div>` : ''}
+        <a class="btn primary" href="#dati">Importa lo storico</a></div>` : ''}
     <div class="list-opts">
       <span class="muted">Entrate e uscite</span>
       <div class="seg" role="group" aria-label="Disposizione dell'elenco">

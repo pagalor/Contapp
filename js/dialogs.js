@@ -681,7 +681,13 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
         <label class="field" data-antf><span>Pagato con</span><select name="antFondo">${fondoOpts(d.anticipo?.fondo || d.fondo, 'Come le rate')}</select></label>
       </div>
       <p class="rate-sum"></p>
-      <div class="field"><span>Come contarlo nelle uscite</span>
+      <div class="field"><span class="lbl-info">Come contarlo nelle uscite
+          <button type="button" class="info-btn" data-modinfo aria-expanded="false" aria-controls="rate-modinfo" aria-label="Cosa cambia" title="Cosa cambia">i</button></span>
+        <div class="info-box" id="rate-modinfo" hidden>
+          <p><b>All'acquisto</b>: il prezzo è un'uscita il giorno in cui compri; le rate muovono solo il fondo, senza contare di nuovo nelle uscite. Gli interessi, se ci sono, sono uscite a parte.</p>
+          <p><b>Rata per rata</b>: ogni rata è un'uscita quando la paghi, interessi compresi.</p>
+          <p>La scelta vale per questo pagamento; il prossimo nuovo pagamento propone l'ultima usata.</p>
+        </div>
         <div class="seg wide" role="group" aria-label="Modalità">
           ${M.RATE_MODALITA.map(([k, n]) => `<button type="button" data-mod="${k}"${d.chiuso ? ' disabled' : ''}>${n}</button>`).join('')}
         </div>
@@ -739,11 +745,9 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
   }
   function paintMod() {
     $$('[data-mod]', f).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mod === d.modalita)));
+    // la spiegazione delle due modalità è nel pulsante «i»; qui solo l'effetto di un cambio su un piano esistente
     const cambio = rec && !d.chiuso && d.modalita !== modOrig;
-    $('[data-modnote]', f).textContent = (d.modalita === 'acquisto'
-      ? "Il prezzo conta come uscita il giorno dell'acquisto; le rate tolgono i soldi dal fondo senza contare di nuovo nelle uscite. Gli interessi, se ci sono, sono uscite a parte."
-      : 'Ogni rata conta come uscita nel giorno in cui la paghi, interessi compresi.') +
-      (cambio ? ' Salvando, i movimenti già aggiunti e non modificati a mano vengono rifatti in questo modo.' : '');
+    $('[data-modnote]', f).textContent = cambio ? 'Salvando, i movimenti già aggiunti e non modificati a mano vengono rifatti in questo modo.' : '';
   }
   function paintSum() {
     $$('[data-antf]', f).forEach((el) => { el.hidden = !(ant?.val > 0); });
@@ -808,6 +812,13 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
     if (rm) { tags = tags.filter((x) => x !== rm.dataset.rmtag); paintTags(); return; }
     const mb = e.target.closest('[data-mod]');
     if (mb && !mb.disabled) { d.modalita = mb.dataset.mod; paintMod(); return; }
+    const ib = e.target.closest('[data-modinfo]');
+    if (ib) {
+      const box = $('#rate-modinfo', f);
+      box.hidden = !box.hidden;
+      ib.setAttribute('aria-expanded', String(!box.hidden));
+      return;
+    }
     if (e.target.closest('[data-salda]')) { chiusuraDialog(rec, 'saldo', () => { dlg.close(); onDone && onDone(rec.id); }); return; }
     if (e.target.closest('[data-reso]')) { chiusuraDialog(rec, 'reso', () => { dlg.close(); onDone && onDone(rec.id); }); return; }
     if (e.target.closest('[data-riapri]')) {
@@ -852,6 +863,8 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
     };
     const id = rec ? rec.id : store.newId();
     store.save('rate', id, data);
+    // la modalità dell'ultimo piano salvato è quella proposta per il prossimo
+    if (data.modalita !== M.modalitaRate()) M.setCfg({ modalitaRate: data.modalita });
     const g = M.generaRate();
     dlg.close();
     toast(g.rate ? `Salvato: ${g.rate === 1 ? 'aggiunta 1 rata già scaduta' : `aggiunte ${g.rate} rate già scadute`}` : isNew ? 'Pagamento a rate salvato' : 'Modifiche salvate');

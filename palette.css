@@ -33,8 +33,8 @@
   --out-bar: #EE4358;  /* uscite: barre e grafici */
   --out-cont: #FDE3E7;
   --on-out-cont: #6E0F1D;
-  --sal-pos: #13783A;  /* saldo positivo (testo) */
-  --sal-neg: #C21A33;  /* saldo negativo (testo) */
+  --sal-pos: #4D7C0F;  /* saldo positivo (testo): verde lime, più giallo delle entrate */
+  --sal-neg: #A3195B;  /* saldo negativo (testo): rosso lampone, diverso dalle uscite */
   --sal-pos-bar: #74D394;  /* saldo positivo (barre) */
   --sal-neg-bar: #FF9AA6;  /* saldo negativo (barre) */
   --pos: var(--in);  /* indicatori positivi */
@@ -111,8 +111,8 @@
     --out-bar: #FF7484;  /* uscite: barre e grafici */
     --out-cont: #45161E;
     --on-out-cont: #FFB3BC;
-    --sal-pos: #5EDC88;  /* saldo positivo (testo) */
-    --sal-neg: #FF7A88;  /* saldo negativo (testo) */
+    --sal-pos: #B5E35C;  /* saldo positivo (testo): verde lime, più giallo delle entrate */
+    --sal-neg: #FF8FB8;  /* saldo negativo (testo): rosso lampone, diverso dalle uscite */
     --sal-pos-bar: #A9EDBE;  /* saldo positivo (barre) */
     --sal-neg-bar: #FFB3BC;  /* saldo negativo (barre) */
     --pos: var(--in);  /* indicatori positivi */
@@ -171,8 +171,8 @@
   --out-bar: #FF7484;  /* uscite: barre e grafici */
   --out-cont: #45161E;
   --on-out-cont: #FFB3BC;
-  --sal-pos: #5EDC88;  /* saldo positivo (testo) */
-  --sal-neg: #FF7A88;  /* saldo negativo (testo) */
+  --sal-pos: #B5E35C;  /* saldo positivo (testo): verde lime, più giallo delle entrate */
+  --sal-neg: #FF8FB8;  /* saldo negativo (testo): rosso lampone, diverso dalle uscite */
   --sal-pos-bar: #A9EDBE;  /* saldo positivo (barre) */
   --sal-neg-bar: #FFB3BC;  /* saldo negativo (barre) */
   --pos: var(--in);  /* indicatori positivi */

@@ -119,17 +119,21 @@ main { max-width: 1180px; outline: none; }
   main { grid-column: 2; width: 100%; padding: .8rem clamp(1.2rem, 4vw, 3rem) 4rem clamp(.5rem, 2vw, 1.5rem); }
 }
 @media (max-width: 899.98px) {
+  :root { --nav-h: 72px; }
   .nav {
     position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); height: var(--nav-h);
-    background: var(--dock); border-radius: var(--r-pill); padding: 8px; justify-content: space-between; gap: 4px;
+    background: var(--dock); border-radius: var(--r-pill); padding: 6px 14px; justify-content: space-between; gap: 4px;
     box-shadow: var(--shadow-2);
   }
-  .nav a { color: var(--dock-icon); justify-content: center; flex: 1 1 0; min-width: 0; padding: 0 .9rem; gap: .55rem; font-size: 1rem; }
-  .nav a span { display: none; }
-  .nav a.on { background: var(--hero-text); color: var(--hero); flex: 0 0 auto; padding: 0 1.2rem; }
-  .nav a.on span { display: inline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nav .target-dot { position: absolute; top: 9px; left: calc(50% + 6px); box-shadow: 0 0 0 2px var(--dock); }
-  .nav a.on .target-dot { position: static; box-shadow: none; margin-left: -.3rem; align-self: flex-start; margin-top: 12px; }
+  .nav a { color: var(--dock-icon); flex-direction: column; justify-content: center; flex: 1 1 0; min-width: 0; padding: 0; gap: 3px;
+    font-size: .74rem; font-weight: 600; border-radius: var(--r-l); }
+  .nav a svg { width: 56px; height: 30px; padding: 4px 16px; border-radius: var(--r-pill); transition: background-color .2s, color .2s; }
+  .nav a span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .nav a.on { color: var(--hero-text); }
+  .nav a.on span { font-weight: 750; }
+  .nav a.on svg { background: var(--hero-text); color: var(--hero); }
+  .nav .target-dot { position: absolute; top: 8px; left: calc(50% + 12px); box-shadow: 0 0 0 2px var(--dock); }
+  .nav a.on .target-dot { box-shadow: 0 0 0 2px var(--hero-text); }
   main { padding: .4rem .8rem calc(var(--nav-h) + env(safe-area-inset-bottom) + 2.5rem); }
   body.has-fab main { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 6.5rem); }
 }
@@ -190,15 +194,8 @@ a.blk > svg:last-child { width: 20px; height: 20px; color: var(--text-2); }
 .pan-actions { display: flex; gap: .5rem; }
 .pan-actions .btn { min-height: 52px; justify-content: center; border-radius: var(--r-pill); }
 .pan-actions .btn.primary { flex: 1; }
-.pan-foot { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 0 .3rem; color: var(--text-2); font-size: .9rem; }
-.pan-foot .link-btn { color: var(--text); }
+.pan-foot { margin: 0 .3rem; color: var(--text-2); font-size: .85rem; }
 .btn.tonal { background: var(--surface-2); border-color: var(--surface-2); }
-/* Sezione di Altro aperta dal pannello: compare evidenziata per un attimo */
-.flash-sez { animation: flash-sez 1.4s ease-out; }
-.altro > .card { scroll-margin-top: 1rem; }
-html.demo .altro > .card { scroll-margin-top: 5rem; }
-@media (min-width: 900px) { html.demo .altro > .card { scroll-margin-top: 3.4rem; } }
-@keyframes flash-sez { from { box-shadow: 0 0 0 3px var(--primary); } }
 
 /* ---------- Controlli ---------- */
 .btn {
@@ -238,6 +235,7 @@ input.err { border-color: var(--out) !important; }
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .8rem 1rem; margin-bottom: 1.4rem; }
 .page-head h1 { font-size: clamp(1.8rem, 5vw, 2.4rem); }
 .back { display: inline-block; color: var(--text-2); font-size: .88rem; font-weight: 550; margin-bottom: .2rem; }
+button.back { font: inherit; font-size: .88rem; font-weight: 550; background: none; border: 0; padding: .2rem 0; cursor: pointer; }
 .back::before { content: "‹ "; }
 .back:hover { color: var(--text); }
 
@@ -659,7 +657,6 @@ details.history[open] > summary { margin-bottom: .8rem; }
 .cat-row .emoji-in { text-align: center; padding-left: .2rem; padding-right: .2rem; font-size: 1.1rem; }
 .sync-line { display: flex; align-items: center; gap: .55rem; }
 .sync-line .sync-dot { display: inline-block; }
-.version { font-size: .8rem; margin-top: 1.5rem; }
 #install-box { margin-top: .8rem; }
 
 /* ---------- Finestre ---------- */
@@ -733,7 +730,9 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
 .list-opts { display: flex; align-items: center; gap: .7rem; margin: 0 0 .8rem; font-size: .9rem; }
 .seg.wide { display: flex; margin: .4rem 0 .6rem; }
+.seg.wide { align-self: stretch; }
 .seg.wide button { flex: 1; }
+[data-modnote]:empty { display: none; }
 @media (max-width: 560px) { .toolbar { flex-direction: column; align-items: stretch; } .seg { align-self: flex-start; } }
 
 /* ---------- Calendario ---------- */
@@ -965,6 +964,16 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
 .rate-h { font-size: .95rem; margin: 1rem 0 0; padding-top: .8rem; border-top: 1px solid var(--surface-2); }
 .rate-h .muted { font-weight: 400; font-size: .85rem; }
 .rate-dlg .field small { font-size: .8rem; }
+.lbl-info { display: flex; align-items: center; gap: .5rem; }
+.info-btn {
+  font: 700 .85rem/1 var(--font-title); width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer; flex: none;
+  background: var(--surface-2); color: var(--text); display: inline-grid; place-items: center;
+}
+.info-btn[aria-expanded="true"] { background: var(--primary); color: var(--on-primary); }
+@media (pointer: coarse) { .info-btn { width: 36px; height: 36px; } }
+.info-box { background: var(--surface-2); border-radius: var(--r-s); padding: .7rem .85rem; font-size: .9rem; }
+.info-box p { margin: 0 0 .45rem; }
+.info-box p:last-child { margin: 0; color: var(--text-2); }
 .rate-sum { margin: .8rem 0 .2rem; padding: .7rem .85rem; border-radius: var(--r-s); background: var(--surface-2); font-size: .9rem; }
 .rate-sum:empty { display: none; }
 .rate-sum.costo b:last-of-type { color: var(--out); }
