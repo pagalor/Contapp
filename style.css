@@ -1215,7 +1215,8 @@ button.gr-head:focus-visible { outline: 2px solid var(--primary); outline-offset
 .gruppo .bud-list { display: grid; gap: 2px; border-radius: var(--r-m); overflow: hidden; }
 .gruppo.bud-card .bud { background: var(--surface); padding: .85rem 1rem; border-radius: var(--r-xs); }
 .gruppo .bud-legend { padding: .7rem .6rem 0; margin: 0; }
-.gr-link { display: inline-block; margin: .6rem .6rem .9rem; }
-.gruppo:not(.multi) .gr-link { margin-top: .2rem; }
+a.add-row { display: inline-flex; align-items: center; text-decoration: none; }
+/* Un gruppo che finisce con le righe (senza un pulsante in fondo) lascia un po' di spazio prima del bordo */
+.gruppo > .gr-body:last-child { padding-bottom: .5rem; }
 .cal-hint { margin: 0 .3rem 1rem; }
 

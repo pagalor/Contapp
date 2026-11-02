@@ -343,7 +343,7 @@ function renderBudgets() {
     anteprima: list.map((s) => ({ desc: M.budgetLabel(s.b), det: B.statoTesto(s).toLowerCase(), amt: `${fmt(s.speso)} / ${fmt(s.disp)}`, cls: avviso(s) ? 'warn' : '' })),
     corpo: `<div class="bud-list">${list.map((s) => B.rowHTML(s, { open: aperto(s), movs: aperto(s) ? M.budgetMovs(s.b, state.y, state.m) : [] })).join('')}</div>
       ${list.some((s) => s.inCorso) ? '<p class="bud-legend muted">Il segno sulla barra indica a che punto è il periodo.</p>' : ''}`,
-    piede: '<a class="link-btn gr-link" href="#budget">Gestisci</a>',
+    piede: '<a class="add-row" href="#budget">Gestisci</a>',
   });
 }
 
