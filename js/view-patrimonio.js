@@ -96,9 +96,17 @@ function ripartizione(groups, tot) {
   const totPos = groups.reduce((a, g) => a + Math.max(0, tot.gruppi[g] || 0), 0);
   if (!totPos) return '';
   const pct = (g) => Math.max(0, tot.gruppi[g] || 0) / totPos * 100;
-  return `<section class="pat-rip" aria-label="Ripartizione per gruppo">
-    <div class="pat-bar" aria-hidden="true">${groups.filter((g) => pct(g) > 0).map((g) => `<i class="${g}" style="flex-grow:${pct(g).toFixed(2)}" data-tip="${esc(`${M.gruppoNome(g)}: ${fmtEur(tot.gruppi[g] || 0)}`)}"></i>`).join('')}</div>
-    <dl class="pat-leg">${groups.map((g) => `<div><dt><i class="sw ${g}"></i>${M.gruppoNome(g)} <small>${Math.round(pct(g)).toLocaleString('it-IT')}%</small></dt><dd>${fmtEur(tot.gruppi[g] || 0)}</dd></div>`).join('')}</dl>
+  const vivi = groups.filter((g) => pct(g) > 0);
+  // torta ad anello come quelle delle categorie (charts.donut), con la legenda accanto
+  const torta = C.donut({
+    size: 200, center: fmtEur0(totPos), label: 'Fondi', sub: vivi.length === 1 ? '1 gruppo' : `${vivi.length} gruppi`,
+    slices: vivi.map((g) => ({ label: M.gruppoNome(g), value: Math.max(0, tot.gruppi[g] || 0), color: `var(--g-${g})` })),
+    key: 'patrimonio:' + vivi.join('|'),
+  });
+  return `<section class="card pat-rip" aria-label="Ripartizione per gruppo">
+    <h2>Ripartizione</h2>
+    <div class="pat-rip-in"><div class="pie">${torta}</div>
+    <dl class="pat-leg">${groups.map((g) => `<div><dt><i class="sw ${g}"></i>${M.gruppoNome(g)}</dt><dd>${fmtEur(tot.gruppi[g] || 0)}<small>${pct(g).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></dd></div>`).join('')}</dl></div>
   </section>`;
 }
 
@@ -128,24 +136,23 @@ function autonomiaHTML(netto) {
 
 function accCard(c, v) {
   const t = c.data.obiettivo;
-  let status = '', cls = '', pct = 0, tp = 100;
+  let status = '', cls = '', fill = '';
+  // Con un target la scheda è la barra (come in Google Health): sotto il target la parte piena è quanto c'è
+  // rispetto al target, nei colori del saldo negativo; oltre, la parte piena è il target e il resto, più intenso, l'eccedenza
   if (typeof t === 'number') {
     const diff = round2(v - t);
-    pct = t > 0 ? Math.max(0, Math.min(100, (v / t) * 100)) : 100;
     if (diff < -0.005) {
-      status = `<b>▼ ${fmtEur(-diff)}</b> sotto il target`; cls = 'below';
-      tp = t > 0 ? Math.max(0, Math.min(100, (v / t) * 100)) : 0;
-    }
-    else if (diff > 0.005) {
-      status = `<b>▲ ${fmtEur(diff)}</b> oltre il target`; cls = 'over';
-      tp = v > 0 ? Math.max(0, Math.min(100, (t / v) * 100)) : 100;
-    } else status = 'Al target';
+      status = `<b>▼ ${fmtEur(-diff)}</b> sotto il target`; cls = 'below riempi';
+      fill = `--c:var(--sal-neg-bar);--p:${(t > 0 ? Math.max(0, Math.min(100, (v / t) * 100)) : 0).toFixed(1)}%`;
+    } else if (diff > 0.005) {
+      status = `<b>▲ ${fmtEur(diff)}</b> oltre il target`; cls = 'over riempi oltre';
+      fill = `--c:var(--sal-pos-bar);--p:${(v > 0 ? Math.max(0, Math.min(100, (t / v) * 100)) : 100).toFixed(1)}%`;
+    } else { status = 'Al target'; cls = 'riempi'; fill = '--c:var(--sal-pos-bar);--p:100%'; }
   }
-  return `<a class="acc ${cls}" href="#conto/${c.id}" style="--gc:var(--g-${c.data.gruppo || 'altro'})">
+  return `<a class="acc ${cls}" href="#conto/${c.id}" style="--gc:var(--g-${c.data.gruppo || 'altro'})${fill ? ';' + fill : ''}">
     <span class="acc-name">${esc(c.data.nome)}</span>
     <span class="acc-bal">${fmtEur(v)}</span>
-    ${typeof t === 'number' ? `<span class="acc-track"><span style="width:${cls ? 100 : pct}%${cls ? `;--tp:${tp.toFixed(1)}%` : ''}"></span></span>
-      <span class="acc-target">Target ${fmtEur(t)}</span><span class="acc-status">${status}</span>` : ''}
+    ${typeof t === 'number' ? `<span class="acc-target">Target ${fmtEur(t)}</span><span class="acc-status">${status}</span>` : ''}
   </a>`;
 }
 

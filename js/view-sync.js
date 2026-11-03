@@ -12,7 +12,7 @@ export function render(el) {
   root = el;
   el.innerHTML = `
     <section class="impost">
-      ${testataAccount('Sincronizzazione e cifratura')}
+      ${testataAccount('Sincronizzazione e cifratura', 'sync')}
       <section class="card" id="sync-card"></section>
     </section>`;
   renderSync();

@@ -27,13 +27,13 @@ function item(p) {
   const chiusa = d.chiusura;
   const stato = st.chiuso ? (chiusa?.tipo === 'reso' ? `annullato per reso il ${fmtD(chiusa.data)}` : `saldato il ${fmtD(chiusa?.data || M.todayIso())}`)
     : st.prossima ? `prossima: ${fmtD(st.prossima.date)}, ${fmtEur(st.prossima.val)}` : 'tutte pagate';
-  return `<button class="piano${st.chiuso || st.finita ? ' done' : ''}" data-id="${p.id}">
+  // un piano in corso è la barra: la parte piena è quanto già pagato
+  return `<button class="piano${st.chiuso || st.finita ? ' done' : ' riempi'}" data-id="${p.id}"${st.chiuso || st.finita ? '' : ` style="--p:${pct.toFixed(1)}%"`}>
     <span class="ric-emoji" style="--c:${cat?.data.colore || 'var(--text-3)'}">${esc(cat?.data.emoji || '▤')}</span>
     <span class="piano-desc">${esc(d.desc || '(senza descrizione)')}${d.creditore ? `<span class="piano-cred">${esc(d.creditore)}</span>` : ''}
       <small>Pagate ${st.pagate} di ${st.totale}${st.rimanenti ? `, ne ${st.rimanenti === 1 ? 'manca 1' : `mancano ${st.rimanenti}`}` : ''} · ${stato}</small>
       <small>${costo > 0.005 ? `Costo del finanziamento <b class="out">${fmtEur(costo)}</b>` : 'Nessun costo di finanziamento'} · ${M.modalitaPiano(p) === 'acquisto' ? "contato all'acquisto" : 'contato rata per rata'}</small></span>
     <span class="piano-amt">${st.chiuso || st.finita ? fmtEur(round2(st.pagato)) : fmtEur(st.residuo)}<small>${st.chiuso || st.finita ? 'pagato' : `da pagare, di ${fmtEur(round2(M.totaleRate(p) + M.anticipoVal(p)))}`}</small></span>
-    ${st.chiuso ? '' : `<span class="debt-track"><span style="width:${pct}%"></span></span>`}
   </button>`;
 }
 

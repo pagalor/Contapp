@@ -69,7 +69,7 @@ function paintRows() {
       <input class="amt" data-k="obiettivo" inputmode="decimal" value="${fmt(c.data.obiettivo)}" placeholder="Target" aria-label="Target">
       <button class="icon-btn small" data-act="menu" aria-label="Altre azioni">⋯</button>
       <div class="acc-menu" hidden>
-        <label class="check"><input type="checkbox" data-k="archiviato"${c.data.archiviato ? ' checked' : ''}> Archiviato (non compare più tra i fondi selezionabili)</label>
+        <label class="sw-row"><span>Archiviato<small>Non compare più tra i fondi selezionabili</small></span><input type="checkbox" class="switch" role="switch" data-k="archiviato"${c.data.archiviato ? ' checked' : ''}></label>
         <button class="btn ghost small danger" data-act="del">Elimina fondo</button>
       </div>
     </div>`).join('');

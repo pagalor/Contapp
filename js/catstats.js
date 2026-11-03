@@ -10,17 +10,16 @@ export function catBars(list, tipo) {
   if (!rows.length) return '<p class="muted">Nessun dato.</p>';
   const slices = rows.map((r) => ({ label: M.catLabel(r.cat), value: r.tot, color: r.cat?.data.colore || 'var(--text-3)' }));
   const pie = C.donut({
-    size: 190, center: fmtEur0(tot), toggle: true, slices,
+    size: 200, center: fmtEur0(tot), label: tipo === 'in' ? 'Entrate' : 'Uscite', sub: rows.length === 1 ? '1 categoria' : `${rows.length} categorie`, toggle: true, slices,
     key: `${tipo}:${slices.map((s) => s.label).join('|')}`,
   });
   // Si vede solo la torta: toccando il centro si aprono le voci (vedi il gestore in fondo al file)
   return `<div class="cat-split"><div class="pie">${pie}</div><ul class="catbars" hidden>${rows.map((r) => {
     const pct = tot ? (r.tot / tot) * 100 : 0;
     return `<li>
-      <button class="catbar" data-cat="${r.id}" data-tipo="${tipo}" aria-expanded="false">
+      <button class="catbar riempi" data-cat="${r.id}" data-tipo="${tipo}" aria-expanded="false" style="--c:${r.cat?.data.colore || 'var(--text-3)'};--p:${pct.toFixed(1)}%">
         <span class="cb-name"><span class="cb-emoji" style="--c:${r.cat?.data.colore || 'var(--text-3)'}">${esc(r.cat?.data.emoji || '')}</span>${esc(r.cat?.data.nome || 'Senza categoria')}</span>
         <span class="cb-val">${fmtEur(r.tot)} <small>${pct.toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></span>
-        <span class="cb-track"><span style="width:${pct}%;background:${r.cat?.data.colore || 'var(--text-3)'}"></span></span>
       </button>
       <div class="cb-detail" hidden></div>
     </li>`;

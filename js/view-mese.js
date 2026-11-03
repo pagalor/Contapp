@@ -280,7 +280,7 @@ function detailsHTML(r) {
       <button class="link-btn" data-act="split">Correggi</button></p>` : ''}
     <label class="field"><span>Tag</span>${tagEditorHTML(d.tags || [])}</label>
     <label class="field"><span>Nota</span><textarea data-f="note" rows="2">${esc(d.note || '')}</textarea></label>
-    <label class="check"><input type="checkbox" data-f="escl"${d.escl ? ' checked' : ''}> Escludi dai totali di entrate e uscite (es. entrate straordinarie)</label>
+    <label class="sw-row"><span>Escludi dai totali di entrate e uscite<small>Per esempio entrate straordinarie</small></span><input type="checkbox" class="switch" role="switch" data-f="escl"${d.escl ? ' checked' : ''}></label>
     <div class="detail-actions">
       <button class="btn ghost small" data-act="dup">Duplica</button>
       ${d.ricId || d.rataId || typeof d.val !== 'number' ? '' : '<button class="btn ghost small" data-act="ric">Rendi ricorrente</button>'}

@@ -84,7 +84,7 @@ function budgetDialog({ rec = null, onDone } = {}) {
         <label class="field" data-da="anno" hidden><span>Vale dall'anno</span>${yearInput({ name: 'daY', value: oggi.slice(0, 4) })}</label>
       </div>
       <p class="bud-hint muted"></p>
-      <label class="check"><input type="checkbox" name="riporto"${d.riporto ? ' checked' : ''}> <span data-rip></span></label>
+      <label class="sw-row"><span data-rip></span><input type="checkbox" class="switch" role="switch" name="riporto"${d.riporto ? ' checked' : ''}></label>
       <datalist id="dl-bud-tags">${M.tagStats().map((t) => `<option value="${esc(t.tag)}">`).join('')}</datalist>
       <div class="actions">
         ${isNew ? '' : '<button type="button" class="btn ghost danger" data-del>Elimina</button><span class="spacer"></span>'}

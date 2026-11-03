@@ -93,7 +93,9 @@ Regole:
 - **Riquadro di riepilogo** (`--hero` verde acqua, raggio `--r-l`): l'importo principale e accanto le capsule del logo calcolate sui dati. Nel Mese: entrate, uscite, saldo. Nel Riepilogo: mese per mese. Nel Patrimonio: l'andamento.
 - **Totali del mese** (desktop): gruppo collegato Entrate | Uscite | Saldo; il saldo nel blocco verde acqua.
 - **Avvisi** (target, rate, movimenti senza fondo): blocchi con la capsula del significato, titolo, una riga di dettaglio e un pulsante d'azione. Su desktop affiancati.
-- **Budget:** barra a capsula su binario `--surface-2`. Riempimento `--bud-ok`, `--bud-warn` o `--bud-over`, con la parte sforata tratteggiata e la tacca del periodo `--text`. Mai il rosso.
+- **Budget:** barra a capsula su binario `--surface-2`. Riempimento `--bud-ok`, `--bud-warn` o `--bud-over`, con la parte sforata tratteggiata e la tacca del periodo `--text`. Mai il rosso. Resta una barra (non un riquadro pieno) perché porta anche la tacca del limite e il segno del periodo.
+- **Avanzamento a riquadro pieno** (come le schede di Google Health), classe `.riempi`: la scheda stessa è la barra. La parte piena (`--p`) è il colore `--c` mescolato al `--fill-mix` con `--surface`, il resto al `--track-mix`; con `.oltre` la parte dopo `--p` è più intensa. Si usa per le schede dei fondi con un target (sotto: `--sal-neg-bar`, quanto c'è rispetto al target; oltre: `--sal-pos-bar`, il target pieno e l'eccedenza più intensa), i piani a rate in corso (`--primary`, quanto pagato), i debiti e crediti con rimborsi (`--in-bar`/`--out-bar`, quanto restituito) e l'elenco delle categorie sotto le torte (colore della categoria, percentuale sul totale).
+- **Interruttori** (`input.switch` in una riga `.sw-row`, come nelle impostazioni di Android): testo a sinistra e interruttore a destra, tutta la riga si tocca. Spento: traccia `--surface-2` con bordo `--text-3`, pallino `--text-3` con la ×. Acceso: traccia `--primary`, pallino `--on-primary` con la spunta `--primary`. Prendono il posto di tutte le caselle di spunta.
 - **Righe dei movimenti:**
   - telefono: blocchi con icona della categoria, descrizione, "giorno, categoria, fondo" e importo senza segno, colorato secondo il riquadro;
   - desktop: stessa riga in tabella, con colonne Giorno, Importo, Descrizione, Categoria, Pagato con/Ricevuto su e matita;
@@ -132,7 +134,7 @@ Le liste lunghe non si mostrano per intero: stanno in gruppi che si aprono con u
 ## Grafici
 
 - **Barre:** capsule (raggio pari a metà della larghezza), accostate senza spazio quando sono gruppi entrate/uscite, come nel logo.
-- **Torte ad anello:** segmenti con estremità arrotondate e 2–3 gradi di spazio tra uno e l'altro. Restano l'interazione di oggi e il totale al centro con Bricolage.
+- **Torte ad anello** (come gli anelli di Google Health): anello sottile (24% del raggio) su un binario `--surface-2`, segmenti con le estremità a semicerchio e circa 3,5 px di spazio tra uno e l'altro, un'etichetta a capsula con la percentuale della fetta più grande. Al centro tre righe: etichetta piccola («Entrate», «Uscite», «Fondi»), il totale grande in Bricolage, una riga sotto («14 categorie ▾», «5 gruppi»). Restano l'interazione di oggi (fette con il tooltip, centro che apre l'elenco). Anche la ripartizione del Patrimonio per gruppo è una torta.
 - **Linee** (saldo accumulato, andamento): spessore 3 px con estremità tonde. Il punto selezionato è un cerchio con bordo `--bg`. Le aree impilate del patrimonio usano i colori dei gruppi al 35% di opacità con la linea piena sopra.
 - **Etichette e tooltip:** tooltip come piccoli riquadri `--hero` con raggio `--r-s`.
 

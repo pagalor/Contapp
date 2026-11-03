@@ -25,7 +25,7 @@ const view = () => $('#view');
 let current = '';
 let pendingRemote = false;
 
-const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', rate: 'debiti', ricorrenti: 'account', budget: 'account', sincronizzazione: 'account', categorie: 'account', dati: 'account', aspetto: 'account' };
+const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', rate: 'debiti', ricorrenti: 'account', budget: 'account', sincronizzazione: 'sync', categorie: 'account', dati: 'account', aspetto: 'account' };
 const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', rate: 'Pagamenti a rate', ricorrenti: 'Movimenti ricorrenti', budget: 'Budget', sincronizzazione: 'Sincronizzazione', categorie: 'Categorie', dati: 'Importa ed esporta', aspetto: 'Aspetto' };
 
 // Cronologia: ogni pagina aperta andando avanti ricorda da quale pagina si arrivava (history.state.da, con il titolo),
@@ -60,6 +60,7 @@ function route() {
   });
   // Le pagine che si aprono dal pannello dell'account evidenziano l'avatar
   $('#account-btn')?.classList.toggle('on', NAV_OF[current] === 'account');
+  $('#sync-ind')?.classList.toggle('on', NAV_OF[current] === 'sync');
   // Pulsante "Nuovo" (solo telefono) nelle pagine del mese
   const fab = $('#fab');
   if (fab) fab.hidden = NAV_OF[current] !== 'mese';

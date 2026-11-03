@@ -193,51 +193,65 @@ export function bindTimeHover(box, onPick) {
   });
 }
 
-// Torta ad anello. slices: [{ label, value, color }]; al centro il totale.
-// Con `toggle` il centro è un pulsante (classe .donut-hit) per aprire i dettagli sotto la torta.
+// Torta ad anello, come gli anelli di Google Health: anello sottile su un binario grigio, fette con le estremità tonde
+// e un po' di spazio tra l'una e l'altra, un'etichetta a capsula con la percentuale della fetta più grande,
+// al centro tre righe (etichetta piccola, valore grande, riga sotto). slices: [{ label, value, color }].
+// Con `toggle` il centro è un pulsante (classe .donut-hit) per aprire i dettagli sotto la torta; la riga sotto
+// finisce con una freccia (.donut-chev) che diventa ▴ quando i dettagli sono aperti.
 // La torta si "chiude" (animazione) la prima volta che compare scorrendo la pagina: vedi animateDonuts.
 // `key` identifica la torta: se è già stata animata in questa pagina, non si ripete a ogni ridisegno.
 let donutSeq = 0;
-export function donut({ size = 200, slices, center = '', toggle = false, key = '' }) {
+export function donut({ size = 200, slices, center = '', label = '', sub = '', toggle = false, key = '' }) {
   const tot = slices.reduce((s, x) => s + Math.max(0, x.value), 0);
   if (!tot) return '';
-  const R = size / 2, r0 = R * 0.64, cx = R, cy = R;
-  const SPAZIO = 2.5 * Math.PI / 180, rm = (R + r0) / 2, sw = R - r0;
+  const R = size / 2 - 2, cx = size / 2, cy = size / 2;
+  const sw = R * 0.24, r0 = R - sw, rm = R - sw / 2;
+  const SPAZIO = 3.5 / rm; // circa 3,5 px di spazio tra le fette, lungo il centro dell'anello
   const maskId = `donut-m${++donutSeq}`;
   let a = -Math.PI / 2, g = '';
+  let top = null; // la fetta più grande, per l'etichetta a capsula
   const pt = (rad, ang) => `${(cx + rad * Math.cos(ang)).toFixed(2)},${(cy + rad * Math.sin(ang)).toFixed(2)}`;
-  for (const s of slices) {
-    if (s.value <= 0) continue;
+  const vive = slices.filter((s) => s.value > 0);
+  for (const s of vive) {
     const frac = s.value / tot;
     const tip = `${s.label}: ${fmtEur(s.value)} (${(frac * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%)`;
-    if (frac > 0.9999) {
-      g += `<circle cx="${cx}" cy="${cy}" r="${(R + r0) / 2}" fill="none" style="stroke:${s.color}" stroke-width="${R - r0}" data-tip="${esc(tip)}"/>`;
+    const b = a + frac * 2 * Math.PI;
+    if (!top || frac > top.frac) top = { frac, mid: (a + b) / 2, color: s.color };
+    if (vive.length === 1) {
+      g += `<circle class="slice" cx="${cx}" cy="${cy}" r="${rm}" fill="none" style="stroke:${s.color}" stroke-width="${sw}" data-tip="${esc(tip)}"/>`;
       break;
     }
-    const b = a + frac * 2 * Math.PI;
     // La fetta si disegna ristretta di k (raggi e lati) e poi si contorna con un tratto largo 2k e giunti tondi:
-    // gli angoli diventano arrotondati di k. Per le fette piccole k cala, così non sconfinano nello spazio tra le fette.
+    // con k = metà dello spessore le estremità sono semicerchi. Le fette piccole diventano un puntino.
     const lung = (b - a - SPAZIO) * rm;
-    const k = Math.max(0.6, Math.min(sw / 2 - 0.5, lung / 2));
+    const k = Math.max(0.6, Math.min(sw / 2 - 0.3, lung / 2));
     const ro = R - k, ri = r0 + k;
     let ao = a + SPAZIO / 2 + k / ro, bo = b - SPAZIO / 2 - k / ro, ai = a + SPAZIO / 2 + k / ri, bi = b - SPAZIO / 2 - k / ri;
     if (bo < ao) ao = bo = (a + b) / 2;
     if (bi < ai) ai = bi = (a + b) / 2;
     const large = bo - ao > Math.PI ? 1 : 0;
     g += `<path class="slice" d="M${pt(ro, ao)} A${ro},${ro} 0 ${large} 1 ${pt(ro, bo)} L${pt(ri, bi)} A${ri},${ri} 0 ${large} 0 ${pt(ri, ai)} Z"
-      style="fill:${s.color};stroke:${s.color};stroke-width:${(2 * k).toFixed(2)}" data-tip="${esc(tip)}"/>`;
+      style="fill:${s.color};stroke:${s.color};stroke-width:${(2 * k).toFixed(2)};stroke-linejoin:round" data-tip="${esc(tip)}"/>`;
     a = b;
   }
-  const mask = `<mask id="${maskId}"><circle class="donut-sweep" cx="${cx}" cy="${cy}" r="${R / 2}" fill="none" stroke="#fff"
-    stroke-width="${R}" pathLength="100" transform="rotate(-90 ${cx} ${cy})"/></mask>`;
-  let html = `<defs>${mask}</defs><g mask="url(#${maskId})">${g}</g>`;
-  if (toggle) {
-    html += `<circle class="donut-hit" cx="${cx}" cy="${cy}" r="${r0 - 2}" tabindex="0" role="button" aria-expanded="false" aria-label="Mostra o nascondi le voci"/>`;
-    html += `<text class="donut-tot" x="${cx}" y="${cy + 2}" text-anchor="middle">${esc(center)}</text>`;
-    html += `<text class="donut-chev" x="${cx}" y="${cy + 20}" text-anchor="middle">▾</text>`;
-  } else {
-    html += `<text class="donut-tot" x="${cx}" y="${cy + 6}" text-anchor="middle">${esc(center)}</text>`;
+  const mask = `<mask id="${maskId}"><circle class="donut-sweep" cx="${cx}" cy="${cy}" r="${size / 4}" fill="none" stroke="#fff"
+    stroke-width="${size / 2}" pathLength="100" transform="rotate(-90 ${cx} ${cy})"/></mask>`;
+  let html = `<defs>${mask}</defs><circle class="donut-track" cx="${cx}" cy="${cy}" r="${rm}" fill="none" stroke-width="${sw}"/>
+    <g mask="url(#${maskId})">${g}</g>`;
+  // etichetta a capsula sulla fetta più grande (solo se ci sono più fette)
+  if (top && vive.length > 1) {
+    const testo = `${Math.round(top.frac * 100)}%`;
+    const w = 10 + testo.length * 7.4, h = 19;
+    const x = cx + rm * Math.cos(top.mid), y = cy + rm * Math.sin(top.mid);
+    html += `<g class="donut-badge" aria-hidden="true"><rect x="${(x - w / 2).toFixed(1)}" y="${(y - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="${h / 2}"
+      style="stroke:${top.color}"/><text x="${x.toFixed(1)}" y="${(y + 4.2).toFixed(1)}" text-anchor="middle">${esc(testo)}</text></g>`;
   }
+  if (toggle) html += `<circle class="donut-hit" cx="${cx}" cy="${cy}" r="${r0 - 4}" tabindex="0" role="button" aria-expanded="false" aria-label="Mostra o nascondi le voci"/>`;
+  const righe = [label && `<tspan class="donut-lab" x="${cx}" dy="0">${esc(label)}</tspan>`,
+    `<tspan class="donut-tot" x="${cx}" dy="${label ? 27 : 0}">${esc(center)}</tspan>`,
+    (sub || toggle) && `<tspan class="donut-sub" x="${cx}" dy="21">${esc(sub)}${toggle ? `${sub ? ' ' : ''}<tspan class="donut-chev">▾</tspan>` : ''}</tspan>`].filter(Boolean);
+  const y0 = cy + 8 - ((label ? 27 : 0) + (righe.length > (label ? 2 : 1) ? 21 : 0)) / 2;
+  html += `<text class="donut-txt" x="${cx}" y="${y0.toFixed(1)}" text-anchor="middle">${righe.join('')}</text>`;
   return `<svg class="donut pre" data-key="${esc(key)}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img">${html}</svg>`;
 }
 

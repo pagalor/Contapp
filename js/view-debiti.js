@@ -85,11 +85,12 @@ function item(r) {
   const res = M.residuo(r);
   const saldato = res <= 0.005;
   const pct = d.val > 0 ? Math.min(100, ((d.val - res) / d.val) * 100) : 0;
-  return `<button class="debt ${d.tipo}${saldato ? ' done' : ''}" data-id="${r.id}">
+  // con dei rimborsi la voce è la barra (riempita per la parte già restituita)
+  const parziale = (d.rimborsi || []).length && !saldato;
+  return `<button class="debt ${d.tipo}${saldato ? ' done' : ''}${parziale ? ' riempi' : ''}" data-id="${r.id}"${parziale ? ` style="--p:${pct.toFixed(1)}%"` : ''}>
     <span class="debt-kind">${d.tipo === 'credito' ? 'Ti deve' : 'Devi'}</span>
     <span class="debt-desc">${esc(d.desc || '(senza descrizione)')}<small>${fmtD(d.data)}${d.fondo ? ', ' + esc(M.accName(d.fondo)) : ''}</small></span>
     <span class="debt-amt">${saldato ? 'Saldato' : fmtEur(res)}${!saldato && res < d.val ? `<small>di ${fmtEur(d.val)}</small>` : ''}</span>
-    ${(d.rimborsi || []).length && !saldato ? `<span class="debt-track"><span style="width:${pct}%"></span></span>` : ''}
   </button>`;
 }
 

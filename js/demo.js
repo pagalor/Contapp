@@ -298,6 +298,27 @@ export function genera(oggi) {
     d.rimborsi.push({ data: isoD(t), val, espr: null, fondo });
   };
 
+  // Storico di due anni fa, come quello importato da un Excel: totali del mese senza giorno né fondo, prima della
+  // data di partenza (non toccano i saldi). Così nel Riepilogo il confronto si può fare anche con un anno più lontano.
+  // Usa numeri pseudo-casuali propri, per non cambiare il resto dei dati.
+  const r2 = rng(20230101);
+  const tra = (min, max) => round2(min + r2() * (max - min));
+  const annoStorico = fine.getFullYear() - 2;
+  for (let m = 0; m < 12; m++) {
+    const t = new Date(annoStorico, m, 1);
+    const st = { conti: [], senzaGiorno: true };
+    mov(t, 'in', 'Stipendio', STIPENDIO - 100, C.stip, st);
+    if (m === 6 || m === 11) mov(t, 'in', 'Tredicesima e premi', tra(600, 900), C.stip, st);
+    mov(t, 'out', 'Affitto', 480, C.casa, { ...st, sub: S.affitto });
+    mov(t, 'out', 'Bollette', tra(70, 130), C.casa, { ...st, sub: S.bollette });
+    mov(t, 'out', 'Spesa del mese', tra(230, 330), C.spesa, st);
+    mov(t, 'out', 'Ristoranti e bar', tra(70, 150), C.rist, st);
+    mov(t, 'out', 'Trasporti', tra(35, 70), C.trasp, st);
+    mov(t, 'out', 'Svago', tra(30, 90), C.svago, st);
+    if (r2() < 0.45) mov(t, 'out', 'Shopping', tra(25, 120), C.shop, st);
+    if (m === 7) mov(t, 'out', 'Vacanza', tra(500, 800), C.viaggi, st);
+  }
+
   for (const t = new Date(inizioMesi); t <= fine; t.setDate(t.getDate() + 1)) {
     const g = t.getDate(), m = t.getMonth() + 1;
     const fineMese = new Date(t.getFullYear(), m, 0).getDate() === g;

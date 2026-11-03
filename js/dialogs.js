@@ -137,7 +137,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
       <h3 class="mov-more">Altre opzioni</h3>
       <div class="field"><span>Tag</span><div data-tags></div></div>
       <label class="field"><span>Nota</span><textarea name="note" rows="2">${esc(init?.note || '')}</textarea></label>
-      <label class="check big-check"><input type="checkbox" name="escl"${init?.escl ? ' checked' : ''}> Escludi dai totali di entrate e uscite (es. entrate straordinarie)</label>
+      <label class="sw-row"><span>Escludi dai totali<small>Per esempio entrate straordinarie: il movimento resta nell'elenco ma non conta nelle entrate e nelle uscite</small></span><input type="checkbox" class="switch" role="switch" name="escl"${init?.escl ? ' checked' : ''}></label>
       <div class="detail-actions big-actions">
         <button type="button" class="btn ghost" data-dup>${isEdit ? 'Salva e duplica' : 'Aggiungi e duplica'}</button>
         ${rec?.data.ricId || rec?.data.rataId ? '' : '<button type="button" class="btn ghost" data-ric>Rendi ricorrente…</button>'}

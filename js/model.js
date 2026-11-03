@@ -149,9 +149,9 @@ export const variazione = (cur, prev) => (prev > 0 ? ((cur - prev) / prev) * 100
 // Anno y contro l'anno prima, entrambi dal gennaio fino al mese `fino` (1–12) incluso.
 // Per l'anno in corso `fino` è il mese attuale, così si confronta lo stesso periodo.
 // Restituisce null se l'anno prima non ha movimenti nel periodo.
-export function confrontoAnno(y, fino = 12) {
+export function confrontoAnno(y, fino = 12, base = y - 1) {
   const dentro = (anno) => movs().filter((r) => r.data.y === anno && r.data.m <= fino);
-  const cur = dentro(y), prev = dentro(y - 1);
+  const cur = dentro(y), prev = dentro(base);
   if (!prev.some(counts)) return null;
   const sc = sums(cur), sp = sums(prev);
   const righe = (tipo) => {

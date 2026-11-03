@@ -73,6 +73,9 @@
   /* sfondo delle icone delle categorie: tinta ricavata dal colore scelto dall'utente
      uso: background: color-mix(in srgb, <colore categoria> var(--cat-mix), var(--surface)); */
   --cat-mix: 22%;
+  /* avanzamento a riquadro pieno (schede come Google Health): quota del colore nella parte piena e nel resto */
+  --fill-mix: 48%;
+  --track-mix: 15%;
 
   /* forme */
   --r-xs: 6px;      /* angoli interni dei gruppi collegati e dei blocchi di una lista */
@@ -140,6 +143,8 @@
     --cal-out-4: #702735;
     --cal-out-5: #8E2F42;
     --cat-mix: 28%;
+    --fill-mix: 40%;
+    --track-mix: 13%;
   }
 }
 
@@ -200,4 +205,6 @@
   --cal-out-4: #702735;
   --cal-out-5: #8E2F42;
   --cat-mix: 28%;
+  --fill-mix: 40%;
+  --track-mix: 13%;
 }

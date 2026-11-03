@@ -10,6 +10,7 @@ import { monthInput, setPick } from './datepick.js';
 let root, sel; // sel: anno (numero) oppure 'tutto'
 let curList = []; // movimenti del periodo mostrato, per il dettaglio delle categorie
 let espanso = false; // tabella "Mese per mese" aperta sotto il grafico delle entrate e uscite
+let baseScelta = null; // anno scelto per il confronto (null = l'anno prima, o il più recente con movimenti)
 
 // Intervallo di mesi per "Tutti gli anni" ('AAAA-MM' oppure '' se senza limite). Si ricorda su questo dispositivo.
 const RANGE_KEY = 'contabilita.riepilogo-periodo';
@@ -45,6 +46,14 @@ export function render(el, { anno } = {}) {
     </section>`;
   bindPeriodo(ys);
   bindRange();
+  // scelta dell'anno di confronto: un solo ascolto sulla sezione della pagina (nuova a ogni visita)
+  root.querySelector('.riepilogo').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-base]');
+    if (!b) return;
+    baseScelta = Number(b.dataset.base);
+    const g = root.querySelector('#gr-rie-cmp');
+    if (g) { G.ricorda('rie-cmp', true); g.outerHTML = confrontoGroup(); }
+  });
   draw();
 }
 
@@ -204,7 +213,7 @@ function draw() {
       <div id="cat-out"></div>
     </section>
 
-    ${tutto ? '' : confrontoCard()}
+    ${tutto ? '' : confrontoGroup()}
 
     ${budgetGroup()}
 
@@ -257,29 +266,35 @@ function proiezioneCard() {
     </dl>${conPrev}</section>`;
 }
 
-// Entrate, uscite e categorie rispetto all'anno prima. Per l'anno in corso si confronta lo stesso periodo.
-// Le categorie stanno in due gruppi espandibili sotto il riquadro.
-function confrontoCard() {
+// Entrate, uscite e categorie rispetto a un anno passato (predefinito: l'anno prima; si può scegliere qualsiasi
+// anno precedente con movimenti nel periodo). Per l'anno in corso si confronta lo stesso periodo.
+// Tutto in un solo gruppo espandibile: i totali, la scelta dell'anno e le categorie di entrate e uscite.
+function confrontoGroup() {
   const now = new Date();
   const fino = sel === now.getFullYear() ? now.getMonth() + 1 : 12;
-  const c = M.confrontoAnno(sel, fino);
-  if (!c) return '';
+  const anni = M.years().filter((y) => y < sel).reverse().map((y) => ({ y, c: M.confrontoAnno(sel, fino, y) })).filter((o) => o.c);
+  if (!anni.length) return '';
+  const scelto = anni.find((o) => o.y === baseScelta) || anni.find((o) => o.y === sel - 1) || anni[0];
+  const { y: base, c } = scelto;
   const periodo = (y) => fino === 12 ? String(y) : `${fino === 1 ? M.MESI[0] : M.MESI[0] + '–' + M.MESI[fino - 1].toLowerCase()} ${y}`;
   const riga = (nome, o, tipo) => `<tr><td>${nome}</td><td class="num muted">${fmt(o.prev)}</td><td class="num ${tipo}">${fmt(o.cur)}</td>${varCell(o.var, tipo)}</tr>`;
   const bene = (o, tipo) => (o.var === null || Math.abs(o.var) < 0.05 ? '' : (tipo === 'in' ? o.var > 0 : o.var < 0) ? 'pos' : 'neg');
-  const gruppo = (titolo, righe, tipo) => righe.length ? G.gruppoHTML({
-    id: 'rie-cmp-' + tipo, titolo: `${titolo}, rispetto al ${sel - 1}`, tono: tipo, n: righe.length, nomi: ['categoria', 'categorie'],
-    anteprima: righe.map((o) => ({ desc: M.catLabel(o.cat), det: `${fmt(o.prev)} → ${fmt(o.cur)}`, amt: o.var === null ? '–' : pctFmt(o.var), cls: bene(o, tipo) })),
-    corpo: `<div class="gr-tab"><table class="tbl cmp-tbl"><thead><tr><th></th><th class="num">${sel - 1}</th><th class="num">${sel}</th><th class="num">Variazione</th></tr></thead>
-      <tbody>${righe.map((o) => riga(esc(M.catLabel(o.cat)), o, tipo)).join('')}</tbody></table></div>`,
-  }) : '';
-  return `<section class="card">
-    <h2>Rispetto al ${sel - 1}</h2>
-    <p class="muted">${periodo(sel)} confrontato con ${periodo(sel - 1).toLowerCase()}.${fino < 12 ? ' L\'ultimo mese è ancora in corso.' : ''}</p>
-    <table class="tbl cmp-tbl"><thead><tr><th></th><th class="num">${sel - 1}</th><th class="num">${sel}</th><th class="num">Variazione</th></tr></thead>
-      <tbody>${riga('Entrate', c.tin, 'in')}${riga('Uscite', c.tout, 'out')}</tbody></table>
-  </section>
-  ${gruppo('Entrate per categoria', c.in, 'in')}${gruppo('Uscite per categoria', c.out, 'out')}`;
+  const testa = `<thead><tr><th></th><th class="num">${base}</th><th class="num">${sel}</th><th class="num">Variazione</th></tr></thead>`;
+  const tabella = (titolo, righe, tipo) => righe.length ? `<h3 class="cap-title cmp-sub"><span class="cap ${tipo}"></span>${titolo}</h3>
+    <div class="gr-tab"><table class="tbl cmp-tbl">${testa}<tbody>${righe.map((o) => riga(esc(M.catLabel(o.cat)), o, tipo)).join('')}</tbody></table></div>` : '';
+  const prev = (nome, o, tipo) => ({ desc: nome, det: `${fmt(o.prev)} → ${fmt(o.cur)}`, amt: o.var === null ? '–' : pctFmt(o.var), cls: bene(o, tipo) });
+  return G.gruppoHTML({
+    id: 'rie-cmp', cls: 'rie-cmp', titolo: `Rispetto al ${base}`, tono: 'prim', n: 2 + c.in.length + c.out.length, nomi: ['voce', 'voci'],
+    anteprima: [prev('Entrate', c.tin, 'in'), prev('Uscite', c.tout, 'out'),
+      ...c.out.map((o) => prev(M.catLabel(o.cat), o, 'out'))],
+    corpo: `<div class="cmp-head">
+        <p class="muted">${periodo(sel)} confrontato con ${periodo(base).toLowerCase()}.${fino < 12 ? ' L\'ultimo mese è ancora in corso.' : ''}</p>
+        ${anni.length > 1 ? `<div class="cmp-anni" role="group" aria-label="Confronta con l'anno"><span>Confronta con</span>
+          ${anni.map((o) => `<button type="button" class="chip${o.y === base ? ' on' : ''}" data-base="${o.y}" aria-pressed="${o.y === base}">${o.y}</button>`).join('')}</div>` : ''}
+      </div>
+      <div class="gr-tab"><table class="tbl cmp-tbl">${testa}<tbody>${riga('Entrate', c.tin, 'in')}${riga('Uscite', c.tout, 'out')}</tbody></table></div>
+      ${tabella('Entrate per categoria', c.in, 'in')}${tabella('Uscite per categoria', c.out, 'out')}`,
+  });
 }
 
 // Per ogni budget: in quanti periodi conclusi è stato rispettato e di quanto si è scostata in media la spesa

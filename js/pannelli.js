@@ -68,8 +68,9 @@ function apriSync() {
   paintSyncPanel();
   dlg.addEventListener('click', (e) => {
     if (e.target.closest('[data-pan-sync]')) sync.syncNow();
-    if (e.target.closest('[data-pan-impost]')) { dlg.close(); location.hash = '#sincronizzazione'; }
     if (e.target.closest('[data-pan-chiudi]')) dlg.close();
+    const a = e.target.closest('a.blk');
+    if (a) { e.preventDefault(); dlg.close(); vaiDaPannello(a.getAttribute('href'), 'sync'); }
   });
 }
 function paintSyncPanel() {
@@ -83,13 +84,15 @@ function paintSyncPanel() {
     if (ses) corpo += `<ul class="blocks"><li class="blk">${svg('utente')}<span><b>Account</b><small>${esc(ses.user?.email || '')}</small></span></li></ul>`;
     if (pronto) corpo += `<p class="blk pan-lock">${svg('lucchetto')}<span>Cifratura end-to-end attiva. Sul server arrivano solo dati cifrati.</span></p>`;
   }
-  const azione = demo.attiva ? ''
-    : pronto ? `<button type="button" class="btn primary" data-pan-sync${st.state === 'syncing' ? ' disabled' : ''}>Sincronizza ora</button>`
-    : `<button type="button" class="btn primary" data-pan-impost>Apri le impostazioni</button>`;
+  const azione = pronto ? `<button type="button" class="btn primary" data-pan-sync${st.state === 'syncing' ? ' disabled' : ''}>Sincronizza ora</button>` : '';
+  // le impostazioni (collegamento, accesso, frase segreta) sono una pagina a sé, aperta da qui
+  const impost = `<ul class="blocks pan-list"><li><a class="blk" href="#sincronizzazione">
+    <span class="blk-ico">${svg('sync')}</span><span><b>Sincronizzazione e cifratura</b><small>${esc(demo.attiva ? 'Non disponibile nella demo'
+      : !sync.config() ? 'Collega il tuo progetto Supabase' : !ses ? 'Accedi per sincronizzare' : pronto ? 'Account, frase segreta, uscita' : 'Inserisci la frase segreta')}</small></span>${svg('freccia')}</a></li></ul>`;
   syncBox.innerHTML = `
     <h2>Sincronizzazione</h2>
     <p class="pan-sub" data-state="${demo.attiva ? 'off' : st.state}">${esc(statoTesto(st, true))}</p>
-    ${corpo}
+    ${corpo}${impost}
     <div class="pan-actions">${azione}<button type="button" class="btn tonal" data-pan-chiudi>Chiudi</button></div>`;
 }
 
@@ -105,7 +108,6 @@ function sottotitoloAccount() {
 function voci() {
   const n = (x) => (x ? ` (${x})` : '');
   return [
-    ['sync', '#sincronizzazione', 'Sincronizzazione e cifratura', demo.attiva ? 'Non disponibile nella demo' : 'Supabase, frase segreta'],
     ['fondi', '#conti', 'Fondi', 'Gruppi, saldi iniziali, target'],
     ['cat', '#categorie', 'Categorie', 'Colori, emoji, sottocategorie'],
     ['ric', '#ricorrenti', 'Movimenti ricorrenti' + n(M.rics().length), 'Abbonamenti, affitto, stipendio'],
@@ -137,39 +139,41 @@ export function apriAccount() {
     if (!a) return;
     e.preventDefault();
     dlg.close();
-    vaiDaAccount(a.getAttribute('href'));
+    vaiDaPannello(a.getAttribute('href'), 'account');
   });
 }
 
-// Pagine aperte dal pannello dell'account. Le due voci della cronologia vengono segnate:
-// la pagina di partenza con riapriAccount (tornandoci con Indietro si riapre il pannello)
-// e la pagina aperta con daAccount (il suo «‹» porta all'account). Le route non cambiano.
-function vaiDaAccount(dest) {
+// Pagine aperte da un pannello (pan: 'account' o 'sync'). Le due voci della cronologia vengono segnate:
+// la pagina di partenza con riapri (tornandoci con Indietro si riapre quel pannello)
+// e la pagina aperta con daPan (il suo «‹» porta al pannello). Le route non cambiano.
+const PANNELLI = { account: { nome: 'Account', apri: () => apriAccount() }, sync: { nome: 'Sincronizzazione', apri: () => apriSync() } };
+function vaiDaPannello(dest, pan) {
   if (location.hash === dest) return;
-  history.replaceState({ ...(history.state || {}), riapriAccount: true }, '');
-  history.pushState({ daAccount: true }, '', dest);
+  history.replaceState({ ...(history.state || {}), riapri: pan }, '');
+  history.pushState({ daPan: pan }, '', dest);
   dispatchEvent(new HashChangeEvent('hashchange'));
 }
 
 // Titolo di una pagina con il ritorno sopra, che porta sempre alla schermata precedente:
-// «‹ Account» se la pagina è stata aperta dal pannello (si torna indietro e il pannello si riapre),
+// «‹ Account» o «‹ Sincronizzazione» se la pagina è stata aperta da un pannello (si torna indietro e il pannello si riapre),
 // «‹ <pagina di prima>» se ci si è arrivati da un'altra pagina, altrimenti (pagina aperta da un indirizzo)
-// la pagina madre (per esempio Fondi → Patrimonio) o, se non ce n'è una, l'account
-export function titoloConRitorno(titolo, madre = null) {
+// la pagina madre (per esempio Fondi → Patrimonio) o, se non ce n'è una, il pannello predefinito (pan)
+export function titoloConRitorno(titolo, madre = null, pan = 'account') {
   const st = history.state || {};
-  const back = st.daAccount ? '<button type="button" class="back" data-account>Account</button>'
+  const daPan = PANNELLI[st.daPan] ? st.daPan : null;
+  const back = daPan ? `<button type="button" class="back" data-pannello="${daPan}">${PANNELLI[daPan].nome}</button>`
     : st.da ? `<button type="button" class="back" data-indietro>${esc(st.da.titolo)}</button>`
     : madre ? `<a class="back" href="${madre.href}">${esc(madre.nome)}</a>`
-    : '<button type="button" class="back" data-account>Account</button>';
+    : `<button type="button" class="back" data-pannello="${pan}">${PANNELLI[pan].nome}</button>`;
   return `<div>${back}<h1>${esc(titolo)}</h1></div>`;
 }
-export const testataAccount = (titolo) => `<header class="page-head">${titoloConRitorno(titolo)}</header>`;
+export const testataAccount = (titolo, pan = 'account') => `<header class="page-head">${titoloConRitorno(titolo, null, pan)}</header>`;
 
-// «‹ Account»: se la pagina è stata aperta dal pannello si torna indietro (e il pannello si riapre sulla pagina di prima),
-// altrimenti il pannello si apre sulla pagina attuale
-function tornaAccount() {
-  if (history.state?.daAccount) history.back();
-  else apriAccount();
+// «‹ Account» / «‹ Sincronizzazione»: se la pagina è stata aperta da quel pannello si torna indietro
+// (e il pannello si riapre sulla pagina di prima), altrimenti il pannello si apre sulla pagina attuale
+function tornaPannello(pan) {
+  if (history.state?.daPan === pan) history.back();
+  else PANNELLI[pan]?.apri();
 }
 
 // La versione è il numero della cache del service worker (VERSION in sw.js, "contabilita-vN"):
@@ -199,16 +203,18 @@ export function avvia() {
   $('#sync-ind')?.addEventListener('click', apriSync);
   $('#account-btn')?.addEventListener('click', apriAccount);
   document.addEventListener('click', (e) => {
-    if (e.target.closest('[data-account]')) tornaAccount();
+    const bp = e.target.closest('[data-pannello]');
+    if (bp) tornaPannello(bp.dataset.pannello);
     if (e.target.closest('[data-indietro]')) history.back();
   });
-  // Indietro (anche il tasto del telefono) da una pagina aperta dal pannello: si torna alla pagina di prima con il pannello aperto.
+  // Indietro (anche il tasto del telefono) da una pagina aperta da un pannello: si torna alla pagina di prima con il pannello aperto.
   // Vale solo per il passo indietro da quella pagina, non quando ci si ritorna in altri modi.
   addEventListener('popstate', () => {
     const lasciato = statoMostrato;
     statoMostrato = history.state;
-    if (lasciato?.daAccount && history.state?.riapriAccount && history.state.n === lasciato.n - 1 &&
-      !document.querySelector('dialog.panel[open]')) setTimeout(apriAccount, 0);
+    const pan = lasciato?.daPan;
+    if (PANNELLI[pan] && history.state?.riapri === pan && history.state.n === lasciato.n - 1 &&
+      !document.querySelector('dialog.panel[open]')) setTimeout(PANNELLI[pan].apri, 0);
   });
   sync.onStatus(paintSync);
   // "Sincronizzato 2 min fa" va aggiornato anche senza cambi di stato
