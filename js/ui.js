@@ -74,6 +74,72 @@ export function promptBox(label, value = '', { ok = 'Salva' } = {}) {
   });
 }
 
+// Finestra di scelta con lo stile dell'app (al posto degli elenchi del sistema): titolo con la × per chiudere,
+// voci a blocchi (con i titoli dei gruppi, se ci sono), la voce scelta evidenziata con la spunta.
+// voci: [{ value, label, disabled, gruppo }]. Restituisce il valore scelto, oppure null se si chiude senza scegliere.
+const SPUNTA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12.5l4 4 9-9.5"/></svg>';
+export function sceltaBox({ titolo, voci, valore }) {
+  return new Promise((resolve) => {
+    let scelto = null, gruppo;
+    const righe = voci.map((v, i) => {
+      const testa = v.gruppo !== gruppo && v.gruppo ? `<li class="scelta-gruppo" role="presentation">${esc(v.gruppo)}</li>` : '';
+      gruppo = v.gruppo;
+      const on = String(v.value) === String(valore);
+      return `${testa}<li role="presentation"><button type="button" class="scelta-voce${on ? ' on' : ''}" role="option" aria-selected="${on}" data-i="${i}"${v.disabled ? ' disabled' : ''}>
+        <span>${esc(v.label)}</span>${on ? SPUNTA : ''}</button></li>`;
+    }).join('');
+    const dlg = modal(`<div class="dlg scelta">
+      <header class="dlg-head"><h2>${esc(titolo)}</h2><button type="button" class="icon-btn" data-x aria-label="Chiudi">×</button></header>
+      <ul class="scelta-list" role="listbox" aria-label="${esc(titolo)}">${righe}</ul></div>`, { onClose: () => resolve(scelto) });
+    dlg.addEventListener('click', (e) => {
+      if (e.target.closest('[data-x]')) { dlg.close(); return; }
+      const b = e.target.closest('.scelta-voce');
+      if (b && !b.disabled) { scelto = { value: voci[+b.dataset.i].value }; dlg.close(); }
+    });
+    const on = dlg.querySelector('.scelta-voce.on') || dlg.querySelector('.scelta-voce:not([disabled])');
+    on?.focus({ preventScroll: true });
+    on?.scrollIntoView({ block: 'center' });
+  }).then((r) => (r ? r.value : null));
+}
+
+// Tutti i <select> dell'app si aprono con sceltaBox invece dell'elenco del sistema. Il select resta nella pagina
+// (si legge e si scrive come sempre, con .value) ma non riceve i tocchi (CSS: pointer-events: none): il tocco arriva
+// all'elemento sotto, e qui si cerca il select che si trova in quel punto. Da tastiera: Invio, Spazio, Alt+↓ o F4.
+// Da agganciare una volta all'avvio.
+function titoloSelect(sel) {
+  return sel.getAttribute('aria-label') || sel.closest('label')?.querySelector('span')?.textContent.trim() || 'Scegli';
+}
+export async function apriSelect(sel) {
+  if (sel.disabled || sel.multiple) return;
+  const voci = [...sel.options].filter((o) => !o.hidden).map((o) => ({
+    value: o.value, label: o.textContent.trim() || '—', disabled: o.disabled,
+    gruppo: o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '',
+  }));
+  const v = await sceltaBox({ titolo: titoloSelect(sel), voci, valore: sel.value });
+  sel.focus({ preventScroll: true });
+  if (v === null || v === sel.value) return;
+  sel.value = v;
+  sel.dispatchEvent(new Event('input', { bubbles: true }));
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+}
+export function avviaSelect() {
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || !(e.target instanceof Element)) return;
+    const { clientX: x, clientY: y } = e;
+    const dentro = (s) => { const r = s.getBoundingClientRect(); return r.width && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; };
+    const sel = [e.target, ...e.target.querySelectorAll('select')].find((s) => s instanceof HTMLSelectElement && dentro(s));
+    if (!sel) return;
+    e.preventDefault();
+    e.stopPropagation();
+    apriSelect(sel);
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    const s = e.target;
+    if (!(s instanceof HTMLSelectElement)) return;
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'F4' || (e.altKey && e.key === 'ArrowDown')) { e.preventDefault(); apriSelect(s); }
+  });
+}
+
 export function download(filename, content, mime) {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);

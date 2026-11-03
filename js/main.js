@@ -16,7 +16,7 @@ import * as vBudget from './view-budget.js';
 import * as demo from './demo.js';
 import * as pannelli from './pannelli.js';
 import * as gruppi from './gruppi.js';
-import { $, $$, setupTooltips, debounce, toast } from './ui.js';
+import { $, $$, setupTooltips, debounce, toast, avviaSelect } from './ui.js';
 import { fmtEur } from './expr.js';
 
 const checkTargetsSoon = debounce(() => { checkTargets(); checkBudgets(); }, 400);
@@ -189,6 +189,7 @@ async function boot() {
   });
   pannelli.avvia();
   gruppi.avvia();
+  avviaSelect(); // i select si aprono con la finestra di scelta dell'app
   $('#fab')?.addEventListener('click', () => vMese.nuovoMovimento());
   if (!demo.attiva) sync.start();
   addEventListener('hashchange', route);

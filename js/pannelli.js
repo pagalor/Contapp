@@ -89,11 +89,15 @@ function paintSyncPanel() {
   const impost = `<ul class="blocks pan-list"><li><a class="blk" href="#sincronizzazione">
     <span class="blk-ico">${svg('sync')}</span><span><b>Sincronizzazione e cifratura</b><small>${esc(demo.attiva ? 'Non disponibile nella demo'
       : !sync.config() ? 'Collega il tuo progetto Supabase' : !ses ? 'Accedi per sincronizzare' : pronto ? 'Account, frase segreta, uscita' : 'Inserisci la frase segreta')}</small></span>${svg('freccia')}</a></li></ul>`;
+  // come il pannello dell'account: icona, titolo con lo stato sotto e la × per chiudere
   syncBox.innerHTML = `
-    <h2>Sincronizzazione</h2>
-    <p class="pan-sub" data-state="${demo.attiva ? 'off' : st.state}">${esc(statoTesto(st, true))}</p>
+    <div class="pan-head">
+      <span class="pan-avatar">${svg('sync')}</span>
+      <span><h2>Sincronizzazione</h2><small class="pan-sub" data-state="${demo.attiva ? 'off' : st.state}">${esc(statoTesto(st, true))}</small></span>
+      <button type="button" class="icon-btn" data-pan-chiudi aria-label="Chiudi">${svg('chiudi')}</button>
+    </div>
     ${corpo}${impost}
-    <div class="pan-actions">${azione}<button type="button" class="btn tonal" data-pan-chiudi>Chiudi</button></div>`;
+    ${azione ? `<div class="pan-actions">${azione}</div>` : ''}`;
 }
 
 // --- Pannello dell'account ---
