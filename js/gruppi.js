@@ -24,9 +24,10 @@ export function aperto(id) {
 // titolo, tono (in, out, warn, prim: colore della capsula), totale (HTML già formattato) e totCls;
 // n: numero di voci; nomi: [singolare, plurale] per l'etichetta del contatore;
 // anteprima: [{ desc, det, amt, cls }] (se ne mostrano 4); corpo: HTML delle righe complete;
-// piede: HTML sotto le righe (per esempio il pulsante per aggiungere); vuoto: testo quando non ci sono voci.
+// piede: HTML sotto le righe (per esempio il pulsante per aggiungere); vuoto: testo quando non ci sono voci;
+// contatore: false toglie il numero dal pulsante (resta solo la freccia).
 export function gruppoHTML({ id, cls = '', attrs = '', titolo, tono = '', totale = '', totCls = '', n, nomi = ['voce', 'voci'],
-  anteprima = [], corpo = '', piede = '', vuoto = '' }) {
+  anteprima = [], corpo = '', piede = '', vuoto = '', contatore = true }) {
   const multi = n > 1;
   const open = multi && aperto(id);
   const etichetta = `${n} ${n === 1 ? nomi[0] : nomi[1]}`;
@@ -34,7 +35,7 @@ export function gruppoHTML({ id, cls = '', attrs = '', titolo, tono = '', totale
   const head = multi
     ? `<button type="button" class="gr-head" aria-expanded="${open}" aria-controls="gr-${id}-body" data-gr-label="${esc(etichetta)}"
         aria-label="${esc(`${titolo}: ${etichetta}, ${open ? 'mostra meno' : 'mostra tutto'}`)}">
-        ${testa}<span class="gr-count">${n}${CHEV}</span></button>`
+        ${testa}<span class="gr-count${contatore ? '' : ' solo'}">${contatore ? n : ''}${CHEV}</span></button>`
     : `<div class="gr-head">${testa}</div>`;
   const prev = multi ? `<div class="gr-prev" aria-hidden="true"${open ? ' hidden' : ''}>${anteprima.slice(0, ANTEPRIMA).map((v) => `
       <div class="gr-pr"><b>${esc(v.desc)}</b><span class="gr-det">${esc(v.det || '')}</span><span class="gr-amt ${v.cls || ''}">${esc(v.amt || '')}</span></div>`).join('')}

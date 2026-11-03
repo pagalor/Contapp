@@ -280,20 +280,25 @@ function confrontoGroup() {
   const riga = (nome, o, tipo) => `<tr><td>${nome}</td><td class="num muted">${fmt(o.prev)}</td><td class="num ${tipo}">${fmt(o.cur)}</td>${varCell(o.var, tipo)}</tr>`;
   const bene = (o, tipo) => (o.var === null || Math.abs(o.var) < 0.05 ? '' : (tipo === 'in' ? o.var > 0 : o.var < 0) ? 'pos' : 'neg');
   const testa = `<thead><tr><th></th><th class="num">${base}</th><th class="num">${sel}</th><th class="num">Variazione</th></tr></thead>`;
-  const tabella = (titolo, righe, tipo) => righe.length ? `<h3 class="cap-title cmp-sub"><span class="cap ${tipo}"></span>${titolo}</h3>
-    <div class="gr-tab"><table class="tbl cmp-tbl">${testa}<tbody>${righe.map((o) => riga(esc(M.catLabel(o.cat)), o, tipo)).join('')}</tbody></table></div>` : '';
+  // le categorie di entrate e di uscite sono due gruppi espandibili dentro il gruppo del confronto
+  const sottogruppo = (titolo, righe, tipo) => righe.length ? G.gruppoHTML({
+    id: 'rie-cmp-' + tipo, cls: 'cmp-cat', titolo, tono: tipo, n: righe.length, nomi: ['categoria', 'categorie'],
+    anteprima: righe.map((o) => prev(M.catLabel(o.cat), o, tipo)),
+    corpo: `<div class="gr-tab"><table class="tbl cmp-tbl">${testa}<tbody>${righe.map((o) => riga(esc(M.catLabel(o.cat)), o, tipo)).join('')}</tbody></table></div>`,
+  }) : '';
   const prev = (nome, o, tipo) => ({ desc: nome, det: `${fmt(o.prev)} → ${fmt(o.cur)}`, amt: o.var === null ? '–' : pctFmt(o.var), cls: bene(o, tipo) });
+  const quante = (n) => (n === 1 ? '1 categoria' : `${n} categorie`);
   return G.gruppoHTML({
-    id: 'rie-cmp', cls: 'rie-cmp', titolo: `Rispetto al ${base}`, tono: 'prim', n: 2 + c.in.length + c.out.length, nomi: ['voce', 'voci'],
+    id: 'rie-cmp', cls: 'rie-cmp', titolo: `Rispetto al ${base}`, tono: 'prim', n: 4, contatore: false,
     anteprima: [prev('Entrate', c.tin, 'in'), prev('Uscite', c.tout, 'out'),
-      ...c.out.map((o) => prev(M.catLabel(o.cat), o, 'out'))],
+      { desc: 'Entrate per categoria', det: quante(c.in.length) }, { desc: 'Uscite per categoria', det: quante(c.out.length) }],
     corpo: `<div class="cmp-head">
         <p class="muted">${periodo(sel)} confrontato con ${periodo(base).toLowerCase()}.${fino < 12 ? ' L\'ultimo mese è ancora in corso.' : ''}</p>
         ${anni.length > 1 ? `<div class="cmp-anni" role="group" aria-label="Confronta con l'anno"><span>Confronta con</span>
           ${anni.map((o) => `<button type="button" class="chip${o.y === base ? ' on' : ''}" data-base="${o.y}" aria-pressed="${o.y === base}">${o.y}</button>`).join('')}</div>` : ''}
       </div>
       <div class="gr-tab"><table class="tbl cmp-tbl">${testa}<tbody>${riga('Entrate', c.tin, 'in')}${riga('Uscite', c.tout, 'out')}</tbody></table></div>
-      ${tabella('Entrate per categoria', c.in, 'in')}${tabella('Uscite per categoria', c.out, 'out')}`,
+      ${sottogruppo('Entrate per categoria', c.in, 'in')}${sottogruppo('Uscite per categoria', c.out, 'out')}`,
   });
 }
 

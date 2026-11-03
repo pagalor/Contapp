@@ -97,16 +97,20 @@ function ripartizione(groups, tot) {
   if (!totPos) return '';
   const pct = (g) => Math.max(0, tot.gruppi[g] || 0) / totPos * 100;
   const vivi = groups.filter((g) => pct(g) > 0);
-  // torta ad anello come quelle delle categorie (charts.donut), con la legenda accanto
+  // torta ad anello come quelle delle categorie (charts.donut): toccando il centro si apre l'elenco dei gruppi,
+  // ognuno una scheda riempita in proporzione (stesso componente e stesso ascolto delle torte di Mese e Riepilogo)
   const torta = C.donut({
-    size: 200, center: fmtEur0(totPos), label: 'Fondi', sub: vivi.length === 1 ? '1 gruppo' : `${vivi.length} gruppi`,
+    size: 200, center: fmtEur0(totPos), label: 'Fondi', sub: vivi.length === 1 ? '1 gruppo' : `${vivi.length} gruppi`, toggle: true,
     slices: vivi.map((g) => ({ label: M.gruppoNome(g), value: Math.max(0, tot.gruppi[g] || 0), color: `var(--g-${g})` })),
     key: 'patrimonio:' + vivi.join('|'),
   });
   return `<section class="card pat-rip" aria-label="Ripartizione per gruppo">
     <h2>Ripartizione</h2>
-    <div class="pat-rip-in"><div class="pie">${torta}</div>
-    <dl class="pat-leg">${groups.map((g) => `<div><dt><i class="sw ${g}"></i>${M.gruppoNome(g)}</dt><dd>${fmtEur(tot.gruppi[g] || 0)}<small>${pct(g).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></dd></div>`).join('')}</dl></div>
+    <div class="cat-split"><div class="pie">${torta}</div><ul class="catbars" hidden>${groups.map((g) => `<li>
+      <div class="catbar riempi" style="--c:var(--g-${g});--p:${pct(g).toFixed(1)}%">
+        <span class="cb-name"><i class="sw ${g}"></i>${M.gruppoNome(g)}</span>
+        <span class="cb-val">${fmtEur(tot.gruppi[g] || 0)} <small>${pct(g).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></span>
+      </div></li>`).join('')}</ul></div>
   </section>`;
 }
 

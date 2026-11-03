@@ -140,6 +140,30 @@ export function avviaSelect() {
   });
 }
 
+// Campo numerico con i pulsanti − e + dell'app al posto delle frecce del sistema (nascoste in CSS).
+// input: l'HTML di un <input type="number"> con min, max e step. I pulsanti li gestisce avviaStepper.
+const SEGNO = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+export const stepper = (input) => `<span class="stepper"><button type="button" class="st-btn" data-step="-1" aria-label="Diminuisci">${SEGNO('M6 12h12')}</button>${input}<button type="button" class="st-btn" data-step="1" aria-label="Aumenta">${SEGNO('M6 12h12M12 6v12')}</button></span>`;
+// Un solo ascolto sul documento, da agganciare una volta all'avvio: − e + cambiano il valore entro min e max
+// e lanciano input e change, come se l'avesse scritto l'utente
+export function avviaStepper() {
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest?.('.st-btn[data-step]');
+    if (!b) return;
+    e.preventDefault();
+    const inp = b.parentElement.querySelector('input');
+    if (!inp || inp.disabled) return;
+    const step = Number(inp.step) || 1;
+    const min = inp.min === '' ? -Infinity : Number(inp.min), max = inp.max === '' ? Infinity : Number(inp.max);
+    const cur = inp.value === '' ? (Number(b.dataset.step) > 0 ? min - step : min) : Number(inp.value);
+    const v = Math.min(max, Math.max(min === -Infinity ? 0 : min, (Number.isFinite(cur) ? cur : 0) + Number(b.dataset.step) * step));
+    if (String(v) === inp.value) return;
+    inp.value = String(v);
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
 export function download(filename, content, mime) {
   const blob = content instanceof Blob ? content : new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);

@@ -26,9 +26,10 @@ export function renderConfig(el) {
         <h2>Situazione di partenza</h2>
         <p class="muted">I saldi iniziali sono quelli che avevi alla fine della data di partenza. Le entrate, le uscite e i trasferimenti
         dei giorni successivi aggiornano i fondi in automatico. I movimenti precedenti restano nello storico ma non toccano i saldi.</p>
+        <label class="sw-row calc-sw"><span>Calcolo automatico dei saldi<small>${cfg.inizio ? `Attivo: i saldi partono dalla fine del ${fmtDate(cfg.inizio)}` : 'Spento: i fondi non hanno un saldo calcolato'}</small></span>
+          <input type="checkbox" class="switch" role="switch" id="calc-auto"${cfg.inizio ? ' checked' : ''}></label>
         <div class="start-row">
           <label class="field inline"><span>Data di partenza</span>${dateInput({ id: 'inizio', value: cfg.inizio, scegli: 'Scegli la data' })}</label>
-          ${cfg.inizio ? '<button class="btn ghost small" data-act="stop">Disattiva il calcolo automatico</button>' : ''}
         </div>
         ${last ? `<button class="link-btn" data-act="fromsnap">Usa come saldi iniziali i valori della rilevazione del ${fmtDateShort(last.data.date)}</button>` : ''}
       </section>
@@ -93,16 +94,28 @@ function bindConfig(last) {
     toast(`Calcolo automatico attivo dal ${fmtDate(inizio.value)}`);
     renderConfig(root);
   });
+  // Interruttore del calcolo automatico: spegnendolo si chiede conferma (i dati restano); accendendolo la data di
+  // partenza è oggi, e si può cambiare subito sotto
+  $('#calc-auto', root).addEventListener('change', async (e) => {
+    if (e.target.checked) {
+      const oggi = M.todayIso();
+      M.setCfg({ inizio: oggi });
+      toast(`Calcolo automatico attivo dal ${fmtDate(oggi)}: puoi cambiare la data di partenza qui sotto`, { ms: 6000 });
+      renderConfig(root);
+      return;
+    }
+    if (!(await confirmBox('Disattivare il calcolo automatico? I fondi, i saldi iniziali e i trasferimenti restano salvati e puoi riattivarlo quando vuoi.', { ok: 'Disattiva' }))) {
+      e.target.checked = true;
+      return;
+    }
+    M.setCfg({ inizio: null });
+    renderConfig(root);
+  });
   $('#def-out', root).addEventListener('change', (e) => M.setCfg({ contoOut: e.target.value || null }));
   $('#def-in', root).addEventListener('change', (e) => M.setCfg({ contoIn: e.target.value || null }));
 
   sec.addEventListener('click', async (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
-    if (act === 'stop') {
-      if (!(await confirmBox('Disattivare il calcolo automatico? I fondi, i saldi iniziali e i trasferimenti restano salvati e puoi riattivarlo quando vuoi.', { ok: 'Disattiva' }))) return;
-      M.setCfg({ inizio: null });
-      renderConfig(root);
-    }
     if (act === 'fromsnap' && last) {
       if (!(await confirmBox(`Copiare nei saldi iniziali i valori del ${fmtDateShort(last.data.date)}? I fondi che non compaiono in quella rilevazione partiranno da zero.`, { ok: 'Copia' }))) return;
       for (const c of M.accounts(true)) {

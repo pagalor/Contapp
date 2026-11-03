@@ -76,6 +76,8 @@ export function line({ width, height = 200, points, cls = 'line-in' }) {
   const useShort = points.some((p) => p.short !== undefined);
   const every = points.length > 14 ? Math.ceil(points.length / 10) : 1;
   points.forEach((p, i) => {
+    // un pallino per ogni punto (mese), come prima del nuovo stile; quello scelto è più grande, con il bordo
+    g += `<circle class="dot pt ${cls}" cx="${sx(i).toFixed(1)}" cy="${sy(p.value).toFixed(1)}" r="${points.length > 40 ? 2 : 3.5}"/>`;
     const lab = useShort ? p.short : (i % every === 0 ? p.label : '');
     if (lab) g += `<text class="axis" x="${sx(i)}" y="${H - 6}" text-anchor="middle">${esc(lab)}</text>`;
   });
@@ -194,8 +196,7 @@ export function bindTimeHover(box, onPick) {
 }
 
 // Torta ad anello, come gli anelli di Google Health: anello sottile su un binario grigio, fette con le estremità tonde
-// e un po' di spazio tra l'una e l'altra, un'etichetta a capsula con la percentuale della fetta più grande,
-// al centro tre righe (etichetta piccola, valore grande, riga sotto). slices: [{ label, value, color }].
+// e un po' di spazio tra l'una e l'altra, al centro tre righe (etichetta piccola, valore grande, riga sotto). slices: [{ label, value, color }].
 // Con `toggle` il centro è un pulsante (classe .donut-hit) per aprire i dettagli sotto la torta; la riga sotto
 // finisce con una freccia (.donut-chev) che diventa ▴ quando i dettagli sono aperti.
 // La torta si "chiude" (animazione) la prima volta che compare scorrendo la pagina: vedi animateDonuts.
@@ -209,14 +210,12 @@ export function donut({ size = 200, slices, center = '', label = '', sub = '', t
   const SPAZIO = 3.5 / rm; // circa 3,5 px di spazio tra le fette, lungo il centro dell'anello
   const maskId = `donut-m${++donutSeq}`;
   let a = -Math.PI / 2, g = '';
-  let top = null; // la fetta più grande, per l'etichetta a capsula
-  const pt = (rad, ang) => `${(cx + rad * Math.cos(ang)).toFixed(2)},${(cy + rad * Math.sin(ang)).toFixed(2)}`;
+    const pt = (rad, ang) => `${(cx + rad * Math.cos(ang)).toFixed(2)},${(cy + rad * Math.sin(ang)).toFixed(2)}`;
   const vive = slices.filter((s) => s.value > 0);
   for (const s of vive) {
     const frac = s.value / tot;
     const tip = `${s.label}: ${fmtEur(s.value)} (${(frac * 100).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%)`;
     const b = a + frac * 2 * Math.PI;
-    if (!top || frac > top.frac) top = { frac, mid: (a + b) / 2, color: s.color };
     if (vive.length === 1) {
       g += `<circle class="slice" cx="${cx}" cy="${cy}" r="${rm}" fill="none" style="stroke:${s.color}" stroke-width="${sw}" data-tip="${esc(tip)}"/>`;
       break;
@@ -238,14 +237,6 @@ export function donut({ size = 200, slices, center = '', label = '', sub = '', t
     stroke-width="${size / 2}" pathLength="100" transform="rotate(-90 ${cx} ${cy})"/></mask>`;
   let html = `<defs>${mask}</defs><circle class="donut-track" cx="${cx}" cy="${cy}" r="${rm}" fill="none" stroke-width="${sw}"/>
     <g mask="url(#${maskId})">${g}</g>`;
-  // etichetta a capsula sulla fetta più grande (solo se ci sono più fette)
-  if (top && vive.length > 1) {
-    const testo = `${Math.round(top.frac * 100)}%`;
-    const w = 10 + testo.length * 7.4, h = 19;
-    const x = cx + rm * Math.cos(top.mid), y = cy + rm * Math.sin(top.mid);
-    html += `<g class="donut-badge" aria-hidden="true"><rect x="${(x - w / 2).toFixed(1)}" y="${(y - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h}" rx="${h / 2}"
-      style="stroke:${top.color}"/><text x="${x.toFixed(1)}" y="${(y + 4.2).toFixed(1)}" text-anchor="middle">${esc(testo)}</text></g>`;
-  }
   if (toggle) html += `<circle class="donut-hit" cx="${cx}" cy="${cy}" r="${r0 - 4}" tabindex="0" role="button" aria-expanded="false" aria-label="Mostra o nascondi le voci"/>`;
   const righe = [label && `<tspan class="donut-lab" x="${cx}" dy="0">${esc(label)}</tspan>`,
     `<tspan class="donut-tot" x="${cx}" dy="${label ? 27 : 0}">${esc(center)}</tspan>`,

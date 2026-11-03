@@ -1,7 +1,7 @@
 import * as store from './store.js';
 import * as M from './model.js';
 import { parseAmount, fmt, fmtEur, plain, round2 } from './expr.js';
-import { esc, $, $$, modal, toast, confirmBox } from './ui.js';
+import { esc, $, $$, modal, toast, confirmBox, stepper } from './ui.js';
 import { dayPicker, dateInput, setPick, focusPick } from './datepick.js';
 
 const accOptions = (sel, { empty = '' } = {}) =>
@@ -518,7 +518,7 @@ export function ricDialog({ rec = null, seed = null, onDone } = {}) {
       <div class="form-grid">
         <label class="field"><span>Prima scadenza</span>${dateInput({ name: 'inizio', value: d.inizio })}</label>
         <div class="field"><span>Si ripete ogni</span>
-          <div class="ric-every"><input name="ogni" type="number" min="1" max="99" step="1" value="${Math.max(1, d.ogni || 1)}" inputmode="numeric" aria-label="Ogni quante volte">
+          <div class="ric-every">${stepper(`<input name="ogni" type="number" min="1" max="99" step="1" value="${Math.max(1, d.ogni || 1)}" inputmode="numeric" aria-label="Ogni quante volte">`)}
             <select name="freq" aria-label="Unità">${M.FREQ.map(([k, p]) => `<option value="${k}"${k === d.freq ? ' selected' : ''}>${p}</option>`).join('')}</select></div></div>
         <label class="field"><span>Ultima scadenza (facoltativa)</span>${dateInput({ name: 'fine', value: d.fine, vuoto: 'Nessuna data', scegli: 'Nessuna' })}</label>
       </div>
@@ -664,12 +664,12 @@ export function rateDialog({ rec = null, seed = null, modello = 'custom', onDone
       </div>
       <h3 class="rate-h">Rate</h3>
       <div class="form-grid">
-        <label class="field"><span>Numero di rate</span><input name="n" type="number" min="1" max="360" step="1" inputmode="numeric" value="${d.nRate || ''}" required></label>
+        <label class="field"><span>Numero di rate</span>${stepper(`<input name="n" type="number" min="1" max="360" step="1" inputmode="numeric" value="${d.nRate || ''}" required>`)}</label>
         <label class="field"><span>Importo della rata</span><input name="rata" class="amt" inputmode="decimal" autocomplete="off" placeholder="da inserire" value="${rata ? fmt(rata.val) : ''}" required></label>
         <label class="field"><span>Ultima rata, se diversa</span><input name="ultima" class="amt" inputmode="decimal" autocomplete="off" placeholder="come le altre" value="${ultima ? fmt(ultima.val) : ''}"></label>
         <label class="field"><span>Prima scadenza</span>${dateInput({ name: 'prima', value: d.primaScadenza })}</label>
         <div class="field"><span>Si ripete ogni</span>
-          <div class="ric-every"><input name="ogni" type="number" min="1" max="99" step="1" value="${Math.max(1, d.ogni || 1)}" inputmode="numeric" aria-label="Ogni quante volte">
+          <div class="ric-every">${stepper(`<input name="ogni" type="number" min="1" max="99" step="1" value="${Math.max(1, d.ogni || 1)}" inputmode="numeric" aria-label="Ogni quante volte">`)}
             <select name="freq" aria-label="Unità">${M.FREQ.map(([k, pl]) => `<option value="${k}"${k === d.freq ? ' selected' : ''}>${pl}</option>`).join('')}</select></div></div>
       </div>
       <label class="field"><span>Fondo da cui escono le rate</span><select name="fondo">${fondoOpts(d.fondo)}</select>
