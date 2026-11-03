@@ -64,22 +64,46 @@ export function tagPies(list) {
   return html || '<p class="muted">Nessun importo.</p>';
 }
 
-// Apre o chiude l'elenco delle voci sotto la torta (split = il suo .cat-split)
-export function setPieOpen(split, open) {
+// Apre o chiude l'elenco delle voci sotto la torta (split = il suo .cat-split).
+// Con anima: il riquadro cambia altezza con la molla dell'app, la torta scivola al suo posto (su schermo largo va
+// accanto all'elenco), le voci entrano in cascata e il riempimento di ogni scheda cresce da zero (CSS .pie-entra).
+// Niente animazioni con prefers-reduced-motion.
+function molla() {
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--spring').trim();
+  try { document.body.animate([], { easing: v }); return v; } catch { return 'cubic-bezier(.3, 1.3, .5, 1)'; }
+}
+export function setPieOpen(split, open, anima = false) {
   if (!split) return;
+  const muovi = anima && !matchMedia('(prefers-reduced-motion: reduce)').matches && split.animate;
+  const pie = split.querySelector('.pie');
+  const h0 = split.offsetHeight, r0 = pie?.getBoundingClientRect();
   split.classList.toggle('open', open);
   const list = split.querySelector('.catbars');
   if (list) list.hidden = !open;
   split.querySelector('.donut-hit')?.setAttribute('aria-expanded', String(open));
   const chev = split.querySelector('.donut-chev');
   if (chev) chev.textContent = open ? '▴' : '▾';
+  if (!muovi) return;
+  const easing = molla(), durata = 480;
+  const h1 = split.offsetHeight, r1 = pie?.getBoundingClientRect();
+  split.animate([{ height: h0 + 'px', overflow: 'hidden' }, { height: h1 + 'px', overflow: 'hidden' }], { duration: durata, easing });
+  if (r0 && r1 && (Math.abs(r0.left - r1.left) > 1 || Math.abs(r0.top - r1.top) > 1)) {
+    pie.animate([{ transform: `translate(${r0.left - r1.left}px, ${r0.top - r1.top}px)` }, { transform: 'none' }], { duration: durata, easing });
+  }
+  if (open && list) {
+    [...list.children].slice(0, 16).forEach((li, i) => li.style.setProperty('--i', i));
+    list.classList.remove('pie-entra');
+    void list.offsetWidth;
+    list.classList.add('pie-entra');
+    setTimeout(() => list.classList.remove('pie-entra'), 1400);
+  }
 }
 
 // Un solo ascolto per tutta la pagina: il centro della torta apre e chiude le voci.
 // Vale per Mese, Riepilogo e per le torte dei tag, anche se vengono ridisegnate.
 function togglePie(hit) {
   const split = hit.closest('.cat-split');
-  setPieOpen(split, !split.classList.contains('open'));
+  setPieOpen(split, !split.classList.contains('open'), true);
 }
 document.addEventListener('click', (e) => {
   const hit = e.target.closest?.('.donut-hit');

@@ -998,7 +998,11 @@ body.has-fab #toast { bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 
 .ric.out .ric-amt { color: var(--out); }
 .ric.done { opacity: .6; }
 .ric-h { margin: 1.4rem 0 .5rem; color: var(--text-2); }
-.ric-every { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .5rem; }
+.ric-every { display: flex; flex-wrap: wrap; gap: .5rem; }
+.ric-every .stepper { flex: none; }
+.ric-every select { flex: 1 1 8rem; }
+/* «Si ripete ogni» (numero e unità) occupa tutta la riga, così l'unità si legge sempre */
+.form-grid .field:has(.ric-every) { grid-column: 1 / -1; }
 .ric-every input, .ric-every select { font: inherit; color: var(--text); background: var(--field-bg, var(--surface-2)); border: 2px solid transparent; border-radius: var(--r-s); padding: .55rem .65rem; min-width: 0; }
 .ric-sum { margin: .2rem 0 .4rem; }
 .tag.ric { color: var(--text-2); }
@@ -1225,9 +1229,9 @@ button.gr-head { cursor: pointer; }
   margin-left: auto; display: inline-flex; align-items: center; gap: .3rem; min-height: 40px; padding: 0 .7rem 0 1rem; border-radius: var(--r-pill);
   background: var(--surface-2); font-weight: 750; font-variant-numeric: tabular-nums; flex: none; transition: background-color .25s;
 }
-.gruppo.aperto .gr-count { background: transparent; }
+.gruppo.aperto > .gr-head .gr-count { background: transparent; }
 .gr-chev { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .4s var(--spring); }
-.gruppo.aperto .gr-chev { transform: rotate(180deg); }
+.gruppo.aperto > .gr-head .gr-chev { transform: rotate(180deg); }
 button.gr-head:focus-visible { outline: 2px solid var(--primary); outline-offset: -4px; border-radius: var(--r-l); }
 .gr-prev { display: grid; gap: .3rem; padding: .1rem 1.1rem 1.1rem; cursor: pointer; }
 .gr-pr { display: flex; align-items: baseline; gap: .55rem; min-width: 0; }
@@ -1244,7 +1248,7 @@ button.gr-head:focus-visible { outline: 2px solid var(--primary); outline-offset
 .gr-vuoto { padding: 0 1.1rem; margin: 0 0 .4rem; }
 .gr-foot { padding: 0 .5rem .2rem; }
 .gruppo .gr-foot .add-row { margin: .6rem .5rem 1rem; }
-.gruppo.multi.aperto .gr-foot .add-row { background: var(--surface); }
+.gruppo.multi.aperto > .gr-foot .add-row { background: var(--surface); }
 .gruppo:not(.multi) .gr-body { padding-bottom: .5rem; }
 /* Le righe complete, ciascuna un blocco --surface separato di 2 px */
 .gruppo .rows { display: grid; gap: 2px; border-radius: var(--r-m); overflow: hidden; }
@@ -1419,3 +1423,10 @@ select:not(#_) { -webkit-appearance: none; appearance: none; padding-right: 2.4r
 .gr-count.solo { gap: 0; padding-left: .5rem; padding-right: .5rem; }
 /* sottogruppi dentro un gruppo aperto (categorie del confronto): stessa forma, un po' di spazio sopra */
 .gruppo .gruppo.cmp-cat { margin-top: .6rem; }
+
+/* Apertura di una torta (catstats.setPieOpen): le voci entrano in cascata e il riempimento cresce da zero.
+   --p è registrata come percentuale, così si può animare (dove il browser non lo permette, le schede compaiono piene). */
+@property --p { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+.catbars.pie-entra > li { animation: gr-entra .4s var(--spring) both; animation-delay: calc(var(--i, 0) * 35ms); }
+.catbars.pie-entra .riempi { animation: riempi-cresce .8s var(--spring) both; animation-delay: calc(var(--i, 0) * 35ms + 120ms); }
+@keyframes riempi-cresce { from { --p: 0%; } }
