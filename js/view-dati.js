@@ -19,6 +19,7 @@ export function render(el) {
           <button class="btn ghost" data-exp="json">Esporta backup completo</button>
           <button class="btn ghost" data-exp="csv">Esporta movimenti per Excel</button>
           <button class="btn ghost" data-exp="pat">Esporta patrimonio per Excel</button>
+          <button class="btn ghost" data-exp="inv">Esporta investimenti per Excel</button>
         </div>
       </section>
     </section>`;
@@ -30,6 +31,7 @@ export function render(el) {
     }
     if (exp === 'csv') exportCSV();
     if (exp === 'pat') exportPatCSV();
+    if (exp === 'inv') exportInvCSV();
   });
 }
 
@@ -79,11 +81,34 @@ function exportCSV() {
 function exportPatCSV() {
   const snaps = M.snapshots();
   const conts = M.accounts(true);
-  const head = ['Data', 'Tipo', ...conts.map((c) => c.data.nome), 'Totale'];
-  const rows = snaps.map((s) => [s.data.date, 'Rilevazione', ...conts.map((c) => num(s.data.vals[c.id]?.val)), num(M.snapTotals(s).tot)]);
+  const head = ['Data', 'Tipo', ...conts.map((c) => c.data.nome), 'Investimenti', 'Totale'];
+  const rows = snaps.map((s) => [s.data.date, 'Rilevazione', ...conts.map((c) => num(s.data.vals[c.id]?.val)), '', num(M.snapTotals(s).tot)]);
   for (const p of M.serieAuto()) {
-    rows.push([p.date, 'Calcolato', ...conts.map((c) => num(p.bal.get(c.id) || 0)), num(M.totaleGruppi(p.bal).tot)]);
+    const fondi = M.totaleGruppi(p.bal).tot;
+    rows.push([p.date, 'Calcolato', ...conts.map((c) => num(p.bal.get(c.id) || 0)), num(p.inv), num(Math.round((fondi + p.inv) * 100) / 100)]);
   }
   rows.sort((x, y) => x[0].localeCompare(y[0]));
   download(`rationes-patrimonio-${stamp()}.csv`, '\uFEFF' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
+}
+
+// Operazioni e prezzi rilevati degli investimenti, in un solo file (colonna «Record»)
+function exportInvCSV() {
+  const head = ['Record', 'Data', 'Strumento', 'Codice', 'Tipologia', 'Operazione', 'Quantità', 'Prezzo', 'Prezzo in', 'Commissioni', 'Tasse',
+    'Controvalore', 'Netto sul fondo', 'Fondo', 'Origine', 'Nota'];
+  const rows = [];
+  for (const inv of M.invs()) {
+    const d = inv.data;
+    const base = [d.nome, d.codice || '', M.tipoInvNome(M.tipoInv(inv), true)];
+    const unita = M.percento(inv) ? '% del nominale' : 'euro';
+    for (const o of M.invOps(inv.id)) {
+      const x = o.data;
+      rows.push(['Operazione', x.data, ...base, M.opInvNome(M.opTipo(x)), num(x.qta), num(x.prezzo), unita, num(x.comm), num(x.tasse),
+        num(M.controvalore(inv, x)), num(x.fondo ? M.nettoOp(inv, x) : null), x.fondo ? M.accName(x.fondo) : 'Già posseduto', '', x.note || '']);
+    }
+    for (const p of M.invPrezzi(inv.id)) {
+      rows.push(['Prezzo', p.data.date, ...base, '', '', num(p.data.val), unita, '', '', '', '', '', p.data.origine === 'auto' ? 'automatico' : 'manuale', '']);
+    }
+  }
+  rows.sort((x, y) => x[1].localeCompare(y[1]) || x[2].localeCompare(y[2]));
+  download(`rationes-investimenti-${stamp()}.csv`, '\uFEFF' + [head, ...rows].map((r) => r.map(csvCell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
 }

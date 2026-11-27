@@ -138,6 +138,20 @@ main:focus-visible { outline: none; }
   .nav a.on svg { background: var(--hero-text); color: var(--hero); }
   .nav .target-dot { position: absolute; top: 8px; left: calc(50% + 12px); box-shadow: 0 0 0 2px var(--dock); }
   .nav a.on .target-dot { box-shadow: 0 0 0 2px var(--hero-text); }
+  /* cinque voci: sui telefoni stretti meno spazio ai lati e testo un po' più piccolo, così «Investimenti» sta su una riga */
+  @media (max-width: 480px) {
+    .nav { left: 8px; right: 8px; padding: 6px 4px; gap: 0; }
+    .nav a { font-size: .7rem; letter-spacing: -0.01em; }
+    .nav a svg { width: 50px; padding: 4px 13px; }
+  }
+  @media (max-width: 374px) {
+    .nav a { font-size: .66rem; }
+    .nav a svg { width: 46px; padding: 4px 11px; }
+  }
+  @media (max-width: 339px) {
+    .nav a { font-size: .6rem; letter-spacing: -0.02em; }
+    .nav a svg { width: 42px; padding: 4px 9px; }
+  }
   main { padding: .4rem .8rem calc(var(--nav-h) + env(safe-area-inset-bottom) + 2.5rem); }
   body.has-fab main { padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 6.5rem); }
 }
@@ -1430,3 +1444,50 @@ select:not(#_) { -webkit-appearance: none; appearance: none; padding-right: 2.4r
 .catbars.pie-entra > li { animation: gr-entra .4s var(--spring) both; animation-delay: calc(var(--i, 0) * 35ms); }
 .catbars.pie-entra .riempi { animation: riempi-cresce .8s var(--spring) both; animation-delay: calc(var(--i, 0) * 35ms + 120ms); }
 @keyframes riempi-cresce { from { --p: 0%; } }
+
+/* ---------- Investimenti (view-investimenti.js) ---------- */
+/* Guadagno e perdita usano --pos e --neg, mai il verde e il rosso di entrate e uscite */
+.chart .stack.invest { fill: var(--g-invest); opacity: .35; }
+.chart .stroke.invest { stroke: var(--g-invest); }
+.lg.invest::before, .sw.invest { background: var(--g-invest); }
+.cap.t-azione { background: var(--t-azione); }
+.cap.t-etf { background: var(--t-etf); }
+.cap.t-bond { background: var(--t-bond); }
+.cap.t-crypto { background: var(--t-crypto); }
+.cap.t-altro { background: var(--t-altro); }
+.inv-hero .hb-label .cap { display: inline-block; width: 8px; height: 14px; border-radius: var(--r-pill); margin-right: .45rem; vertical-align: -1px; }
+.inv-hero-dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem 1rem; margin: 1rem 0 0; }
+.inv-hero-dl dt { color: var(--hero-text-2); font-size: .82rem; }
+.inv-hero-dl dd { margin: .1rem 0 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.inv-hero-dl dd small { display: block; font-weight: 500; font-size: .78rem; color: var(--hero-text-2); }
+.inv-hero-dl dd small.inv-vecchio { color: var(--hero-text); }
+.inv-hero-dl dd small.inv-vecchio::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warn-bar); margin-right: .35rem; vertical-align: 1px; }
+.inv-stats small { display: block; color: var(--text-2); font-size: .76rem; margin-top: .15rem; }
+.inv-stats dd small { display: inline; font-size: .85rem; }
+.inv-list { display: grid; gap: 2px; border-radius: var(--r-m); overflow: hidden; }
+.inv-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .3rem .9rem; align-items: center; padding: .8rem 1rem .8rem 1.1rem;
+  background: var(--surface); color: var(--text); border-radius: var(--r-xs); position: relative; }
+.inv-row::before { content: ""; position: absolute; left: .45rem; top: .9rem; bottom: .9rem; width: 4px; border-radius: var(--r-pill); background: var(--tc, var(--t-altro)); }
+.inv-row:hover { background: color-mix(in srgb, var(--text) 4%, var(--surface)); }
+.inv-desc { min-width: 0; }
+.inv-desc b { font-weight: 650; }
+.inv-desc small { display: block; color: var(--text-2); font-size: .8rem; margin-top: .1rem; }
+.inv-desc small.inv-vecchio { color: var(--warn); }
+.inv-cod { font-size: .72rem; font-weight: 600; color: var(--text-2); background: var(--surface-2); border-radius: var(--r-pill); padding: .05rem .45rem; margin-left: .45rem; white-space: nowrap; }
+.inv-amt { text-align: right; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.inv-amt > span { display: block; font-weight: 600; font-size: .82rem; }
+.inv-amt small { font-size: .76rem; }
+.inv-ledger .al-row { width: 100%; font: inherit; color: var(--text); text-align: left; border: 0; cursor: pointer; }
+.inv-ledger .al-val { white-space: nowrap; }
+@media (min-width: 560.02px) { .inv-ledger .al-row { grid-template-columns: 6.5rem minmax(0, 1fr) auto; } }
+.inv-note { margin: .2rem 0 1rem; }
+.inv-totale { background: var(--surface-2); border-radius: var(--r-m); padding: .7rem 1rem; margin: .4rem 0 .6rem; font-variant-numeric: tabular-nums; }
+.inv-totale p { margin: 0; }
+.inv-totale .inv-tot-num { margin-top: .2rem; font-size: 1.05rem; }
+.inv-totale .inv-tot-num small { color: var(--text-2); }
+.inv-aliq { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.inv-aliq input { width: 6rem; }
+.inv-dlg .snap-row span small { display: block; color: var(--text-2); font-size: .76rem; }
+.pat-rip .pat-inv { cursor: pointer; color: var(--text); }
+.pat-rip .pat-inv .cb-name small { display: block; font-size: .78rem; font-weight: 600; margin-left: .2rem; }
+.pat-rip .pat-inv .cb-name { flex-wrap: wrap; }

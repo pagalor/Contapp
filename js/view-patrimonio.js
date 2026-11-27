@@ -55,22 +55,22 @@ function autoHTML() {
   const accs = M.accounts(true).filter((c) => !c.data.archiviato || Math.abs(bal.get(c.id) || 0) > 0.005);
   const groups = groupsIn(new Set(accs.map((c) => c.id))).sort((a, b) => (tot.gruppi[b] || 0) - (tot.gruppi[a] || 0));
   const senza = M.senzaConto();
-  const dt = M.debtTotals();
-  const rt = M.rateTotali();
-  const netto = round2(tot.tot + dt.netto - rt.residuo); // patrimonio netto: fondi + crediti − debiti − rate da pagare
-  const varPart = round2(tot.tot - start.tot);
+  // totale = fondi + investimenti; netto = totale + crediti − debiti − rate da pagare
+  const pn = M.patrimonioNetto(bal);
+  const inv = M.riepilogoInvestimenti();
+  const varPart = round2(pn.totale - start.tot - M.valoreInvestimenti(inizio).tot);
   const quando = (r) => `${r.data.d ? r.data.d + ' ' : ''}${M.MESI_BREVI[r.data.m - 1].toLowerCase()} ${r.data.y}`;
   return `
     <section class="hero-box pat-hero">
       <p class="hb-label">Patrimonio oggi</p>
-      <p class="hb-num">${fmtEur(tot.tot)}</p>
+      <p class="hb-num">${fmtEur(pn.totale)}</p>
       <p class="pat-var"><span class="hb-chip ${varPart >= 0 ? 'hb-pos' : 'hb-neg'}">${fmtSigned(varPart)}</span> dalla partenza del ${fmtDateShort(inizio)}</p>
-      ${dt.crediti || dt.debiti || rt.residuo ? `<p class="hero-debt"><a href="#debiti">Contando anche ${elenco([dt.crediti ? `i crediti (+${fmtEur(dt.crediti)})` : '',
-        dt.debiti ? `i debiti (−${fmtEur(dt.debiti)})` : '', rt.residuo ? `le rate da pagare (−${fmtEur(rt.residuo)})` : ''])}</a>:
-        <b>${fmtEur(netto)}</b></p>` : ''}
-      ${autonomiaHTML(netto)}
+      ${pn.crediti || pn.debiti || pn.rate ? `<p class="hero-debt"><a href="#debiti">Contando anche ${elenco([pn.crediti ? `i crediti (+${fmtEur(pn.crediti)})` : '',
+        pn.debiti ? `i debiti (−${fmtEur(pn.debiti)})` : '', pn.rate ? `le rate da pagare (−${fmtEur(pn.rate)})` : ''])}</a>:
+        <b>${fmtEur(pn.netto)}</b></p>` : ''}
+      ${autonomiaHTML(pn.netto)}
     </section>
-    ${ripartizione(groups, tot)}
+    ${ripartizione(groups, tot, inv)}
     ${senza.length ? G.gruppoHTML({
       id: 'pat-senza', titolo: 'Movimenti senza fondo', tono: 'warn', n: senza.length, nomi: ['movimento', 'movimenti'],
       anteprima: senza.slice(0, 30).map((r) => ({ desc: r.data.desc || '(senza descrizione)', det: quando(r), amt: (r.data.tipo === 'in' ? '+' : '−') + fmt(r.data.val), cls: r.data.tipo })),
@@ -91,18 +91,22 @@ function autoHTML() {
     }).join('')}</div>`;
 }
 
-// Barra della ripartizione per gruppo (capsule colorate in proporzione) con la legenda
-function ripartizione(groups, tot) {
-  const totPos = groups.reduce((a, g) => a + Math.max(0, tot.gruppi[g] || 0), 0);
+// Ripartizione per gruppo di fondi, più gli investimenti (una fetta e una riga che porta alla pagina Investimenti)
+function ripartizione(groups, tot, inv) {
+  const vInv = Math.max(0, inv.valore);
+  const totPos = groups.reduce((a, g) => a + Math.max(0, tot.gruppi[g] || 0), 0) + vInv;
   if (!totPos) return '';
   const pct = (g) => Math.max(0, tot.gruppi[g] || 0) / totPos * 100;
   const vivi = groups.filter((g) => pct(g) > 0);
+  const pInv = vInv / totPos * 100;
+  const nVoci = vivi.length + (vInv > 0 ? 1 : 0);
   // torta ad anello come quelle delle categorie (charts.donut): toccando il centro si apre l'elenco dei gruppi,
   // ognuno una scheda riempita in proporzione (stesso componente e stesso ascolto delle torte di Mese e Riepilogo)
   const torta = C.donut({
-    size: 200, center: fmtEur0(totPos), label: 'Fondi', sub: vivi.length === 1 ? '1 gruppo' : `${vivi.length} gruppi`, toggle: true,
-    slices: vivi.map((g) => ({ label: M.gruppoNome(g), value: Math.max(0, tot.gruppi[g] || 0), color: `var(--g-${g})` })),
-    key: 'patrimonio:' + vivi.join('|'),
+    size: 200, center: fmtEur0(totPos), label: vInv > 0 ? 'Patrimonio' : 'Fondi', sub: nVoci === 1 ? '1 voce' : vInv > 0 ? `${nVoci} voci` : `${nVoci} gruppi`, toggle: true,
+    slices: [...vivi.map((g) => ({ label: M.gruppoNome(g), value: Math.max(0, tot.gruppi[g] || 0), color: `var(--g-${g})` })),
+      ...(vInv > 0 ? [{ label: 'Investimenti', value: vInv, color: 'var(--g-invest)' }] : [])],
+    key: 'patrimonio:' + vivi.join('|') + (vInv > 0 ? '|invest' : ''),
   });
   return `<section class="card pat-rip" aria-label="Ripartizione per gruppo">
     <h2>Ripartizione</h2>
@@ -110,7 +114,11 @@ function ripartizione(groups, tot) {
       <div class="catbar riempi" style="--c:var(--g-${g});--p:${pct(g).toFixed(1)}%">
         <span class="cb-name"><i class="sw ${g}"></i>${M.gruppoNome(g)}</span>
         <span class="cb-val">${fmtEur(tot.gruppi[g] || 0)} <small>${pct(g).toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></span>
-      </div></li>`).join('')}</ul></div>
+      </div></li>`).join('')}${inv.posizioni.length ? `<li>
+      <a class="catbar riempi pat-inv" href="#investimenti" style="--c:var(--g-invest);--p:${pInv.toFixed(1)}%">
+        <span class="cb-name"><i class="sw invest"></i>Investimenti<small class="${inv.latente > 0.005 ? 'pos' : inv.latente < -0.005 ? 'neg' : ''}">${inv.valore ? `${fmtSigned(inv.latente)} di guadagno o perdita` : 'Nessuno strumento posseduto'}</small></span>
+        <span class="cb-val">${fmtEur(inv.valore)} <small>${pInv.toLocaleString('it-IT', { maximumFractionDigits: 1 })}%</small></span>
+      </a></li>` : ''}</ul></div>
   </section>`;
 }
 
@@ -175,12 +183,16 @@ function chartPoints() {
   const inizio = M.cfg().inizio;
   const snaps = M.snapshots().filter((s) => !inizio || s.data.date < inizio);
   const groups = groupsIn(new Set(M.accounts(true).map((c) => c.id)));
-  const pt = (date, t) => ({ date, label: fmtDateShort(date), parts: groups.map((g) => ({ key: g, cls: g, value: t.gruppi[g] || 0 })) });
+  const serie = M.serieAuto();
+  // fascia degli investimenti (in cima), solo se in qualche punto hanno un valore
+  const conInv = serie.some((p) => p.inv > 0);
+  const pt = (date, t, inv = 0) => ({ date, label: fmtDateShort(date), parts: [...groups.map((g) => ({ key: g, cls: g, value: t.gruppi[g] || 0 })),
+    ...(conInv ? [{ key: 'invest', cls: 'invest', value: inv }] : [])] });
   const points = [
     ...snaps.map((s) => pt(s.data.date, M.snapTotals(s))),
-    ...M.serieAuto().map((p) => pt(p.date, M.totaleGruppi(p.bal))),
+    ...serie.map((p) => pt(p.date, M.totaleGruppi(p.bal), p.inv)),
   ];
-  return { points, groups, inizio, hasSnaps: snaps.length > 0 };
+  return { points, groups: conInv ? [...groups, 'invest'] : groups, inizio, hasSnaps: snaps.length > 0 };
 }
 
 function drawChart() {
@@ -196,7 +208,7 @@ function drawChart() {
       <button class="chip" id="pg-reset" type="button"${range.from || range.to ? '' : ' hidden'}>Tutto il periodo</button>
     </div>
     <div class="chart-info" aria-live="polite"></div>
-    <div class="legend">${groups.map((g) => `<span class="lg ${g}">${M.gruppoNome(g)} <b data-g="${g}"></b></span>`).join('')}</div>
+    <div class="legend">${groups.map((g) => `<span class="lg ${g}">${g === 'invest' ? 'Investimenti' : M.gruppoNome(g)} <b data-g="${g}"></b></span>`).join('')}</div>
     <div class="chart-box" id="ch-pat"></div>
   </section>`;
   const from = $('#pg-from', box), to = $('#pg-to', box), reset = $('#pg-reset', box);

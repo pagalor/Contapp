@@ -13,6 +13,7 @@ import * as vDebiti from './view-debiti.js';
 import * as vRic from './view-ricorrenti.js';
 import * as vRate from './view-rate.js';
 import * as vBudget from './view-budget.js';
+import * as vInv from './view-investimenti.js';
 import * as demo from './demo.js';
 import * as pannelli from './pannelli.js';
 import * as gruppi from './gruppi.js';
@@ -25,8 +26,8 @@ const view = () => $('#view');
 let current = '';
 let pendingRemote = false;
 
-const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', debiti: 'debiti', rate: 'debiti', ricorrenti: 'account', budget: 'account', sincronizzazione: 'sync', categorie: 'account', dati: 'account', aspetto: 'account' };
-const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', debiti: 'Debiti e crediti', rate: 'Pagamenti a rate', ricorrenti: 'Movimenti ricorrenti', budget: 'Budget', sincronizzazione: 'Sincronizzazione', categorie: 'Categorie', dati: 'Importa ed esporta', aspetto: 'Aspetto' };
+const NAV_OF = { mese: 'mese', cerca: 'mese', tag: 'mese', riepilogo: 'riepilogo', patrimonio: 'patrimonio', conti: 'patrimonio', conto: 'patrimonio', investimenti: 'investimenti', investimento: 'investimenti', debiti: 'debiti', rate: 'debiti', ricorrenti: 'account', budget: 'account', sincronizzazione: 'sync', categorie: 'account', dati: 'account', aspetto: 'account' };
+const TITLES = { mese: 'Mese', cerca: 'Cerca', tag: 'Tag', riepilogo: 'Riepilogo', patrimonio: 'Patrimonio', conti: 'Fondi', conto: 'Fondo', investimenti: 'Investimenti', investimento: 'Investimento', debiti: 'Debiti e crediti', rate: 'Pagamenti a rate', ricorrenti: 'Movimenti ricorrenti', budget: 'Budget', sincronizzazione: 'Sincronizzazione', categorie: 'Categorie', dati: 'Importa ed esporta', aspetto: 'Aspetto' };
 
 // Cronologia: ogni pagina aperta andando avanti ricorda da quale pagina si arrivava (history.state.da, con il titolo),
 // così il pulsante «‹» in cima alle pagine torna alla schermata precedente. n numera le voci della cronologia.
@@ -34,6 +35,7 @@ let ultimo = null; // { titolo, n } dell'ultima pagina mostrata
 function titoloDi(name, a) {
   if (name === 'mese' && a) { const [y, m] = a.split('-').map(Number); if (m >= 1 && m <= 12) return `${M.MESI[m - 1]} ${y}`; }
   if (name === 'conto') return store.get(a)?.data.nome || 'Fondo';
+  if (name === 'investimento') return store.get(a)?.data.nome || 'Investimento';
   return TITLES[name] || 'Mese';
 }
 
@@ -75,6 +77,8 @@ function route() {
   else if (current === 'patrimonio') vPat.render(view());
   else if (current === 'conti') vConti.renderConfig(view());
   else if (current === 'conto') vConti.renderConto(view(), a);
+  else if (current === 'investimenti') vInv.render(view());
+  else if (current === 'investimento') vInv.renderDettaglio(view(), a);
   else if (current === 'debiti') vDebiti.render(view());
   else if (current === 'ricorrenti') vRic.render(view());
   else if (current === 'rate') vRate.render(view());
@@ -139,6 +143,7 @@ function refreshAfterRemote() {
   else if (current === 'riepilogo') vRie.redraw();
   else if (current === 'patrimonio') vPat.redraw();
   else if (current === 'conto') route();
+  else if (current === 'investimenti' || current === 'investimento') vInv.redraw();
   else if (current === 'debiti') vDebiti.redraw();
   else if (current === 'ricorrenti') vRic.redraw();
   else if (current === 'rate') vRate.redraw();
@@ -200,6 +205,7 @@ async function boot() {
     lastW = innerWidth;
     if (current === 'riepilogo') vRie.redraw();
     if (current === 'patrimonio') vPat.redraw();
+    if (current === 'investimento') vInv.redraw();
   }, 200));
   route();
   checkTargets();

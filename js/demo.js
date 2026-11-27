@@ -98,6 +98,7 @@ export async function prepara() {
   if (store.exportRecords().length) return;
   M.ensureCategories();
   M.ensureSubcats();
+  M.catDividendi(); // categoria dei dividendi e delle cedole degli investimenti di esempio
   await store.importRecords(genera(new Date()));
   // le scadenze dei movimenti ricorrenti e dei pagamenti a rate diventano movimenti con il meccanismo normale dell'app
   M.generaRicorrenti();
@@ -160,6 +161,94 @@ function preparaBudget() {
   if (totSpeso > 0) salva('budg-demo-tot', 5, { su: 'tot', rif: null, periodo: 'mese', da: questo }, Math.ceil(totSpeso / Math.min(0.75, Math.max(0.3, tempo + 0.25))));
   // Svago che parte il mese prossimo: nella pagina Budget compare «Parte da…»
   salva('budg-demo-svago', 6, { su: 'cat', rif: C.svago, periodo: 'mese', da: ym(new Date(y, m, 1)) }, arrotonda(media(C.svago) * 1.1 || 60, 5));
+}
+
+// Investimenti di esempio (nomi generici, numeri pseudo-casuali con un seme a parte, così il resto dei dati non cambia):
+// un ETF con acquisti mensili (le prime quote «già possedute»), un'azione con un dividendo all'anno e una vendita parziale
+// (prezzo rilevato più vecchio di 30 giorni), un titolo di Stato con le cedole che scade tra 45 giorni, una crypto e un'azione
+// venduta del tutto (in «Chiusi»). Prezzi rilevati a fine mese.
+function investimenti(fine, partenza, add) {
+  const r = rng(20250301);
+  const giorno = (k, g) => new Date(fine.getFullYear(), fine.getMonth() - k, g);
+  const ok = (t) => t <= fine && t > partenza;
+  let nOp = 0, nPr = 0, nDiv = 0, ord = 20000;
+  const op = (inv, tipo, t, qta, prezzo, { comm = null, tasse = null, fondo = null } = {}) =>
+    add('invop', `invop-demo-${++nOp}`, { inv, tipo, data: isoD(t), qta, prezzo, prEspr: null, comm, commEspr: null, tasse, tasseEspr: null, fondo, note: null, ord: ord++ });
+  const prezzo = (inv, t, val) => { const date = isoD(t); add('invpr', M.prezzoId(inv, date), { inv, date, val, espr: null, origine: 'manuale' }); nPr++; };
+  const dividendo = (inv, t, desc, val, fondo) => add('mov', `mov-demo-inv-${++nDiv}`, {
+    y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate(), tipo: 'in', val, espr: null, desc, cat: M.CAT_DIVIDENDI, sub: null, catAuto: false,
+    conti: [{ c: fondo }], contoAuto: false, tags: [], note: null, escl: false, ord: ord++, invId: inv });
+  // passeggiata casuale dei prezzi: un valore per ogni mese, da k0 mesi fa a oggi
+  const cammino = (k0, p0, vol, deriva) => {
+    const out = {}; let p = p0;
+    for (let k = k0; k >= 0; k--) { out[k] = round2(p); p = p * (1 + deriva + (r() - 0.5) * 2 * vol); }
+    return out;
+  };
+  const fineMese = (k) => new Date(fine.getFullYear(), fine.getMonth() - k + 1, 0);
+  const mesi = (fine.getFullYear() - partenza.getFullYear()) * 12 + fine.getMonth() - partenza.getMonth() - 1; // mesi dopo la partenza
+
+  // ETF azionario: 10 quote già possedute alla partenza, poi un acquisto il 5 di ogni mese dal conto deposito
+  const etf = 'inv-demo-etf';
+  add('inv', etf, { nome: 'ETF azionario globale', tipo: 'etf', codice: 'DEMO-GLB', quotazione: 'unita', aliquota: 26, scadenza: null, cedola: null, archiviato: false, note: null, ord: 1 });
+  const pEtf = cammino(mesi + 1, 84, 0.03, 0.008);
+  op(etf, 'acquisto', partenza, 10, 82.5);
+  for (let k = mesi; k >= 0; k--) {
+    const t = giorno(k, 5);
+    if (!ok(t)) continue;
+    op(etf, 'acquisto', t, Math.max(1, Math.floor(250 / pEtf[k])), pEtf[k], { comm: 1.5, fondo: F.dep });
+    if (k > 0) prezzo(etf, fineMese(k), round2(pEtf[k] * (1 + (r() - 0.5) * 0.02)));
+  }
+  const tEtf = new Date(fine); tEtf.setDate(tEtf.getDate() - 3);
+  if (tEtf > partenza) prezzo(etf, tEtf, round2(pEtf[0] * 1.01));
+
+  // Azione: acquisto 20 mesi fa, dividendo a maggio, vendita di una parte 7 mesi fa; l'ultimo prezzo ha 45 giorni
+  const az = 'inv-demo-azione';
+  add('inv', az, { nome: 'Azioni Alfa Industrie', tipo: 'azione', codice: 'ALFA', quotazione: 'unita', aliquota: 26, scadenza: null, cedola: null, archiviato: false, note: null, ord: 2 });
+  const kAz = Math.min(20, mesi);
+  const pAz = cammino(kAz, 24, 0.05, 0.012);
+  op(az, 'acquisto', giorno(kAz, 12), 60, pAz[kAz], { comm: 5, fondo: F.dep });
+  const costoMedio = (60 * pAz[kAz] + 5) / 60;
+  const tVend = giorno(7, 16);
+  const gain = (pAz[7] - costoMedio) * 25;
+  op(az, 'vendita', tVend, 25, pAz[7], { comm: 5, tasse: round2(Math.max(0, gain - 5) * 0.26), fondo: F.conto });
+  for (let k = kAz - 1; k >= 2; k--) prezzo(az, fineMese(k), pAz[k]);
+  const tVecchio = new Date(fine); tVecchio.setDate(tVecchio.getDate() - 45);
+  prezzo(az, tVecchio, pAz[1]);
+  for (let k = kAz; k >= 0; k--) {
+    const t = giorno(k, 22);
+    if (t.getMonth() === 4 && ok(t) && t > giorno(kAz, 12)) dividendo(az, t, 'Dividendo Alfa Industrie', round2((t > tVend ? 35 : 60) * 0.65 * 0.74), F.conto);
+  }
+
+  // Titolo di Stato: 3.000 € di nominale comprati a 98,2; cedola 3,5% all'anno, pagata ogni 6 mesi al netto del 12,5%; scade tra 45 giorni
+  const bond = 'inv-demo-btp';
+  const scad = new Date(fine); scad.setDate(scad.getDate() + 45);
+  const kB = Math.min(18, mesi);
+  add('inv', bond, { nome: 'Titolo di Stato 3,5%', tipo: 'bond', codice: 'DEMO-TS27', quotazione: 'percento', aliquota: 12.5, scadenza: isoD(scad), cedola: 3.5, archiviato: false, note: 'Cedola semestrale', ord: 3 });
+  op(bond, 'acquisto', giorno(kB, 8), 3000, 98.2, { comm: 3, fondo: F.dep });
+  for (let k = kB - 1; k >= 1; k--) prezzo(bond, fineMese(k), round2(98.2 + (kB - k) * (1.6 / kB) + (r() - 0.5) * 0.6));
+  for (let k = kB - 6; k >= 0; k -= 6) {
+    const t = giorno(k, 8);
+    if (ok(t)) dividendo(bond, t, 'Cedola Titolo di Stato 3,5%', round2(3000 * 0.035 / 2 * (1 - 0.125)), F.dep);
+  }
+
+  // Crypto: due acquisti dal fondo crypto; prezzo di due giorni fa
+  const btc = 'inv-demo-btc';
+  add('inv', btc, { nome: 'Bitcoin', tipo: 'crypto', codice: 'BTC', quotazione: 'unita', aliquota: 26, scadenza: null, cedola: null, archiviato: false, note: null, ord: 4 });
+  const kC = Math.min(9, mesi);
+  const pC = cammino(kC, 52000, 0.09, 0.01);
+  op(btc, 'acquisto', giorno(kC, 21), 0.0035, pC[kC], { comm: 1.2, fondo: F.btc });
+  if (kC >= 4) op(btc, 'acquisto', giorno(4, 21), 0.0012, pC[4], { comm: 0.8, fondo: F.btc });
+  for (let k = kC - 1; k >= 1; k--) prezzo(btc, fineMese(k), pC[k]);
+  const tC = new Date(fine); tC.setDate(tC.getDate() - 2);
+  prezzo(btc, tC, round2(pC[0]));
+
+  // Strumento chiuso: comprato e venduto del tutto, con una piccola plusvalenza
+  const chiuso = 'inv-demo-beta';
+  add('inv', chiuso, { nome: 'Azioni Beta Energia', tipo: 'azione', codice: 'BETA', quotazione: 'unita', aliquota: 26, scadenza: null, cedola: null, archiviato: false, note: null, ord: 5 });
+  const kX = Math.min(14, mesi);
+  op(chiuso, 'acquisto', giorno(kX, 3), 40, 12.1, { comm: 4, fondo: F.conto });
+  op(chiuso, 'vendita', giorno(Math.min(5, kX - 1), 10), 40, 14.35, { comm: 4, tasse: round2((40 * 14.35 - 4 - 40 * 12.1 - 4) * 0.26), fondo: F.conto });
+  return nPr;
 }
 
 // --- Generatore dei dati di esempio (tutto inventato) ---
@@ -442,6 +531,8 @@ export function genera(oggi) {
     const d = new Date(partenza.getFullYear(), partenza.getMonth() - mesi + 1, 0);
     add('snap', `snap-demo-storico-${i + 1}`, { date: isoD(d), vals: Object.fromEntries(FONDI.map(([id], k) => [id, { val: vals[k], espr: null }])), note: null });
   });
+
+  investimenti(fine, partenza, add);
 
   // Soldi buttati
   const anno = fine.getFullYear();

@@ -189,7 +189,7 @@ function alDesc(x) {
     const altro = x.val >= 0 ? t?.da : t?.a;
     return `${esc(t?.note || 'Trasferimento')}<small><b>${x.val >= 0 ? 'Da' : 'A'}</b> ${esc(M.accName(altro))}</small>`;
   }
-  return esc(x.desc) + (x.kind === 'mov' ? '' : `<small>${x.kind === 'debt' ? 'Debiti e crediti' : 'Correzione'}</small>`);
+  return esc(x.desc) + (x.kind === 'mov' ? '' : `<small>${x.kind === 'debt' ? 'Debiti e crediti' : x.kind === 'inv' ? 'Investimenti' : 'Correzione'}</small>`);
 }
 
 // Descrizione in testo semplice, per l'anteprima del gruppo chiuso
@@ -198,7 +198,7 @@ function alDescTesto(x) {
     const t = store.get(x.id)?.data;
     return `${t?.note || 'Trasferimento'} (${x.val >= 0 ? 'da' : 'a'} ${M.accName(x.val >= 0 ? t?.da : t?.a)})`;
   }
-  return x.desc + (x.kind === 'mov' ? '' : x.kind === 'debt' ? ' (debiti e crediti)' : ' (correzione)');
+  return x.desc + (x.kind === 'mov' ? '' : x.kind === 'debt' ? ' (debiti e crediti)' : x.kind === 'inv' ? ' (investimenti)' : ' (correzione)');
 }
 
 // =============================================================== dettaglio conto
@@ -239,7 +239,7 @@ export function renderConto(el, id) {
         id: 'conto-mov', titolo: 'Movimenti', tono: 'prim', n: rows.length, nomi: ['movimento', 'movimenti'],
         anteprima: rows.map((x) => ({ desc: alDescTesto(x), det: fmtDateShort(x.date), amt: fmtSigned(x.val), cls: x.val >= 0 ? 'pos' : 'neg' })),
         corpo: `<div class="acc-ledger">${rows.map((x) => `
-          <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : x.kind === 'debt' ? '#debiti' : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
+          <a class="al-row" href="${x.kind === 'mov' ? movHref(x.id) : x.kind === 'trasf' ? movHref(x.id, true) : x.kind === 'debt' ? '#debiti' : x.kind === 'inv' ? '#investimento/' + encodeURIComponent(x.inv) : '#conto/' + id}" ${x.kind === 'rett' ? `data-rett="${x.id}"` : ''}>
             ${alDate(x.date)}
             <span class="al-desc">${alDesc(x)}</span>
             <span class="al-val ${x.val >= 0 ? 'pos' : 'neg'}">${fmtSigned(x.val)}</span>

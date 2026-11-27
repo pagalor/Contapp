@@ -8,16 +8,17 @@ const accOptions = (sel, { empty = '' } = {}) =>
   (empty ? `<option value="">${esc(empty)}</option>` : '') +
   M.accounts().map((c) => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(c.data.nome)}</option>`).join('');
 
-// Campo importo con espressioni: mostra la formula quando è attivo, il risultato quando non lo è
-export function bindAmount(input, get, set) {
+// Campo importo con espressioni: mostra la formula quando è attivo, il risultato quando non lo è.
+// `dec` e `show` servono ai prezzi e alle quantità degli investimenti (più decimali, formato diverso).
+export function bindAmount(input, get, set, { dec = 2, show = fmt, raw = plain } = {}) {
   input.addEventListener('focus', () => {
     const v = get();
-    input.value = v ? (v.espr || plain(v.val)) : '';
+    input.value = v ? (v.espr || raw(v.val)) : '';
     requestAnimationFrame(() => input.select());
   });
   input.addEventListener('blur', () => {
     try {
-      const p = parseAmount(input.value);
+      const p = parseAmount(input.value, dec);
       set(p);
       input.classList.remove('err');
     } catch (e) {
@@ -25,7 +26,7 @@ export function bindAmount(input, get, set) {
       input.classList.add('err');
     }
     const v = get();
-    input.value = v ? fmt(v.val) : '';
+    input.value = v ? show(v.val) : '';
   });
 }
 
@@ -229,6 +230,7 @@ export function movDialog({ rec = null, tipo = 'out', y, m, d = null, seed = nul
       y: cur.y, m: cur.m, d: cur.d, tipo: t(), espr: p.espr, val: p.val, desc: f.desc.value.trim(),
       cat: f.cat.value || M.fallbackCat(t()), sub: f.sub.value || null, catAuto, conti, contoAuto,
       tags: [...tags], note: f.note.value.trim() || null, escl: f.escl.checked,
+      ...(init?.invId ? { invId: init.invId } : {}), // dividendo o cedola di uno strumento (Investimenti)
     };
   }
   // Un movimento nuovo (anche come copia di quello aperto)
