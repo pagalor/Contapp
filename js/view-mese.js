@@ -233,7 +233,8 @@ function rowFlags(r) {
 }
 
 function tagLine(d) {
-  return (d.ricId ? '<a class="tag ric" href="#ricorrenti" title="Aggiunto in automatico da un movimento ricorrente">↻ Ricorrente</a>' : '') +
+  return (d.invId ? `<a class="tag ric" href="#investimento/${encodeURIComponent(d.invId)}" title="Dividendo o cedola di ${esc(M.invNome(d.invId))}">↗ Investimento</a>` : '') +
+    (d.ricId ? '<a class="tag ric" href="#ricorrenti" title="Aggiunto in automatico da un movimento ricorrente">↻ Ricorrente</a>' : '') +
     (d.rataId ? `<a class="tag ric" href="#rate" title="Aggiunto in automatico da un pagamento a rate">▤ ${RUOLI_RATA[d.rataRuolo] || 'Pagamento a rate'}</a>` : '') + (d.tags || []).map((t) => `<a class="tag" href="#tag/${encodeURIComponent(t)}">#${esc(t)}</a>`).join('');
 }
 

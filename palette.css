@@ -3,7 +3,7 @@
    Il colore ha sempre un significato: verde acqua = struttura e azioni, verde = denaro che entra o saldo positivo,
    rosso = denaro che esce o saldo negativo, ambra = avvisi, target e budget, viola = soldi buttati.
    I nomi delle variabili già usate dall'app (--in, --out, --warn, --warn-bg, --saldo, --butt, --sal-pos,
-   --sal-neg, --pos, --neg, --bud-*, --g-*) restano: cambia solo il valore. Le altre sono nuove. */
+   --sal-neg, --pos, --neg, --bud-*, --g-*, --t-*) restano: cambia solo il valore. Le altre sono nuove. */
 
 :root {
   color-scheme: light;
@@ -69,6 +69,14 @@
   --g-digitale: #8C7BEF;
   --g-crypto: #F08A3C;
   --g-altro: #98A2A3;
+  --g-invest: #16A394;  /* investimenti: fascia del grafico Andamento e fetta della ripartizione */
+
+  /* tipologie degli investimenti (uguali nei due temi) */
+  --t-azione: #E0663D;
+  --t-etf: #3D7DD9;
+  --t-bond: #8C7BEF;
+  --t-crypto: #F0A13C;
+  --t-altro: #98A2A3;
 
   /* sfondo delle icone delle categorie: tinta ricavata dal colore scelto dall'utente
      uso: background: color-mix(in srgb, <colore categoria> var(--cat-mix), var(--surface)); */

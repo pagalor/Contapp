@@ -74,14 +74,16 @@ function evaluate(tokens) {
 export const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 // Restituisce { val, espr } oppure null se vuoto. Lancia un errore se non valido.
-export function parseAmount(input) {
+// `dec`: decimali del risultato (2 per gli importi; di più per prezzi e quantità degli investimenti).
+export function parseAmount(input, dec = 2) {
   let s = String(input ?? '').replace(/€/g, '').trim();
   if (!s) return null;
   const hadEq = s.startsWith('=');
   if (hadEq) s = s.slice(1).trim();
   if (!s) return null;
   const tokens = tokenize(s);
-  const val = round2(evaluate(tokens));
+  const k = 10 ** dec;
+  const val = dec === 2 ? round2(evaluate(tokens)) : Math.round((evaluate(tokens) + Number.EPSILON) * k) / k;
   // È un'espressione se contiene un operatore che non sia il solo segno iniziale
   const ops = tokens.filter((t, i) => t.t !== 'n' && !(i === 0 && t.t === '-'));
   const espr = ops.length ? '=' + s.replace(/\s+/g, '') : null;
@@ -100,3 +102,6 @@ export const saldoCls = (n) => (Math.round(n * 100) > 0 ? 'sal-pos' : Math.round
 
 // Valore "grezzo" da mostrare in modifica quando non c'è un'espressione
 export const plain = (n) => (n == null ? '' : String(round2(n)).replace('.', ','));
+// Numero con i decimali che servono, fino a `max` (quantità e prezzi degli investimenti): 1.234,5678
+export const fmtN = (n, max = 8, min = 0) => (n == null || isNaN(n) ? '' : new Intl.NumberFormat('it-IT', { minimumFractionDigits: min, maximumFractionDigits: max }).format(n));
+export const plainN = (n) => (n == null ? '' : String(n).replace('.', ','));

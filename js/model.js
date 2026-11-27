@@ -78,6 +78,7 @@ export const hasSubs = (catId) => store.all('sub').some((s) => s.data.cat === ca
 export const movs = () => store.all('mov');
 
 // Copia di un movimento come movimento normale: senza i legami con una ricorrenza o un piano rateale
+// (conserva invId: la copia di un dividendo resta collegata al suo strumento)
 export const copiaMov = ({ ricId, rataId, rataN, rataRuolo, ...copia }) => copia;
 
 export function sortMovs(list) {
@@ -963,6 +964,14 @@ export function ledgerEntries({ senzaSnap = null } = {}) {
         desc: (credito ? 'Rimborso da ' : 'Rimborso a ') + d.persona, ord: r.data.ord });
     }
   }
+  // Investimenti: acquisti, vendite e rimborsi con un fondo indicato (null = "già posseduto": non tocca i saldi)
+  for (const o of store.all('invop')) {
+    const d = o.data;
+    if (!d.fondo || !ISO.test(d.data || '') || d.data <= inizio || !(d.qta > 0)) continue;
+    const inv = store.get(d.inv);
+    out.push({ date: d.data, c: d.fondo, val: nettoOp(inv, d), kind: 'inv', id: o.id, inv: d.inv, tipo: opTipo(d),
+      desc: `${opInvNome(opTipo(d))} · ${inv?.data.nome || 'strumento eliminato'}`, ord: d.ord });
+  }
   for (const r of retts()) {
     if (r.data.date < inizio || typeof r.data.delta !== 'number') continue;
     if (senzaSnap && r.data.snapId === senzaSnap) continue;
@@ -1019,7 +1028,7 @@ export function senzaConto() {
   return sortMovs(movs().filter((r) => recDate(r) > inizio && typeof r.data.val === 'number' && !allocations(r).length && !fondoNonServe(r)));
 }
 
-// Serie per il grafico: saldi a fine mese dalla partenza a oggi
+// Serie per il grafico: saldi a fine mese dalla partenza a oggi, con il valore degli investimenti a ogni data (inv)
 export function serieAuto() {
   const inizio = cfg().inizio;
   if (!inizio) return [];
@@ -1034,6 +1043,7 @@ export function serieAuto() {
     m++; if (m > 12) { m = 1; y++; }
   }
   if (oggi > inizio) pts.push({ date: oggi, bal: balances(oggi) });
+  for (const p of pts) p.inv = valoreInvestimenti(p.date).tot;
   return pts;
 }
 
@@ -1117,7 +1127,7 @@ export function usciteMedie(n = 12) {
   return { media: mesi ? round2(tot / mesi) : 0, mesi };
 }
 
-// Patrimonio netto (fondi + crediti − debiti − rate da pagare) diviso per le uscite medie mensili: per quanti mesi si potrebbe andare avanti senza entrate.
+// Patrimonio netto (fondi + investimenti + crediti − debiti − rate da pagare, `patrimonioNetto`) diviso per le uscite medie mensili: per quanti mesi si potrebbe andare avanti senza entrate.
 export function autonomia(patrimonioNetto) {
   const { media, mesi } = usciteMedie();
   if (!(media > 0)) return null;
@@ -1126,4 +1136,201 @@ export function autonomia(patrimonioNetto) {
 
 export function persone() {
   return [...new Set(debts().map((r) => r.data.persona).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+// =====================================================================
+// Investimenti: strumenti (inv), operazioni (invop) e prezzi rilevati (invpr).
+// Tutto in euro. Acquisti, vendite e rimborsi non sono entrate o uscite: muovono solo i fondi (ledgerEntries).
+// Dividendi e cedole sono movimenti normali di entrata con il campo invId.
+// =====================================================================
+export const TIPI_INV = [['azione', 'Azioni', 'Azione'], ['etf', 'ETF', 'ETF'], ['bond', 'Obbligazioni', 'Obbligazione'],
+  ['crypto', 'Crypto', 'Crypto'], ['altro', 'Altro', 'Altro']];
+export const tipoInv = (inv) => (TIPI_INV.some(([k]) => k === inv?.data.tipo) ? inv.data.tipo : 'altro');
+export const tipoInvNome = (t, singolare = false) => (TIPI_INV.find((x) => x[0] === t) || TIPI_INV[TIPI_INV.length - 1])[singolare ? 2 : 1];
+export const OP_INV = [['acquisto', 'Acquisto'], ['vendita', 'Vendita'], ['rimborso', 'Rimborso']];
+export const opInvNome = (t) => (OP_INV.find((x) => x[0] === t) || OP_INV[0])[1];
+export const ALIQUOTA_STD = 26;       // tassa sulle plusvalenze, in %
+export const ALIQUOTA_STATO = 12.5;   // titoli di Stato
+export const CAT_DIVIDENDI = 'cat-dividendi-cedole';
+const EPS_Q = 1e-9;
+const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+export const q8 = (v) => Math.round(num(v) * 1e8) / 1e8; // quantità: fino a 8 decimali
+
+export const invs = ({ archiviati = true } = {}) => store.all('inv').filter((i) => archiviati || !i.data.archiviato)
+  .sort((a, b) => (a.data.ord || 0) - (b.data.ord || 0) || (a.data.nome || '').localeCompare(b.data.nome || ''));
+export const invNome = (id) => store.get(id)?.data.nome || 'strumento eliminato';
+// Quotazione "percento" (obbligazioni): la quantità è il valore nominale e il prezzo è in % del nominale
+export const percento = (inv) => inv?.data.quotazione === 'percento';
+const divisore = (inv) => (percento(inv) ? 100 : 1);
+export const aliquotaDi = (inv) => (typeof inv?.data.aliquota === 'number' && inv.data.aliquota >= 0 ? inv.data.aliquota : ALIQUOTA_STD);
+export const opTipo = (d) => (d?.tipo === 'vendita' || d?.tipo === 'rimborso' ? d.tipo : 'acquisto');
+export const opVende = (d) => opTipo(d) !== 'acquisto';
+
+// Ordine delle operazioni: per data; nello stesso giorno prima gli acquisti, poi l'ordine di inserimento
+const cmpOps = (a, b) => a.data.data.localeCompare(b.data.data) || (opVende(a.data) ? 1 : 0) - (opVende(b.data) ? 1 : 0) || num(a.data.ord) - num(b.data.ord);
+const opValida = (o) => ISO.test(o.data.data || '') && typeof o.data.qta === 'number' && o.data.qta > 0;
+export const invOps = (invId) => store.all('invop').filter((o) => o.data.inv === invId && opValida(o)).sort(cmpOps);
+export const invPrezzi = (invId) => store.all('invpr').filter((p) => p.data.inv === invId && ISO.test(p.data.date || '') && typeof p.data.val === 'number')
+  .sort((a, b) => a.data.date.localeCompare(b.data.date));
+// Dividendi e cedole (e qualsiasi movimento collegato allo strumento)
+export const invMovs = (invId) => movs().filter((r) => r.data.invId === invId);
+
+// Controvalore: quantità × prezzo (÷ 100 se in percentuale del nominale)
+export const controvalore = (inv, d) => round2(num(d.qta) * num(d.prezzo) / divisore(inv));
+// Denaro che esce dal fondo (negativo, acquisto) o che vi entra (positivo, vendita e rimborso)
+export function nettoOp(inv, d) {
+  const cv = controvalore(inv, d);
+  if (!opVende(d)) return round2(-(cv + num(d.comm)));
+  return round2(cv - num(d.comm) - num(d.tasse));
+}
+
+// Controlla una sequenza di operazioni dopo una modifica: `con` è l'operazione nuova o modificata ({ id, data }),
+// `senza` l'id di un'operazione da togliere. Restituisce { op, qta } della prima vendita che supera la quantità
+// posseduta in quel momento, oppure null se va tutto bene.
+export function verificaOps(invId, { con = null, senza = null } = {}) {
+  const list = store.all('invop').filter((o) => o.data.inv === invId && o.id !== senza && o.id !== con?.id && opValida(o));
+  if (con && con.data.inv === invId) list.push(con);
+  list.sort(cmpOps);
+  let q = 0;
+  for (const o of list) {
+    if (!opVende(o.data)) { q = q8(q + o.data.qta); continue; }
+    if (o.data.qta > q + EPS_Q) return { op: o, qta: q };
+    q = q8(q - o.data.qta);
+  }
+  return null;
+}
+// Quantità posseduta a una data (inclusa)
+export function qtaAl(invId, asOf = null) {
+  let q = 0;
+  for (const o of invOps(invId)) {
+    if (asOf && o.data.data > asOf) break;
+    q = q8(q + (opVende(o.data) ? -o.data.qta : o.data.qta));
+  }
+  return Math.max(0, q);
+}
+
+// Prezzo a una data: il più recente tra i prezzi rilevati e i prezzi delle operazioni (a parità di data vince il rilevato).
+// { val, date, origine: 'manuale' | 'auto' | 'operazione' } oppure null
+export function prezzoAl(invId, asOf = null) {
+  let best = null;
+  for (const o of invOps(invId)) {
+    if (asOf && o.data.data > asOf) break;
+    if (typeof o.data.prezzo === 'number') best = { val: o.data.prezzo, date: o.data.data, origine: 'operazione' };
+  }
+  for (const p of invPrezzi(invId)) {
+    if (asOf && p.data.date > asOf) break;
+    if (!best || p.data.date >= best.date) best = { val: p.data.val, date: p.data.date, origine: p.data.origine === 'auto' ? 'auto' : 'manuale' };
+  }
+  return best;
+}
+
+// Situazione di uno strumento a una data (inclusa; senza data: oggi e oltre).
+// Costo di carico a prezzo medio ponderato, commissioni d'acquisto comprese; una vendita riduce il costo in proporzione.
+export function posizione(invId, asOf = null) {
+  const inv = store.get(invId);
+  let qta = 0, costo = 0, versato = 0, incassato = 0, realizzato = 0;
+  for (const o of invOps(invId)) {
+    const d = o.data;
+    if (asOf && d.data > asOf) break;
+    if (!opVende(d)) {
+      const spesa = -nettoOp(inv, d);
+      qta = q8(qta + d.qta); costo += spesa; versato += spesa;
+      continue;
+    }
+    const q = Math.min(d.qta, qta);
+    const costoVenduto = qta > EPS_Q ? costo * (q / qta) : 0;
+    const netto = nettoOp(inv, d);
+    costo -= costoVenduto; qta = q8(qta - q);
+    if (qta <= EPS_Q) { qta = 0; costo = 0; }
+    incassato += netto; realizzato += netto - costoVenduto;
+  }
+  let dividendi = 0;
+  for (const r of invMovs(invId)) {
+    if (typeof r.data.val !== 'number' || (asOf && recDate(r) > asOf)) continue;
+    dividendi += r.data.tipo === 'in' ? r.data.val : -r.data.val;
+  }
+  const pr = prezzoAl(invId, asOf);
+  const aperta = qta > EPS_Q;
+  const valore = aperta && pr ? round2(qta * pr.val / divisore(inv)) : 0;
+  const latente = aperta ? round2(valore - costo) : 0;
+  const stimaNetta = latente > 0 ? round2(latente * (1 - aliquotaDi(inv) / 100)) : latente;
+  return {
+    qta, costo: round2(costo), prezzoMedio: aperta ? costo / qta * divisore(inv) : null,
+    versato: round2(versato), incassato: round2(incassato), realizzato: round2(realizzato), dividendi: round2(dividendi),
+    prezzo: pr?.val ?? null, prezzoData: pr?.date ?? null, prezzoOrigine: pr?.origine ?? null,
+    valore, latente, latentePct: aperta && costo > 0 ? latente / costo : null, stimaNetta,
+    rendimento: versato > 0 ? (valore + incassato + dividendi - versato) / versato : null,
+    aperta, operazioni: invOps(invId).length,
+  };
+}
+
+// Valore di tutti gli investimenti a una data: { tot, costo, latente, perTipo: { tipo: valore } }
+export function valoreInvestimenti(asOf = null) {
+  const out = { tot: 0, costo: 0, latente: 0, perTipo: {} };
+  for (const inv of invs()) {
+    const p = posizione(inv.id, asOf);
+    if (!p.aperta) continue;
+    const t = tipoInv(inv);
+    out.perTipo[t] = round2((out.perTipo[t] || 0) + p.valore);
+    out.tot += p.valore; out.costo += p.costo; out.latente += p.latente;
+  }
+  out.tot = round2(out.tot); out.costo = round2(out.costo); out.latente = round2(out.latente);
+  return out;
+}
+
+// Numeri della pagina Investimenti: totali e la posizione di ogni strumento
+export function riepilogoInvestimenti() {
+  const posizioni = invs().map((inv) => ({ inv, pos: posizione(inv.id) }));
+  const s = { valore: 0, costo: 0, versato: 0, incassato: 0, latente: 0, realizzato: 0, dividendi: 0, perTipo: {} };
+  for (const { inv, pos } of posizioni) {
+    for (const k of ['valore', 'costo', 'versato', 'incassato', 'latente', 'realizzato', 'dividendi']) s[k] += pos[k];
+    if (pos.aperta) s.perTipo[tipoInv(inv)] = round2((s.perTipo[tipoInv(inv)] || 0) + pos.valore);
+  }
+  for (const k of ['valore', 'costo', 'versato', 'incassato', 'latente', 'realizzato', 'dividendi']) s[k] = round2(s[k]);
+  s.latentePct = s.costo > 0 ? s.latente / s.costo : null;
+  s.rendimento = s.versato > 0 ? (s.valore + s.incassato + s.dividendi - s.versato) / s.versato : null;
+  return { ...s, posizioni };
+}
+
+// Prezzo rilevato: uno al giorno per strumento, riscriverlo lo sostituisce
+export const prezzoId = (invId, date) => `invpr-${invId}-${date}`;
+export function salvaPrezzo(invId, date, { val, espr = null }, origine = 'manuale') {
+  return store.save('invpr', prezzoId(invId, date), { inv: invId, date, val, espr, origine });
+}
+
+// Obbligazioni possedute che scadono nei prossimi `giorni` giorni (o già scadute e non ancora rimborsate)
+export function scadenzeVicine(giorni = 60, oggi = todayIso()) {
+  const t = new Date(oggi + 'T12:00:00');
+  t.setDate(t.getDate() + giorni);
+  const fino = isoOf(t.getFullYear(), t.getMonth() + 1, t.getDate());
+  return invs({ archiviati: false })
+    .filter((i) => ISO.test(i.data.scadenza || '') && i.data.scadenza <= fino && qtaAl(i.id) > EPS_Q)
+    .map((inv) => ({ inv, scadenza: inv.data.scadenza, scaduta: inv.data.scadenza < oggi }))
+    .sort((a, b) => a.scadenza.localeCompare(b.scadenza));
+}
+
+// Punti per il grafico del valore di uno strumento: ogni data di operazione o di prezzo, più oggi
+export function serieValore(invId, oggi = todayIso()) {
+  const ops = invOps(invId);
+  if (!ops.length) return [];
+  const date = new Set([...ops.map((o) => o.data.data), ...invPrezzi(invId).map((p) => p.data.date)]);
+  if (oggi >= ops[0].data.data) date.add(oggi);
+  return [...date].filter((d) => d >= ops[0].data.data && d <= oggi).sort()
+    .map((d) => ({ date: d, valore: posizione(invId, d).valore }));
+}
+
+// Categoria predefinita di dividendi e cedole: si crea la prima volta che serve. Se l'hai eliminata si usa "Altro".
+export function catDividendi() {
+  store.saveDefault('cat', CAT_DIVIDENDI, { nome: 'Dividendi e cedole', tipo: 'in', colore: '#2E8B57', emoji: '💹', ord: 1.5 });
+  return store.get(CAT_DIVIDENDI) ? CAT_DIVIDENDI : fallbackCat('in');
+}
+
+// Patrimonio: fondi + investimenti; netto = totale + crediti − debiti − rate da pagare
+export function patrimonioNetto(bal = balances(), asOf = null) {
+  const fondi = totaleGruppi(bal).tot;
+  const invest = valoreInvestimenti(asOf).tot;
+  const dt = debtTotals();
+  const rt = rateTotali();
+  const totale = round2(fondi + invest);
+  return { fondi, invest, crediti: dt.crediti, debiti: dt.debiti, rate: rt.residuo, totale, netto: round2(totale + dt.netto - rt.residuo) };
 }
