@@ -1,22 +1,39 @@
-// Pagina Importa ed esporta (#dati): backup JSON e file CSV per Excel.
+// Pagina Importa ed esporta (#dati): Excel (.xlsx, importazione guidata ed esportazione), backup JSON e file CSV.
 import * as store from './store.js';
 import * as M from './model.js';
-import { $, toast, confirmBox, download } from './ui.js';
+import { $, esc, toast, confirmBox, download } from './ui.js';
 import { testataAccount } from './pannelli.js';
+import { cartellaRationes, nomeFile } from './excel-esporta.js';
+import { importaDaExcel, importazioni, eliminaImportazione } from './excel-importa.js';
 
 let root;
 const SOLO_SYNC = new Set(['disp']); // kind esclusi dal backup esportato e ignorati all'importazione
 
 export function render(el) {
   root = el;
+  const imps = importazioni().slice(0, 10);
   el.innerHTML = `
     <section class="impost">
       ${testataAccount('Importa ed esporta')}
       <section class="card">
-        <p class="muted">Lo storico preparato dal tuo Excel si importa da qui, una volta sola, su un solo dispositivo:
-        gli altri lo riceveranno con la sincronizzazione. Reimportare lo stesso file non crea doppioni.</p>
+        <h2>Excel</h2>
+        <p class="muted">Importa i movimenti da un file Excel (.xlsx) o CSV: una procedura guidata ti fa scegliere fogli e colonne.
+        Un file esportato da Rationes si importa così com'è. L'esportazione crea un vero foglio di lavoro, con formule e un riepilogo per ogni anno.</p>
         <div class="btn-row">
-          <label class="btn primary">Importa file<input type="file" accept=".json,application/json" id="imp" hidden></label>
+          <label class="btn primary">Importa da Excel<input type="file" accept=".xlsx,.csv,.txt,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" id="imp-xl" hidden></label>
+          <button class="btn ghost" data-exp="xlsx">Esporta in Excel</button>
+        </div>
+        ${imps.length ? `<h3 class="xl-h">Ultime importazioni</h3>
+        <ul class="xl-imps">${imps.map((r) => `<li class="xl-imp-riga">
+          <div><b>${esc(r.data.file || 'File')}</b><small>${esc(quando(r.data.quando))} · ${r.data.n === 1 ? '1 movimento' : `${r.data.n || 0} movimenti`}${r.data.nTrasf ? ` e ${r.data.nTrasf} trasferimenti` : ''}</small></div>
+          <button type="button" class="btn ghost danger" data-del-imp="${esc(r.id)}">Elimina questa importazione</button></li>`).join('')}</ul>` : ''}
+      </section>
+      <section class="card">
+        <h2>Backup e CSV</h2>
+        <p class="muted">Il backup completo contiene tutti i dati e serve a ripristinarli. Lo storico preparato dal tuo Excel si importa da qui,
+        una volta sola, su un solo dispositivo: gli altri lo riceveranno con la sincronizzazione. Reimportare lo stesso file non crea doppioni.</p>
+        <div class="btn-row">
+          <label class="btn ghost">Importa backup<input type="file" accept=".json,application/json" id="imp" hidden></label>
           <button class="btn ghost" data-exp="json">Esporta backup completo</button>
           <button class="btn ghost" data-exp="csv">Esporta movimenti per Excel</button>
           <button class="btn ghost" data-exp="pat">Esporta patrimonio per Excel</button>
@@ -25,15 +42,40 @@ export function render(el) {
       </section>
     </section>`;
   $('#imp', root).addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importFile(f); });
-  $('.impost', root).addEventListener('click', (e) => {
+  $('#imp-xl', root).addEventListener('change', (e) => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (f) importaDaExcel(f, { onDone: () => { if (root.isConnected) render(root); } });
+  });
+  $('.impost', root).addEventListener('click', async (e) => {
+    const del = e.target.closest('[data-del-imp]');
+    if (del) {
+      const r = store.get(del.dataset.delImp);
+      if (!r) return;
+      const ok = await confirmBox(`Eliminare l'importazione di «${r.data.file || 'file'}»? Tolgo i ${r.data.n || 0} movimenti importati, anche se li hai modificati dopo.`, { ok: 'Elimina', danger: true });
+      if (!ok) return;
+      const n = eliminaImportazione(r.id);
+      toast(n === 1 ? 'Tolto 1 movimento' : `Tolti ${n} movimenti`);
+      render(root);
+      return;
+    }
     const exp = e.target.closest('[data-exp]')?.dataset.exp;
     if (exp === 'json') {
       download(`rationes-backup-${stamp()}.json`, JSON.stringify({ format: 'contabilita-v1', creato: stamp(), records: store.exportRecords().filter((r) => !SOLO_SYNC.has(r.kind)) }), 'application/json');
     }
+    if (exp === 'xlsx') esportaXlsx(e.target.closest('[data-exp]'));
     if (exp === 'csv') exportCSV();
     if (exp === 'pat') exportPatCSV();
     if (exp === 'inv') exportInvCSV();
   });
+}
+
+const quando = (ms) => (ms ? new Date(ms).toLocaleString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+
+async function esportaXlsx(btn) {
+  btn.disabled = true;
+  try { download(nomeFile(), await cartellaRationes()); }
+  catch (err) { console.error(err); toast('Non sono riuscito a creare il file Excel.'); }
+  finally { btn.disabled = false; }
 }
 
 async function importFile(file) {

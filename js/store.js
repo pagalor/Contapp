@@ -2,7 +2,7 @@
 // Ogni record: { id, kind, data, updated_at, deleted, dirty }
 // kind: 'mov' (movimento), 'cat' (categoria), 'sub' (sottocategoria), 'cont' (contenitore patrimonio),
 //       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente), 'budg' (budget di spesa),
-//       'rate' (piano rateale), 'disp' (dispositivo collegato alla sincronizzazione)
+//       'rate' (piano rateale), 'disp' (dispositivo collegato alla sincronizzazione), 'imp' (importazione da Excel)
 
 const DB_NAME = 'contabilita'; // in demo si usa un altro database (vedi demo.js)
 let db;
@@ -74,6 +74,28 @@ export function save(kind, id, data) {
   persist([r]);
   emit({ local: true, ids: [id] });
   return r;
+}
+
+// Più record in un colpo solo (importazione da Excel): una sola scrittura su IndexedDB e un solo avviso.
+// list: [{ kind, id, data }]. Restituisce i record salvati.
+export function saveMany(list) {
+  const out = list.map((x) => ({ id: x.id, kind: x.kind, data: x.data, updated_at: stamp(recs.get(x.id)), deleted: false, dirty: 1 }));
+  for (const r of out) recs.set(r.id, r);
+  if (out.length) { persist(out); emit({ local: true, bulk: true, ids: out.map((r) => r.id) }); }
+  return out;
+}
+
+// Eliminazione logica di più record insieme, con un solo avviso
+export function removeMany(ids) {
+  const out = [];
+  for (const id of ids) {
+    const prev = recs.get(id);
+    if (!prev || prev.deleted) continue;
+    out.push({ ...prev, deleted: true, updated_at: stamp(prev), dirty: 1 });
+  }
+  for (const r of out) recs.set(r.id, r);
+  if (out.length) { persist(out); emit({ local: true, bulk: true, ids: out.map((r) => r.id) }); }
+  return out.length;
 }
 
 // Record "di base" (es. categorie predefinite): data minima, così qualsiasi versione

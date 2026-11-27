@@ -1513,3 +1513,52 @@ select:not(#_) { -webkit-appearance: none; appearance: none; padding-right: 2.4r
 .pat-rip .pat-inv { cursor: pointer; color: var(--text); }
 .pat-rip .pat-inv .cb-name small { display: block; font-size: .78rem; font-weight: 600; margin-left: .2rem; }
 .pat-rip .pat-inv .cb-name { flex-wrap: wrap; }
+
+/* ---------- Excel: importazione guidata ed elenco delle importazioni ---------- */
+.modal.xl-modal { width: min(880px, calc(100vw - 1.5rem)); }
+.xl-passo { font-size: .85rem; margin: -.2rem 0 .6rem; overflow-wrap: anywhere; }
+.xl-h { margin: 1.1rem 0 .45rem; font-weight: 700; }
+.xl-h small { font-weight: 500; }
+.xl-fogli { display: flex; flex-wrap: wrap; gap: .4rem; margin: .6rem 0 .2rem; }
+.xl-fogli .chip.xl-vista:not(.on) { box-shadow: inset 0 0 0 2px var(--primary); }
+.xl-scroll { overflow-x: auto; max-width: 100%; border-radius: var(--r-m); background: var(--surface); -webkit-overflow-scrolling: touch; }
+.xl-tab { font-size: .82rem; }
+.xl-tab th, .xl-tab td { white-space: nowrap; padding: .4rem .55rem; max-width: 22rem; overflow: hidden; text-overflow: ellipsis; }
+.xl-tab tbody th { color: var(--text-2); font-weight: 550; font-size: .76rem; position: sticky; left: 0; background: var(--surface); }
+.xl-tab thead th small { display: block; color: var(--primary); font-weight: 700; text-transform: lowercase; }
+.xl-tab th.xl-ruolo { color: var(--text); }
+.xl-tab tr.xl-intest td { font-weight: 700; background: var(--surface-2); }
+.xl-seg3 { display: flex; width: 100%; }
+.xl-seg3 button { flex: 1; min-width: 0; padding-inline: .5rem; }
+.xl-prova { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; border-radius: var(--r-m); overflow: hidden; }
+.xl-prova li { display: grid; grid-template-columns: 6.2rem 7.5rem minmax(0, 1fr); gap: .2rem .7rem; align-items: baseline; background: var(--surface); padding: .5rem .8rem; font-size: .9rem; }
+.xl-prova li span:last-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xl-prova li small { grid-column: 3; color: var(--text-2); }
+.xl-nome { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 15rem); gap: .7rem; align-items: center; padding: .5rem 0; border-bottom: 1px solid var(--surface-2); }
+.xl-nome small, .xl-imp-riga small { display: block; color: var(--text-2); font-size: .82rem; }
+.xl-nome b { overflow-wrap: anywhere; }
+.xl-nome .xl-campo { margin: 0; }
+.xl-stats { margin: .6rem 0 .4rem; }
+.xl-stats div { background: var(--surface); }
+.xl-note { margin: .4rem 0 .6rem; padding-left: 1.2rem; font-size: .9rem; color: var(--text-2); }
+.xl-note li { margin: .2rem 0; }
+.xl-avviso { color: var(--warn); font-weight: 600; }
+.xl-ok { color: var(--text-2); font-size: .9rem; background: var(--surface); border-radius: var(--r-m); padding: .55rem .8rem; }
+.xl-saltate, .xl-dop { margin: .7rem 0; }
+.xl-saltate summary, .xl-dop summary { cursor: pointer; font-weight: 650; padding: .4rem 0; }
+.xl-saltate .xl-scroll { margin-top: .4rem; }
+.xl-dop .sw-row { min-height: 3rem; }
+.xl-dop-riga small { overflow-wrap: anywhere; }
+.small-note { font-size: .85rem; }
+.xl-imps { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; border-radius: var(--r-l); overflow: hidden; }
+.xl-imp-riga { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .5rem 1rem; background: var(--surface-2); padding: .7rem .9rem; }
+.xl-imp-riga > div { min-width: 0; flex: 1 1 14rem; }
+.xl-imp-riga b { overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .xl-prova li { grid-template-columns: auto minmax(0, 1fr); }
+  .xl-prova li span:last-of-type, .xl-prova li small { grid-column: 1 / -1; }
+  .xl-nome { grid-template-columns: 1fr; gap: .35rem; }
+  .xl-seg3 button { font-size: .85rem; }
+}
+.xl-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) { .xl-stats { gap: .4rem; } .xl-stats div { padding: .7rem .6rem; } .xl-stats dd { font-size: clamp(.8rem, 3.7vw, 1.05rem); white-space: nowrap; } }

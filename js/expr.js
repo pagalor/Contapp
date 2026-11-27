@@ -105,3 +105,27 @@ export const plain = (n) => (n == null ? '' : String(round2(n)).replace('.', ','
 // Numero con i decimali che servono, fino a `max` (quantità e prezzi degli investimenti): 1.234,5678
 export const fmtN = (n, max = 8, min = 0) => (n == null || isNaN(n) ? '' : new Intl.NumberFormat('it-IT', { minimumFractionDigits: min, maximumFractionDigits: max }).format(n));
 export const plainN = (n) => (n == null ? '' : String(n).replace('.', ','));
+
+// Espressione dell'app ("=68-17,5", "2×3") → formula di Excel ("68-17.5", "2*3"), senza "=".
+// Se il risultato non è già al centesimo la formula si arrotonda, così Excel dà lo stesso importo dell'app. null se non valida.
+export function exprExcel(espr) {
+  try {
+    const toks = tokenize(String(espr ?? '').replace(/€/g, '').replace(/^\s*=/, ''));
+    if (!toks.length) return null;
+    const f = toks.map((t) => (t.t === 'n' ? String(t.v) : t.t)).join('');
+    const v = evaluate(toks);
+    return Math.abs(round2(v) - v) > 1e-9 ? `ROUND(${f},2)` : f;
+  } catch { return null; }
+}
+
+// Formula di Excel fatta solo di numeri e + − × ÷ ( ) → { val, espr } come parseAmount; null per ogni altra formula
+export function exprDaExcel(f) {
+  let s = String(f ?? '').trim().replace(/^=/, '');
+  const m = /^ROUND\((.*),\s*2\)$/i.exec(s);
+  if (m) s = m[1];
+  if (!/^[\d.\s+\-*/()]+$/.test(s) || !/\d/.test(s)) return null;
+  try {
+    const p = parseAmount('=' + s.replace(/\s+/g, '').replace(/\./g, ','));
+    return p && p.espr ? p : p ? { val: p.val, espr: null } : null;
+  } catch { return null; }
+}

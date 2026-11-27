@@ -254,6 +254,7 @@ function investimenti(fine, partenza, add) {
 
 // --- Generatore dei dati di esempio (tutto inventato) ---
 const F = { cont: 'cont-demo-contanti', conto: 'cont-demo-conto', dep: 'cont-demo-deposito', web: 'cont-demo-online', btc: 'cont-demo-crypto' };
+const IMP_DEMO = 'imp-demo-storico'; // importazione di esempio: lo storico di due anni fa
 const FONDI = [
   [F.cont, 'Contanti', 'contanti', 150],
   [F.conto, 'Conto corrente', 'corrente', 2350],
@@ -366,7 +367,7 @@ export function genera(oggi) {
   };
   // conti: id di un fondo oppure ripartizione [{ c, val }]
   // conti: [] = nessun fondo indicato; senzaGiorno: il giorno non è noto (come lo storico importato)
-  const mov = (t, tipo, desc, val, cat, { sub = null, conti = F.conto, espr = null, tags = [], note = null, escl = false, senzaGiorno = false } = {}) => {
+  const mov = (t, tipo, desc, val, cat, { sub = null, conti = F.conto, espr = null, tags = [], note = null, escl = false, senzaGiorno = false, impId = null } = {}) => {
     const parts = Array.isArray(conti) ? conti : [{ c: conti, val }];
     for (const p of parts) {
       if (tipo === 'out') { copri(t, p.c, p.val); bal[p.c] = round2(bal[p.c] - p.val); } else bal[p.c] = round2(bal[p.c] + p.val);
@@ -374,7 +375,7 @@ export function genera(oggi) {
     add('mov', `mov-demo-${++nMov}`, {
       y: t.getFullYear(), m: t.getMonth() + 1, d: senzaGiorno ? null : t.getDate(), tipo, val, espr, desc, cat, sub, catAuto: false,
       conti: parts.length === 1 ? [{ c: parts[0].c }] : parts.map((p) => ({ c: p.c, val: p.val, espr: null })), contoAuto: false,
-      tags, note, escl, ord: ord++,
+      tags, note, escl, ord: ord++, ...(impId ? { impId } : {}),
     });
   };
   const prestito = (t, id, tipo, persona, desc, val, fondo, note = null) => {
@@ -390,13 +391,14 @@ export function genera(oggi) {
 
   // Storico di due anni fa, come quello importato da un Excel: totali del mese senza giorno né fondo, prima della
   // data di partenza (non toccano i saldi). Così nel Riepilogo il confronto si può fare anche con un anno più lontano.
-  // Usa numeri pseudo-casuali propri, per non cambiare il resto dei dati.
+  // Usa numeri pseudo-casuali propri, per non cambiare il resto dei dati. È legato a un'importazione di esempio (record `imp`
+  // e `impId` sui movimenti), così in Importa ed esporta si vede «Ultime importazioni» con «Elimina questa importazione».
   const r2 = rng(20230101);
   const tra = (min, max) => round2(min + r2() * (max - min));
   const annoStorico = fine.getFullYear() - 2;
   for (let m = 0; m < 12; m++) {
     const t = new Date(annoStorico, m, 1);
-    const st = { conti: [], senzaGiorno: true };
+    const st = { conti: [], senzaGiorno: true, impId: IMP_DEMO };
     mov(t, 'in', 'Stipendio', STIPENDIO - 100, C.stip, st);
     if (m === 6 || m === 11) mov(t, 'in', 'Tredicesima e premi', tra(600, 900), C.stip, st);
     mov(t, 'out', 'Affitto', 480, C.casa, { ...st, sub: S.affitto });
@@ -408,6 +410,9 @@ export function genera(oggi) {
     if (r2() < 0.45) mov(t, 'out', 'Shopping', tra(25, 120), C.shop, st);
     if (m === 7) mov(t, 'out', 'Vacanza', tra(500, 800), C.viaggi, st);
   }
+  const quandoImp = new Date(partenza); quandoImp.setHours(21, 30, 0, 0);
+  add('imp', IMP_DEMO, { file: `storico-${annoStorico}.xlsx`, quando: quandoImp.getTime(), tipo: 'guidata', fogli: [String(annoStorico)],
+    n: out.filter((x) => x.data.impId === IMP_DEMO).length, nTrasf: 0, inizio: null });
 
   for (const t = new Date(inizioMesi); t <= fine; t.setDate(t.getDate() + 1)) {
     const g = t.getDate(), m = t.getMonth() + 1;
