@@ -10,6 +10,9 @@ import * as D from './dispositivi.js';
 import { esc, $, modal, confirmBox, promptBox } from './ui.js';
 
 const ICO = {
+  sync: '<path d="M7.2 18.5h10a4.3 4.3 0 0 0 .7-8.55 6.2 6.2 0 0 0-11.6-1.1A4.9 4.9 0 0 0 7.2 18.5z"/>',
+  impost: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  esci: '<path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14M10 8l-4 4 4 4M6 12h9"/>',
   fondi: '<path d="M3.5 9.5L12 4.5l8.5 5M5.5 10.5v7M10 10.5v7M14 10.5v7M18.5 10.5v7M3.5 20h17"/>',
   cat: '<path d="M3.8 12.6V5.3c0-.8.7-1.5 1.5-1.5h7.3c.4 0 .8.2 1.1.4l6.9 6.9c.6.6.6 1.5 0 2.1l-7.3 7.3c-.6.6-1.5.6-2.1 0l-6.9-6.9c-.3-.3-.5-.6-.5-1z"/><circle cx="8.3" cy="8.3" r="1.4"/>',
   ric: '<path d="M17 3.5l3 3-3 3M4 11.5v-1a4 4 0 0 1 4-4h12M7 20.5l-3-3 3-3M20 12.5v1a4 4 0 0 1-4 4H4"/>',
@@ -23,6 +26,7 @@ const ICO = {
   freccia: '<path d="M9.5 6l6 6-6 6"/>',
 };
 const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
+export const icona = svg; // usata anche dalla pagina Sincronizzazione e cifratura, con la stessa grafica del pannello
 
 // "adesso", "5 min fa", "alle 14:05", "ieri, 22:14", "12 ott, 09:30" (lungo: "2 minuti fa")
 export function quando(ts, lungo = false) {
@@ -147,12 +151,14 @@ function paintSyncPanel() {
       <p class="blk pan-lock">${svg('lucchetto')}<span>Cifratura end-to-end attiva. Sul server arrivano solo dati cifrati.</span></p>`;
     azioni = `<button type="button" class="btn primary" data-pan-sync${st.state === 'syncing' ? ' disabled' : ''}>${st.state === 'syncing' ? 'Sincronizzazione…' : 'Sincronizza ora'}</button>`;
   }
+  // le impostazioni (account, frase segreta, uscita) sono nella pagina #sincronizzazione: qui solo la voce che la apre
   const piede = !demo.attiva && !manca
-    ? `<p class="pan-foot">${ses?.user?.email ? `${esc(ses.user.email)} · ` : ''}<a href="#sincronizzazione">Account e frase segreta</a></p>` : '';
+    ? `<ul class="blocks pan-list pan-impost"><li><a class="blk" href="#sincronizzazione">
+        <span class="blk-ico">${svg('impost')}</span><span><b>Impostazioni della sincronizzazione</b><small>${esc(ses?.user?.email || 'Account e frase segreta')}</small></span>${svg('freccia')}</a></li></ul>` : '';
   syncBox.innerHTML = `
-    <div class="pan-tit">
-      <span><h2>Sincronizzazione</h2>
-      <p class="pan-sub" data-state="${stato}">${esc(manca ? manca[0] : statoTesto(st, true))}</p></span>
+    <div class="pan-head">
+      <span class="pan-avatar">${svg('sync')}</span>
+      <span><h2>Sincronizzazione</h2><p class="pan-sub" data-state="${stato}">${esc(manca ? manca[0] : statoTesto(st, true))}</p></span>
       <button type="button" class="icon-btn" data-pan-chiudi aria-label="Chiudi">${svg('chiudi')}</button>
     </div>
     ${corpo}

@@ -196,10 +196,14 @@ main:focus-visible { outline: none; }
 .pan-sub:is([data-state="locked"], [data-state="offline"]) { color: var(--warn); font-weight: 600; }
 .pan-sub[data-state="error"] { color: var(--out); font-weight: 600; }
 /* Pannello della sincronizzazione: titolo con lo stato, dispositivi collegati, cifratura, azioni */
-.pan-tit { margin: .1rem 0 1rem .3rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .5rem; }
-.pan-tit .icon-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
-.pan-tit h2 { font-size: 1.6rem; }
-.pan-tit .pan-sub { margin: .3rem 0 0; font-size: .95rem; }
+p.pan-sub { font-size: .9rem; }
+.pan-body .pan-impost { margin: .9rem 0 0; }
+/* Pagina Sincronizzazione e cifratura: stessa grafica del pannello (intestazione con l'icona tonda, voci a blocchi), larghezza contenuta */
+.sync-page { max-width: 640px; }
+.sync-page .pan-head { margin: .4rem 0 1rem .2rem; }
+.sync-page .pan-head h2 { font-size: 1.3rem; }
+.sync-page .card > p.muted:last-child { margin-bottom: 0; }
+.sync-page .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .pan-sez { margin: 0 .3rem .55rem; color: var(--text-2); font-size: .9rem; }
 button.blk { font: inherit; border: 0; width: 100%; text-align: left; cursor: pointer; transition: background-color .2s; }
 button.blk:hover { background: color-mix(in srgb, var(--text) 4%, var(--surface)); }

@@ -63,7 +63,7 @@ js/view-rate.js         pagina Pagamenti a rate (gruppi «In corso» e «Conclus
 js/view-ricorrenti.js   pagina Movimenti ricorrenti (gruppi «Attivi» e «Terminati»; la finestra di modifica è in dialogs.js)
 js/view-budget.js       pagina Budget (elenco, finestra per creare e modificare `budgetDialog`, con la mediana mensile proposta)
 js/budgetui.js          riga con barra di un budget (icona, speso, disponibile, segno del periodo, elenco dei movimenti), condivisa da Mese e Budget
-js/view-sync.js         pagina Sincronizzazione: collegamento a Supabase, accesso, frase segreta (crea, sblocca, dimenticata), stato, «Sincronizza ora», uscita; in demo solo un messaggio
+js/view-sync.js         pagina Sincronizzazione e cifratura: solo le impostazioni (collegamento a Supabase, accesso, frase segreta: crea, sblocca, dimenticata; uscita, scollega), con la grafica del pannello (`pannelli.icona`); stato, dispositivi e «Sincronizza ora» stanno solo nel pannello; in demo solo un messaggio
 js/view-categorie.js    pagina Categorie: categorie e sottocategorie di entrate e uscite, finestra del colore (`sceltaColore`, colori proposti in `COLORI`)
 js/view-dati.js         pagina Importa ed esporta: backup JSON, CSV di movimenti, patrimonio e investimenti
 js/view-aspetto.js      pagina Aspetto: tema e installazione come app; `applyTheme` (attributo `data-theme` e `meta theme-color`)
@@ -340,7 +340,7 @@ Serve a far provare l'app ad altre persone senza toccare i dati veri.
 | Strumento | `strumentoDialog` (view-investimenti.js) | Investimenti: «Nuovo strumento»; dettaglio: «Modifica» | Nome, tipologia, codice facoltativo, «Prezzo espresso» (in euro per unità o in % del nominale; scegliendo Obbligazione in un nuovo strumento diventa %), scadenza e cedola (solo obbligazioni), tassa sulla plusvalenza con i chip «26%» e «12,5% titoli di Stato», nota; in modifica l'interruttore «Archiviato» ed «Elimina» (solo se non ha operazioni né dividendi, altrimenti si archivia; toglie anche i prezzi rilevati; toast con «Annulla») |
 | Operazione | `invOpDialog` (view-investimenti.js) | Investimenti: «Nuova operazione»; dettaglio: «Acquista», «Vendi», «Rimborso» (obbligazioni), tocco su un'operazione | Selettore Acquisto/Vendita/Rimborso, strumento, data, quantità (o valore nominale) e prezzo (con espressioni e più decimali: `bindAmount` con `dec`), commissioni, tasse (solo vendita e rimborso), fondo («Già posseduto (non tocca i fondi)» tra le scelte; proposto l'ultimo usato con lo strumento, poi quello predefinito), quanto si possiede a quella data e l'ultimo prezzo, anteprima del totale (controvalore, commissioni, tasse, totale pagato o incasso netto e il fondo); il rimborso propone tutta la quantità e, in %, il prezzo 100. Vendite oltre la quantità posseduta rifiutate con un toast; «Elimina» con conferma e «Annulla» |
 | Prezzi | `prezziDialog` (view-investimenti.js) | Investimenti: «Aggiorna i prezzi» (tutti gli strumenti posseduti); dettaglio: «Aggiorna prezzo»; tocco su un prezzo rilevato | Data (oggi, modificabile, non nel futuro) e un campo per strumento con il prezzo precedente come segnaposto e «Prima: X al …»; un solo «Salva»; i campi vuoti non cambiano. Su un prezzo esistente: modifica ed «Elimina» (con «Annulla») |
-| Pannello della sincronizzazione | `apriSync` (pannelli.js) | Pulsante a nuvola nella barra in alto | Scende sotto la barra (pagina scurita, barra chiara; largo al massimo 420 px anche su desktop). Titolo con la ×, stato, dispositivi collegati, cifratura, «Sincronizza ora»; se la sincronizzazione non è pronta un messaggio e «Vai alle impostazioni» (vedi l'inventario) |
+| Pannello della sincronizzazione | `apriSync` (pannelli.js) | Pulsante a nuvola nella barra in alto | Scende sotto la barra (pagina scurita, barra chiara; largo al massimo 420 px anche su desktop). Nuvola in un cerchio, titolo con la ×, stato, dispositivi collegati, cifratura, «Sincronizza ora», voce «Impostazioni della sincronizzazione»; se la sincronizzazione non è pronta un messaggio e «Vai alle impostazioni» (vedi l'inventario) |
 | Conferma | `confirmBox` (ui.js) | Eliminazioni, uscita dall'account, interruttore del calcolo automatico spento, importazione, «Togli dall'elenco» di un dispositivo… | Messaggio + «Annulla»/pulsante principale (rosso se pericoloso) |
 | Testo da inserire | `promptBox` (ui.js) | Ricerca: «Aggiungi un tag a tutti»; pannello della sincronizzazione: «Questo» (rinomina il dispositivo) | Un campo di testo |
 | Scelta | `sceltaBox` (ui.js) | Ogni `<select>` dell'app (categoria, sottocategoria, fondo, ripetizione, modello delle rate, «Su cosa» del budget, gruppo dei fondi, tema…) | Titolo e ×, voci a blocchi con i titoli dei gruppi, la scelta attuale con la spunta; toccando una voce si sceglie e si chiude |
@@ -416,10 +416,10 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 
 ### Pannello della sincronizzazione (dalla nuvola)
 
-- Titolo «Sincronizzazione» con la × per chiudere a destra, e sotto la riga di stato: «Tutto aggiornato, ultima sincronizzazione 2 minuti fa», «Modifiche da inviare», «Senza connessione: …» (ambra), «Errore: …» (rosso), «Sincronizzazione…».
+- Intestazione come quella del pannello dell'account: nuvola in un cerchio a sinistra, titolo «Sincronizzazione», la × per chiudere a destra, e sotto il titolo la riga di stato: «Tutto aggiornato, ultima sincronizzazione 2 minuti fa», «Modifiche da inviare», «Senza connessione: …» (ambra), «Errore: …» (rosso), «Sincronizzazione…».
 - **Dispositivi collegati**: righe a blocchi (angoli come gli altri elenchi raggruppati) con l'icona del tipo (telefono, tablet, computer), il nome e sotto «Attivo ora» o «Ultimo accesso ieri, 22:14». Primo il dispositivo in uso con l'etichetta «Questo» (toccandolo si rinomina, `promptBox`); gli altri dal più recente (toccandone uno: conferma «Togli dall'elenco», con la spiegazione che il dispositivo non viene scollegato e ricompare se torna a sincronizzare).
 - Riquadro con il lucchetto: «Cifratura end-to-end attiva. Sul server arrivano solo dati cifrati.»
-- Pulsante «Sincronizza ora» (principale, a tutta larghezza; disattivato durante l'invio). Si chiude con la × o toccando fuori. Sotto, l'email dell'account e il link «Account e frase segreta» (→ `#sincronizzazione`, con «‹ Sincronizzazione»).
+- Pulsante «Sincronizza ora» (principale, a tutta larghezza; disattivato durante l'invio). Si chiude con la × o toccando fuori. Sotto, la voce a blocco **Impostazioni della sincronizzazione** con l'email dell'account (→ `#sincronizzazione`, con «‹ Sincronizzazione»). Pannello e pagina non ripetono le stesse informazioni: qui stato, dispositivi e «Sincronizza ora»; nella pagina solo le impostazioni.
 - Non configurata, senza accesso, frase da creare o da sbloccare: al posto dell'elenco la riga di stato breve («Non configurata», «Accesso non effettuato», «Cifratura da attivare», «Dati cifrati da sbloccare»), un messaggio e il pulsante «Vai alle impostazioni» (→ `#sincronizzazione`).
 - In demo: il messaggio della demo e i due dispositivi di esempio, senza pulsanti.
 
@@ -569,14 +569,14 @@ Elenco, pagina per pagina, di ogni elemento visibile. Serve a sapere cosa esiste
 
 ### Sincronizzazione (`#sincronizzazione`)
 
-- «‹ Sincronizzazione» (riapre il pannello della nuvola) e titolo. Un riquadro che cambia con lo stato:
-  - in demo: solo un messaggio;
-  - non configurata: «URL del progetto», «Chiave pubblica», «Collega»;
-  - collegata ma senza accesso: Email, Password, «Accedi», «Crea account», «Scollega progetto»;
+- «‹ Sincronizzazione» (riapre il pannello della nuvola) e titolo «Sincronizzazione e cifratura». Sotto, con la grafica del pannello (larga al massimo 640 px), un'intestazione con l'icona in un cerchio, un titolo e una riga, e il contenuto che cambia con lo stato (la pagina si ridisegna da sola quando cambiano configurazione, accesso o cifratura, ma non mentre si scrive in un campo):
+  - in demo: «Sincronizzazione · Non disponibile nella demo» e un messaggio;
+  - non configurata: «Collega il progetto», riquadro con «URL del progetto», «Chiave pubblica», «Collega»;
+  - collegata ma senza accesso: «Accedi» (con il progetto collegato), riquadro con Email, Password, «Accedi», «Crea account», «Scollega progetto»;
   - verifica in corso / errore di rete: «Riprova» ed «Esci»;
-  - da creare: «Crea la frase segreta» (due campi, «Attiva la cifratura»);
-  - da sbloccare: «Sblocca i dati cifrati» (un campo, «Sblocca», «Ho dimenticato la frase» → conferma → «Nuova frase segreta» con «Sostituisci e cifra»);
-  - attiva: account, riga di stato con pallino (data dell'ultima sincronizzazione), «Sincronizza ora», «Esci» (con conferma che indica le modifiche non ancora inviate).
+  - da creare: «Crea la frase segreta» (lucchetto, email; due campi, «Attiva la cifratura»);
+  - da sbloccare: «Sblocca i dati cifrati» (lucchetto, email; un campo, «Sblocca», «Ho dimenticato la frase» → conferma → «Nuova frase segreta» con «Sostituisci e cifra»);
+  - attiva: «Collegata e cifrata» («Stato e dispositivi sono nel pannello della nuvola»), voci a blocchi **Account** (email), **Progetto Supabase** (indirizzo), **Frase segreta** (sbloccata su questo dispositivo), poi «Esci» (con conferma che indica le modifiche non ancora inviate) e «Scollega progetto» (con conferma: toglie progetto, account e chiavi da questo dispositivo, i dati restano). Niente stato né «Sincronizza ora», che sono nel pannello.
 
 ### Categorie (`#categorie`)
 
