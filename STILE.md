@@ -77,7 +77,7 @@ Regole:
 ## Struttura
 
 - **Barra in alto**, su tutte le pagine:
-  - a sinistra l'icona della sincronizzazione (su desktop anche il testo "Sincronizzato 2 min fa"). Neutra quando è tutto a posto, animata durante la sincronizzazione, ambra con un problema o se manca la frase segreta. Sostituisce il pallino `#sync-ind` sulla voce Altro.
+  - a sinistra l'icona della sincronizzazione (su desktop anche il testo "Sincronizzato 2 min fa"). Un disegno dentro la nuvola per ogni stato: spunta quando è tutto aggiornato, freccia in su con modifiche da inviare, freccia che gira durante la sincronizzazione, lucchetto (ambra) se manca la frase segreta, nuvola barrata (ambra) senza connessione, punto esclamativo (rosso) in caso di errore. Con il pannello aperto ha lo sfondo pieno. Sostituisce il pallino `#sync-ind` sulla voce Altro.
   - al centro il logo e il nome.
   - a destra l'account.
 - **Pannello della sincronizzazione**, che si apre dall'icona: stato, dispositivi collegati, cifratura attiva, "Sincronizza ora". Senza sincronizzazione configurata porta alle impostazioni.

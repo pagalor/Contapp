@@ -13,6 +13,7 @@ const LS = 'contabilita.demo';
 const LS_DATI = 'contabilita.demo.dati'; // versione dell'app con cui sono stati generati i dati di esempio
 const SENZA_VERSIONE = '?';              // generati quando la versione non era nota (primo avvio, service worker non ancora attivo)
 export const DB = 'contabilita-demo';
+export const ID_DISPOSITIVO = 'demo-telefono'; // id del dispositivo «in uso» nella demo (record disp-demo-telefono)
 let versione = null;   // versione dei file in uso, se il service worker la comunica
 let rinnovati = false; // dati rigenerati per un aggiornamento dell'app
 
@@ -539,6 +540,11 @@ export function genera(oggi) {
   [[anno - 1, 'Multa per sosta vietata', 42, null], [anno - 1, 'Abbonamento in palestra mai usato', 117, '=3*39'],
     [anno, 'Biglietto del treno perso', 19.9, null], [anno, 'Cibo scaduto in frigo', 12, null]]
     .forEach(([y, desc, val, espr], i) => add('butt', `butt-demo-${i + 1}`, { y, espr, val, desc, ord: i }));
+
+  // Due dispositivi collegati di esempio (in demo la sincronizzazione resta spenta): quello in uso e un PC visto ieri sera
+  const ieri = new Date(fine); ieri.setDate(ieri.getDate() - 1); ieri.setHours(22, 14, 0, 0);
+  add('disp', 'disp-' + ID_DISPOSITIVO, { nome: 'Telefono Android', tipo: 'telefono', visto: oggi.getTime(), creato: oggi.getTime() - 200 * 864e5 });
+  add('disp', 'disp-demo-pc', { nome: 'PC Windows', tipo: 'computer', visto: ieri.getTime(), creato: oggi.getTime() - 150 * 864e5 });
 
   return out;
 }

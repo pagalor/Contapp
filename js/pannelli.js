@@ -1,13 +1,15 @@
-// Barra in alto: icona della sincronizzazione (con il suo pannello) e avatar (con il pannello dell'account).
+// Barra in alto: pulsante della sincronizzazione (con il suo pannello: stato, dispositivi collegati, «Sincronizza ora»)
+// e avatar (con il pannello dell'account).
 // Il pannello dell'account raccoglie le impostazioni: ogni voce apre solo la sua pagina
 // (#sincronizzazione, #conti, #categorie, #ricorrenti, #rate, #budget, #dati, #aspetto).
 import * as M from './model.js';
 import * as sync from './sync.js';
 import * as demo from './demo.js';
-import { esc, $, modal } from './ui.js';
+import * as store from './store.js';
+import * as D from './dispositivi.js';
+import { esc, $, modal, confirmBox, promptBox } from './ui.js';
 
 const ICO = {
-  sync: '<path d="M7.2 18.5h10a4.3 4.3 0 0 0 .7-8.55 6.2 6.2 0 0 0-11.6-1.1A4.9 4.9 0 0 0 7.2 18.5z"/><path d="M9.4 13.4l2 2 3.6-3.7"/>',
   fondi: '<path d="M3.5 9.5L12 4.5l8.5 5M5.5 10.5v7M10 10.5v7M14 10.5v7M18.5 10.5v7M3.5 20h17"/>',
   cat: '<path d="M3.8 12.6V5.3c0-.8.7-1.5 1.5-1.5h7.3c.4 0 .8.2 1.1.4l6.9 6.9c.6.6.6 1.5 0 2.1l-7.3 7.3c-.6.6-1.5.6-2.1 0l-6.9-6.9c-.3-.3-.5-.6-.5-1z"/><circle cx="8.3" cy="8.3" r="1.4"/>',
   ric: '<path d="M17 3.5l3 3-3 3M4 11.5v-1a4 4 0 0 1 4-4h12M7 20.5l-3-3 3-3M20 12.5v1a4 4 0 0 1-4 4H4"/>',
@@ -22,29 +24,45 @@ const ICO = {
 };
 const svg = (k) => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]}</svg>`;
 
-// "adesso", "5 min fa", "alle 14:05", "ieri, 22:14", "12 ott, 09:30"
-export function quando(ts) {
+// "adesso", "5 min fa", "alle 14:05", "ieri, 22:14", "12 ott, 09:30" (lungo: "2 minuti fa")
+export function quando(ts, lungo = false) {
   if (!ts) return '';
   const d = new Date(ts), now = new Date();
   const min = Math.round((now - d) / 60000);
   const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
   if (min < 1) return 'adesso';
-  if (min < 60) return `${min} min fa`;
+  if (min < 60) return lungo ? (min === 1 ? '1 minuto fa' : `${min} minuti fa`) : `${min} min fa`;
   if (d.toDateString() === now.toDateString()) return `alle ${ora}`;
   const ieri = new Date(now); ieri.setDate(now.getDate() - 1);
   if (d.toDateString() === ieri.toDateString()) return `ieri, ${ora}`;
   return `${d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}, ${ora}`;
 }
 
+// Ultimo accesso di un dispositivo: "Attivo ora" (nell'ultima ora), poi "oggi, 14:05", "ieri, 22:14", "12 ott, 09:30", "12 ott 2025, 09:30"
+function ultimoAccesso(ts) {
+  if (!ts) return 'Ultimo accesso sconosciuto';
+  const d = new Date(ts), now = new Date();
+  if (now - d < 60 * 60 * 1000) return 'Attivo ora';
+  const ora = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const ieri = new Date(now); ieri.setDate(now.getDate() - 1);
+  const giorno = d.toDateString() === now.toDateString() ? 'oggi'
+    : d.toDateString() === ieri.toDateString() ? 'ieri'
+    : d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
+  return `Ultimo accesso ${giorno}, ${ora}`;
+}
+
 // Testo dello stato della sincronizzazione, breve per la barra in alto o completo per il pannello
 function statoTesto(st, lungo = false) {
   if (demo.attiva) return 'Solo su questo dispositivo';
   if (st.state === 'ok') {
-    const q = quando(sync.lastOk());
-    if (!q) return 'Sincronizzato';
+    const q = quando(sync.lastOk(), lungo);
+    if (!q) return lungo ? 'Tutto aggiornato' : 'Sincronizzato';
     return lungo ? `Tutto aggiornato, ultima sincronizzazione ${q}` : `Sincronizzato ${q}`;
   }
   if (st.state === 'off' && !lungo) return 'Non sincronizzato';
+  if (st.state === 'pending') return 'Modifiche da inviare';
+  if (st.state === 'offline') return lungo ? 'Senza connessione: le modifiche restano su questo dispositivo' : 'Senza connessione';
+  if (st.state === 'error') return lungo ? `Errore: ${st.msg || 'sincronizzazione non riuscita'}` : 'Errore di sincronizzazione';
   return st.msg || '';
 }
 
@@ -63,41 +81,82 @@ function paintSync() {
 // --- Pannello della sincronizzazione ---
 let syncBox = null;
 function apriSync() {
-  const dlg = pannello(`<div class="pan-body" id="pan-sync"></div>`, 'left', $('#sync-ind'));
+  if (syncBox?.isConnected) return;
+  const dlg = pannello(`<div class="pan-body" id="pan-sync" aria-live="polite"></div>`, 'left', $('#sync-ind'));
+  dlg.setAttribute('aria-label', 'Sincronizzazione');
   syncBox = $('#pan-sync', dlg);
   paintSyncPanel();
-  dlg.addEventListener('click', (e) => {
+  dlg.addEventListener('click', async (e) => {
     if (e.target.closest('[data-pan-sync]')) sync.syncNow();
     if (e.target.closest('[data-pan-chiudi]')) dlg.close();
-    const a = e.target.closest('a.blk');
-    if (a) { e.preventDefault(); dlg.close(); vaiDaPannello(a.getAttribute('href'), 'sync'); }
+    const a = e.target.closest('a[href="#sincronizzazione"]');
+    if (a) { e.preventDefault(); dlg.close(); vaiDaPannello('#sincronizzazione', 'sync'); return; }
+    const riga = e.target.closest('[data-disp]');
+    if (!riga) return;
+    const nome = riga.dataset.nome;
+    if (riga.hasAttribute('data-questo')) {
+      const nuovo = await promptBox('Nome di questo dispositivo', nome, { ok: 'Rinomina' });
+      if (nuovo != null && nuovo !== nome) D.rinomina(nuovo);
+    } else {
+      const ok = await confirmBox(`Togliere «${nome}» dall'elenco? Il dispositivo non viene scollegato: se torna a sincronizzare, ricompare.`, { ok: "Togli dall'elenco", danger: true });
+      if (ok) D.togli(riga.dataset.disp);
+    }
+    if (syncBox?.isConnected) paintSyncPanel();
   });
 }
+
+const ICO_DISP = {
+  telefono: '<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 17.5h2"/>',
+  tablet: '<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M11 17h2"/>',
+  computer: '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M12 16.5v3.5M8 20h8"/>',
+};
+function righeDispositivi() {
+  return `<h3 class="pan-sez">Dispositivi collegati</h3>
+    <ul class="blocks pan-list pan-disp">${D.elenco().map((x) => {
+      const nome = x.data.nome || 'Dispositivo';
+      const sotto = x.questo ? 'Attivo ora' : ultimoAccesso(x.data.visto);
+      const azione = x.questo ? 'Rinomina questo dispositivo' : "Togli dall'elenco";
+      return `<li><button type="button" class="blk" data-disp="${esc(x.id)}" data-nome="${esc(nome)}"${x.questo ? ' data-questo' : ''} aria-label="${esc(`${nome}, ${sotto}. ${azione}`)}">
+        <span class="blk-ico"><svg viewBox="0 0 24 24" aria-hidden="true">${ICO_DISP[x.data.tipo] || ICO_DISP.computer}</svg></span>
+        <span><b>${esc(nome)}</b><small>${esc(sotto)}</small></span>${x.questo ? '<span class="pan-questo">Questo</span>' : ''}</button></li>`;
+    }).join('')}</ul>`;
+}
+
 function paintSyncPanel() {
   const st = sync.getStatus();
   const ses = sync.session();
-  const pronto = !demo.attiva && ses && sync.getCryptoState() === 'ready';
-  let corpo = '';
+  const cs = sync.getCryptoState();
+  const stato = demo.attiva ? 'off' : st.state;
+  // da configurare, senza accesso o da sbloccare: solo un messaggio e il pulsante per le impostazioni
+  // [riga di stato, messaggio]
+  const manca = demo.attiva ? null
+    : !sync.config() ? ['Non configurata', 'Collega il tuo progetto Supabase per avere i dati, cifrati, su tutti i tuoi dispositivi.']
+    : !ses ? ['Accesso non effettuato', 'Accedi al tuo account per sincronizzare i dati tra i dispositivi.']
+    : cs === 'setup' ? ['Cifratura da attivare', 'Crea la frase segreta per attivare la sincronizzazione cifrata.']
+    : cs === 'locked' ? ['Dati cifrati da sbloccare', 'Inserisci la frase segreta per sbloccare i dati cifrati su questo dispositivo.']
+    : null;
+  let corpo, azioni;
   if (demo.attiva) {
-    corpo = `<p class="pan-note">Nella versione demo la sincronizzazione non è disponibile: i dati di esempio restano solo in questo browser.</p>`;
+    corpo = `<p class="pan-note">Nella versione demo la sincronizzazione non è disponibile: i dati di esempio restano solo in questo browser. I dispositivi qui sotto sono di esempio.</p>${righeDispositivi()}`;
+    azioni = '';
+  } else if (manca) {
+    corpo = `<p class="pan-note">${esc(manca[1])}</p>`;
+    azioni = `<a class="btn primary" href="#sincronizzazione">Vai alle impostazioni</a>`;
   } else {
-    if (ses) corpo += `<ul class="blocks"><li class="blk">${svg('utente')}<span><b>Account</b><small>${esc(ses.user?.email || '')}</small></span></li></ul>`;
-    if (pronto) corpo += `<p class="blk pan-lock">${svg('lucchetto')}<span>Cifratura end-to-end attiva. Sul server arrivano solo dati cifrati.</span></p>`;
+    corpo = `${righeDispositivi()}
+      <p class="blk pan-lock">${svg('lucchetto')}<span>Cifratura end-to-end attiva. Sul server arrivano solo dati cifrati.</span></p>`;
+    azioni = `<button type="button" class="btn primary" data-pan-sync${st.state === 'syncing' ? ' disabled' : ''}>${st.state === 'syncing' ? 'Sincronizzazione…' : 'Sincronizza ora'}</button>`;
   }
-  const azione = pronto ? `<button type="button" class="btn primary" data-pan-sync${st.state === 'syncing' ? ' disabled' : ''}>Sincronizza ora</button>` : '';
-  // le impostazioni (collegamento, accesso, frase segreta) sono una pagina a sé, aperta da qui
-  const impost = `<ul class="blocks pan-list"><li><a class="blk" href="#sincronizzazione">
-    <span class="blk-ico">${svg('sync')}</span><span><b>Sincronizzazione e cifratura</b><small>${esc(demo.attiva ? 'Non disponibile nella demo'
-      : !sync.config() ? 'Collega il tuo progetto Supabase' : !ses ? 'Accedi per sincronizzare' : pronto ? 'Account, frase segreta, uscita' : 'Inserisci la frase segreta')}</small></span>${svg('freccia')}</a></li></ul>`;
-  // come il pannello dell'account: icona, titolo con lo stato sotto e la × per chiudere
+  const piede = !demo.attiva && !manca
+    ? `<p class="pan-foot">${ses?.user?.email ? `${esc(ses.user.email)} · ` : ''}<a href="#sincronizzazione">Account e frase segreta</a></p>` : '';
   syncBox.innerHTML = `
-    <div class="pan-head">
-      <span class="pan-avatar">${svg('sync')}</span>
-      <span><h2>Sincronizzazione</h2><small class="pan-sub" data-state="${demo.attiva ? 'off' : st.state}">${esc(statoTesto(st, true))}</small></span>
+    <div class="pan-tit">
+      <span><h2>Sincronizzazione</h2>
+      <p class="pan-sub" data-state="${stato}">${esc(manca ? manca[0] : statoTesto(st, true))}</p></span>
       <button type="button" class="icon-btn" data-pan-chiudi aria-label="Chiudi">${svg('chiudi')}</button>
     </div>
-    ${corpo}${impost}
-    ${azione ? `<div class="pan-actions">${azione}</div>` : ''}`;
+    ${corpo}
+    ${azioni ? `<div class="pan-actions">${azioni}</div>` : ''}${piede}`;
 }
 
 // --- Pannello dell'account ---
@@ -194,7 +253,11 @@ function pannello(html, lato, btn) {
   btn?.setAttribute('aria-expanded', 'true');
   const dlg = modal(html, { cls: 'panel panel-' + lato, onClose: () => btn?.setAttribute('aria-expanded', 'false') });
   const bar = $('.topbar');
-  if (bar) dlg.style.setProperty('--pan-top', Math.max(8, bar.getBoundingClientRect().bottom + 6) + 'px');
+  if (bar) {
+    const fondo = bar.getBoundingClientRect().bottom;
+    dlg.style.setProperty('--pan-top', Math.max(8, fondo + 6) + 'px');
+    dlg.style.setProperty('--bar-bottom', Math.max(0, fondo) + 'px');
+  }
   return dlg;
 }
 
@@ -221,6 +284,8 @@ export function avvia() {
       !document.querySelector('dialog.panel[open]')) setTimeout(PANNELLI[pan].apri, 0);
   });
   sync.onStatus(paintSync);
+  // il pannello aperto si aggiorna anche quando arrivano dati (un pull) o cambia un dispositivo
+  store.subscribe(() => { if (syncBox?.isConnected) paintSyncPanel(); });
   // "Sincronizzato 2 min fa" va aggiornato anche senza cambi di stato
   setInterval(() => { if (!document.hidden) paintSync(); }, 60 * 1000);
 }

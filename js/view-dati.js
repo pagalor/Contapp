@@ -5,6 +5,7 @@ import { $, toast, confirmBox, download } from './ui.js';
 import { testataAccount } from './pannelli.js';
 
 let root;
+const SOLO_SYNC = new Set(['disp']); // kind esclusi dal backup esportato e ignorati all'importazione
 
 export function render(el) {
   root = el;
@@ -27,7 +28,7 @@ export function render(el) {
   $('.impost', root).addEventListener('click', (e) => {
     const exp = e.target.closest('[data-exp]')?.dataset.exp;
     if (exp === 'json') {
-      download(`rationes-backup-${stamp()}.json`, JSON.stringify({ format: 'contabilita-v1', creato: stamp(), records: store.exportRecords() }), 'application/json');
+      download(`rationes-backup-${stamp()}.json`, JSON.stringify({ format: 'contabilita-v1', creato: stamp(), records: store.exportRecords().filter((r) => !SOLO_SYNC.has(r.kind)) }), 'application/json');
     }
     if (exp === 'csv') exportCSV();
     if (exp === 'pat') exportPatCSV();
@@ -38,7 +39,8 @@ export function render(el) {
 async function importFile(file) {
   let json;
   try { json = JSON.parse(await file.text()); } catch { toast('Il file non è un JSON valido.'); return; }
-  const recs = json && json.format === 'contabilita-v1' && Array.isArray(json.records) ? json.records : null;
+  // i dispositivi collegati (disp) riguardano solo la sincronizzazione: restano fuori dai backup
+  const recs = json && json.format === 'contabilita-v1' && Array.isArray(json.records) ? json.records.filter((r) => !SOLO_SYNC.has(r?.kind)) : null;
   if (!recs) { toast('Questo file non è un backup di Rationes.'); return; }
   const n = { mov: 0, snap: 0 };
   for (const r of recs) if (n[r.kind] != null) n[r.kind]++;

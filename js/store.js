@@ -2,7 +2,7 @@
 // Ogni record: { id, kind, data, updated_at, deleted, dirty }
 // kind: 'mov' (movimento), 'cat' (categoria), 'sub' (sottocategoria), 'cont' (contenitore patrimonio),
 //       'snap' (rilevazione patrimonio), 'butt' (soldi buttati), 'ric' (movimento ricorrente), 'budg' (budget di spesa),
-//       'rate' (piano rateale)
+//       'rate' (piano rateale), 'disp' (dispositivo collegato alla sincronizzazione)
 
 const DB_NAME = 'contabilita'; // in demo si usa un altro database (vedi demo.js)
 let db;

@@ -16,6 +16,7 @@ import * as vBudget from './view-budget.js';
 import * as vInv from './view-investimenti.js';
 import * as demo from './demo.js';
 import * as pannelli from './pannelli.js';
+import * as dispositivi from './dispositivi.js';
 import * as gruppi from './gruppi.js';
 import { $, $$, setupTooltips, debounce, toast, avviaSelect, avviaStepper } from './ui.js';
 import { fmtEur } from './expr.js';
@@ -197,7 +198,7 @@ async function boot() {
   avviaSelect(); // i select si aprono con la finestra di scelta dell'app
   avviaStepper(); // pulsanti − e + dei campi numerici
   $('#fab')?.addEventListener('click', () => vMese.nuovoMovimento());
-  if (!demo.attiva) sync.start();
+  if (!demo.attiva) { dispositivi.avvia(); sync.start(); }
   addEventListener('hashchange', route);
   let lastW = innerWidth;
   addEventListener('resize', debounce(() => {

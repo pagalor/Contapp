@@ -80,18 +80,20 @@ html.demo .topbar { padding-top: .6rem; }
 .avatar-btn:hover { background: color-mix(in srgb, var(--text) 8%, var(--surface-2)); }
 .sync-btn:active, .avatar-btn:active { border-radius: var(--r-m); }
 .avatar-btn.on, .sync-btn.on { box-shadow: 0 0 0 3px var(--primary); }
+/* con il pannello aperto il pulsante ha lo sfondo pieno, come l'avatar */
+.sync-btn[aria-expanded="true"] { background: var(--surface-2); }
 .sync-btn svg, .avatar-btn svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .sync-txt { display: none; font-size: .86rem; font-weight: 600; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 18rem; }
-/* Stato della sincronizzazione: neutro quando è tutto a posto, animato durante l'invio, ambra con un problema */
-.sync-btn .ck, .sync-btn .ex { display: none; }
-.sync-btn[data-state="ok"] .ck { display: inline; }
-.sync-btn:is([data-state="error"], [data-state="locked"], [data-state="offline"]) { color: var(--warn); }
-.sync-btn:is([data-state="error"], [data-state="locked"], [data-state="offline"]) .ex { display: inline; }
-.sync-btn:is([data-state="error"], [data-state="locked"], [data-state="offline"]) .sync-txt { color: var(--warn); }
-.sync-btn[data-state="syncing"] svg { animation: sync-pulse 1.1s ease-in-out infinite; }
-@keyframes sync-pulse { 50% { opacity: .35; transform: translateY(-1px); } }
-.sync-pend { display: none; position: absolute; top: 11px; left: 31px; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 2px var(--bg); }
-.sync-btn[data-state="pending"] .sync-pend { display: block; }
+/* Stato della sincronizzazione: una variante della nuvola per stato (off: nuvola semplice; ok: spunta; pending: freccia in su;
+   syncing: freccia che gira; locked: lucchetto, in ambra; offline: nuvola barrata, in ambra; error: punto esclamativo, in rosso) */
+.sync-btn .v { display: none; }
+.sync-btn[data-state="ok"] .ck, .sync-btn[data-state="pending"] .up, .sync-btn[data-state="syncing"] .rot,
+.sync-btn[data-state="locked"] .lk, .sync-btn[data-state="offline"] .sl, .sync-btn[data-state="error"] .ex { display: inline; }
+.sync-btn .lk { stroke-width: 1.5; }
+.sync-btn:is([data-state="locked"], [data-state="offline"]), .sync-btn:is([data-state="locked"], [data-state="offline"]) .sync-txt { color: var(--warn); }
+.sync-btn[data-state="error"], .sync-btn[data-state="error"] .sync-txt { color: var(--out); }
+.sync-btn .rot { transform-box: fill-box; transform-origin: center; animation: sync-giro 1s linear infinite; }
+@keyframes sync-giro { to { transform: rotate(360deg); } }
 
 .sync-dot, .target-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; background: var(--text-3); }
 .target-dot { background: var(--warn-bar); }
@@ -177,6 +179,8 @@ main:focus-visible { outline: none; }
   animation: pan-in .4s linear(0, .45 10%, .85 25%, 1.02 42%, 1.005 60%, 1);
 }
 @keyframes pan-in { from { opacity: 0; transform: translateY(-14px) scale(.98); } }
+/* la barra in alto resta chiara (si vede il pulsante che ha aperto il pannello): si scurisce solo la pagina sotto */
+.modal.panel::backdrop { top: var(--bar-bottom, 0px); }
 @media (min-width: 900px) {
   .modal.panel-right { margin-right: clamp(1rem, 2.5vw, 2rem); }
   .modal.panel-left { margin-left: clamp(1rem, 2.5vw, 2rem); }
@@ -188,7 +192,19 @@ main:focus-visible { outline: none; }
 .pan-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; }
 .pan-avatar svg, .blk svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .pan-head .pan-sub { margin: .15rem 0 0; }
-.pan-sub:is([data-state="error"], [data-state="locked"], [data-state="offline"]) { color: var(--warn); font-weight: 600; }
+.pan-sub { color: var(--text-2); }
+.pan-sub:is([data-state="locked"], [data-state="offline"]) { color: var(--warn); font-weight: 600; }
+.pan-sub[data-state="error"] { color: var(--out); font-weight: 600; }
+/* Pannello della sincronizzazione: titolo con lo stato, dispositivi collegati, cifratura, azioni */
+.pan-tit { margin: .1rem 0 1rem .3rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .5rem; }
+.pan-tit .icon-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.pan-tit h2 { font-size: 1.6rem; }
+.pan-tit .pan-sub { margin: .3rem 0 0; font-size: .95rem; }
+.pan-sez { margin: 0 .3rem .55rem; color: var(--text-2); font-size: .9rem; }
+button.blk { font: inherit; border: 0; width: 100%; text-align: left; cursor: pointer; transition: background-color .2s; }
+button.blk:hover { background: color-mix(in srgb, var(--text) 4%, var(--surface)); }
+.pan-disp b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pan-disp .blk > span.pan-questo { flex: none; padding: .3rem .8rem; border-radius: var(--r-pill); background: var(--surface-2); font-size: .85rem; font-weight: 650; }
 .pan-note { margin: 0 .2rem 1rem; color: var(--text-2); }
 /* Lista a blocchi: blocchi --surface a 2 px, angoli esterni grandi, interni piccoli */
 .blocks { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 2px; }
@@ -216,6 +232,8 @@ a.blk > svg:last-child { width: 20px; height: 20px; color: var(--text-2); }
 .pan-actions .btn { min-height: 52px; justify-content: center; border-radius: var(--r-pill); }
 .pan-actions .btn.primary { flex: 1; }
 .pan-foot { margin: 0 .3rem; color: var(--text-2); font-size: .85rem; }
+.pan-actions + .pan-foot { margin-top: .9rem; text-align: center; }
+.pan-foot a { color: var(--text); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--outline); }
 .btn.tonal { background: var(--surface-2); border-color: var(--surface-2); }
 
 /* ---------- Controlli ---------- */
